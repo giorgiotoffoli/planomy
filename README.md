@@ -18,3 +18,6 @@
 - 🔒 Privacy-first (no trackers or data sharing)
 - ⚡️ Fast and lightweight (built with modern tools)
 - 🧩 Open-source and customizable
+
+> [!TIP]
+> Add Planomy as a web-app on your mobile device!
