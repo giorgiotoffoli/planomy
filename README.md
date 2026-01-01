@@ -1,4 +1,4 @@
-![Planomy logo](public/planomy.png)
+<img width="25%" src="public/planomy.png" alt="Planomy logo">
 
 # Planomy – Plan privately
 
