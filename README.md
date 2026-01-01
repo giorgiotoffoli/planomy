@@ -19,6 +19,7 @@
 - ⚡️ Fast and lightweight (built with modern tools)
 - 🧩 Open-source and customizable
 
-  <br/>
-  > [!TIP]
-  > Add Planomy as a web-app on your mobile device!
+<br/>
+
+> [!TIP]
+> Add Planomy as a web-app on your mobile device!
