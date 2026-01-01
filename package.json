@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d -dist"
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "@heroui/popover": "^2.3.27",
