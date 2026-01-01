@@ -1,5 +1,6 @@
-<img width="25%" src="public/planomy.png" alt="Planomy logo">
-
+<p align="center">
+<img width="15%" src="public/planomy.png" alt="Planomy logo">
+</p>
 # Planomy – Plan privately
 
 **Planomy** is _the_ open-source digital planner for the privacy-concious.
