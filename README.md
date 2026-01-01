@@ -1,10 +1,8 @@
-#🔵 Planomy – Plan privately
+# 🔵 Planomy – Plan privately
 **Planomy** is *the* open-source digital planner for the privacy-concious.
 
-> ⚠️ **Early Access**
->
-> Planomy is currently in **early access**.  
-> Features may change, bugs are expected, and breaking updates can happen.
+> [!WARNING]
+> Planomy is currently in **early access**. Features may change, bugs are expected, and breaking updates can happen. <br/>
 > Feedback, issues, and contributions are very welcome.
 
 ---
