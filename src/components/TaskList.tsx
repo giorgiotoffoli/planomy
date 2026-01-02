@@ -4,27 +4,20 @@ import NewTaskPrompt from './NewTaskPrompt'
 import type { Task } from '../types/task'
 import type { KeyboardEvent } from 'react'
 import { Button } from './ui/button'
+import { PlusIcon } from 'lucide-react'
 
 type TaskListProps = {
   filter: string
+  taskList: Task[]
+  setTaskList: React.Dispatch<React.SetStateAction<Task[]>>
 }
 
-const TaskList = ({ filter }: TaskListProps) => {
-  const TASKS_KEY = 'planomy_tasks'
-
-  const [taskList, setTaskList] = useState<Task[]>(() => {
-    const stored = localStorage.getItem(TASKS_KEY)
-    return stored ? JSON.parse(stored) : []
-  })
+const TaskList = ({ filter, taskList, setTaskList }: TaskListProps) => {
   const [visibleTaskList, setVisibleTaskList] = useState<Task[]>([])
   const [showTaskInput, setShowTaskInput] = useState(false)
   const [taskName, setTaskName] = useState('')
   const [newTaskName, setNewTaskName] = useState('')
   const [editTaskId, setEditTaskId] = useState('')
-
-  useEffect(() => {
-    localStorage.setItem(TASKS_KEY, JSON.stringify(taskList))
-  }, [taskList])
 
   useEffect(() => {
     console.log(taskList)
@@ -169,7 +162,7 @@ const TaskList = ({ filter }: TaskListProps) => {
           onClick={() => setShowTaskInput(true)}
           className="bg-gray-800 rounded-lg text-sm p-3 m-3 hover:cursor-pointer hover:bg-gray-900 transition-colors duration-200 float-end"
         >
-          New task
+          <PlusIcon /> New task
         </Button>
       </header>
 
