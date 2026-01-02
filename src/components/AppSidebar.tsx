@@ -7,9 +7,11 @@ import {
   ArchiveIcon,
   SunIcon,
   PlusIcon,
+  PencilIcon,
+  TrashIcon,
 } from 'lucide-react'
 import {} from './ui/sidebar'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Dialog,
   DialogClose,
@@ -22,24 +24,28 @@ import {
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import type { List } from '../types/task'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu'
 
-type NativeSidebarProps = {
+type AppSidebarProps = {
   changeFilter: (newFilter: string) => void
+  deleteListTasks: (listFilter: string) => void
+  lists: List[]
+  setLists: React.Dispatch<React.SetStateAction<List[]>>
 }
 
-export default function AppSidebar({ changeFilter }: NativeSidebarProps) {
-  const LISTS_KEY = 'plaonmy_lists'
-
+export default function AppSidebar({
+  changeFilter,
+  deleteListTasks,
+  lists,
+  setLists,
+}: AppSidebarProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [listName, setListName] = useState('')
-  const [lists, setLists] = useState<List[]>(() => {
-    const stored = localStorage.getItem(LISTS_KEY)
-    return stored ? JSON.parse(stored) : []
-  })
-
-  useEffect(() => {
-    localStorage.setItem(LISTS_KEY, JSON.stringify(lists))
-  }, [lists])
 
   const items = [
     {
@@ -66,11 +72,17 @@ export default function AppSidebar({ changeFilter }: NativeSidebarProps) {
     if (listName) {
       const newList: List = {
         id: crypto.randomUUID(),
-        title: listName,
+        title: listName.trim(),
       }
       setLists((prev) => [...prev, newList])
       setListName('')
     }
+  }
+
+  const deleteList = (listId: string, listFilter: string) => {
+    setLists((prev) => prev.filter((listObject) => listId !== listObject.id))
+    changeFilter('Inbox')
+    deleteListTasks(listFilter)
   }
 
   return (
@@ -150,14 +162,45 @@ export default function AppSidebar({ changeFilter }: NativeSidebarProps) {
 
                 {/* the scroll container */}
                 <div className="h-full overflow-y-auto pt-2 pb-2 mask-[linear-gradient(to_bottom,transparent,black_10px,black_calc(100%-10px),transparent)]">
-                  {lists.map((item) => (
-                    <a
-                      key={item.id}
-                      className="flex items-center hover:bg-blue-700 rounded-xl p-2 cursor-pointer"
-                      onClick={() => changeFilter(item.title)}
+                  {lists.map((list) => (
+                    <div
+                      key={list.id}
+                      className="flex items-center justify-between h-10 px-2 hover:bg-blue-700 rounded-xl cursor-pointer group"
                     >
-                      <p className="ml-3 truncate">{item.title}</p>
-                    </a>
+                      <button
+                        className="flex items-center min-w-0 flex-1"
+                        onClick={() => changeFilter(list.title)}
+                      >
+                        <p className="ml-3 truncate">{list.title}</p>
+                      </button>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            className="shrink-0 h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-all"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            ⋯
+                          </Button>
+                        </DropdownMenuTrigger>
+
+                        <DropdownMenuContent
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <DropdownMenuItem
+                            className="text-red-500"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              deleteList(list.id, list.title)
+                            }}
+                          >
+                            <TrashIcon />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   ))}
                 </div>
 
