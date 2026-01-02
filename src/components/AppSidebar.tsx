@@ -7,7 +7,6 @@ import {
   ArchiveIcon,
   SunIcon,
   PlusIcon,
-  PencilIcon,
   TrashIcon,
 } from 'lucide-react'
 import {} from './ui/sidebar'
