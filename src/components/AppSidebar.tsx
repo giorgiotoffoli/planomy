@@ -4,8 +4,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from 'lucide-react'
-import {} from './ui/sidebar'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogClose,
@@ -39,8 +38,28 @@ export default function AppSidebar({
   lists,
   setLists,
 }: AppSidebarProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 640px)') // sm breakpoint
+
+    const syncSidebar = () => {
+      setSidebarOpen(media.matches) // open on desktop, closed on mobile
+    }
+
+    syncSidebar()
+    media.addEventListener('change', syncSidebar)
+
+    return () => media.removeEventListener('change', syncSidebar)
+  }, [])
+
   const [listName, setListName] = useState('')
+
+  const closeSidebarOnMobile = () => {
+    if (window.innerWidth < 640) {
+      setSidebarOpen(false)
+    }
+  }
 
   const createList = () => {
     if (listName) {
@@ -65,13 +84,21 @@ export default function AppSidebar({
     <>
       {sidebarOpen ? (
         // Top part
-        <aside className="w-46 h-screen bg-blue-500 text-white flex flex-col">
+        <aside
+          className={`
+          bg-blue-500 text-white
+          fixed inset-0 z-40        /* mobile fullscreen */
+          sm:static sm:h-screen    /* desktop normal */
+          sm:flex sm:w-46
+          ${sidebarOpen ? 'flex flex-col' : 'hidden sm:flex'}
+        `}
+        >
           <div className="flex-1 min-h-0 flex flex-col">
             <header className="flex items-center justify-between pl-3">
               <h1 className="font-stretch-125% text-2xl">Planomy</h1>
               <SidebarCloseIcon
                 onClick={() => setSidebarOpen(false)}
-                className="cursor-w-resize m-3 rounded-2xl"
+                className="cursor-pointer m-3 "
               />
             </header>
             <section className="px-3">
@@ -79,7 +106,10 @@ export default function AppSidebar({
                 <button
                   key={list.id}
                   className="flex items-center hover:bg-blue-700 rounded-xl p-2"
-                  onClick={() => setActiveList(list)}
+                  onClick={() => {
+                    setActiveList(list)
+                    closeSidebarOnMobile()
+                  }}
                 >
                   {list.icon && <list.icon />}
                   <p className="ml-3">{list.title}</p>
@@ -141,7 +171,10 @@ export default function AppSidebar({
                     >
                       <button
                         className="flex items-center min-w-0 flex-1"
-                        onClick={() => setActiveList(list)}
+                        onClick={() => {
+                          setActiveList(list)
+                          closeSidebarOnMobile()
+                        }}
                       >
                         <p className="ml-3 truncate">{list.title}</p>
                       </button>
@@ -181,7 +214,7 @@ export default function AppSidebar({
         </aside>
       ) : (
         <SidebarOpenIcon
-          className="cursor-e-resize m-3 rounded-2xl"
+          className="cursor-e-resize mt-6 left-3 rounded-2xl sm:relative fixed"
           onClick={() => setSidebarOpen(true)}
         />
       )}

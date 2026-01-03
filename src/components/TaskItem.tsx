@@ -94,6 +94,7 @@ function TaskItem({
                 <label htmlFor="input">Date: </label>
                 <input
                   type="date"
+                  autoFocus={false}
                   onChange={(e) => {
                     addTaskDate(task.id, e.target.value)
                   }}
@@ -104,6 +105,7 @@ function TaskItem({
                 <label htmlFor="input">Time: </label>
                 <input
                   type="time"
+                  autoFocus={false}
                   onChange={(e) => {
                     addTaskTime(task.id, e.target.value)
                   }}
@@ -113,6 +115,7 @@ function TaskItem({
               <div>
                 <p>Notes: </p>
                 <Textarea
+                  autoFocus={false}
                   onChange={(e) => {
                     addTaskNote(task.id, e.target.value)
                   }}
