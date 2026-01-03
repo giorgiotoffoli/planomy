@@ -30,6 +30,8 @@ const TaskList = ({ activeList, taskList, setTaskList }: TaskListProps) => {
   }, [activeList])
 
   const addTaskToTaskList = () => {
+    if (!taskName) return
+
     const newTask: Task = {
       id: crypto.randomUUID(),
       name: taskName,
@@ -147,20 +149,17 @@ const TaskList = ({ activeList, taskList, setTaskList }: TaskListProps) => {
   return (
     <div className="flex flex-col h-full">
       <header className="flex justify-between items-center bg-white border-b px-4 py-1">
-        <h1 className="font-bold text-3xl p-4">{activeList.title}</h1>
-        <Button
-          onClick={() => setShowTaskInput(true)}
-          className="bg-gray-800 rounded-lg text-sm p-3 m-3 hover:cursor-pointer hover:bg-gray-900 transition-colors duration-200 float-end"
-        >
-          <PlusIcon /> New task
-        </Button>
+        <h1 className="font-bold text-3xl p-4 sm:ml-0 ml-4">
+          {activeList.title}
+        </h1>
       </header>
 
-      <div className="flex-1 overflow-y-auto scroll-smooth">
+      <div className="flex-1 overflow-y-auto scroll-smooth pb-24">
         <ul className="px-4 py-3">
           {!showTaskInput && visibleTaskList.length === 0 && (
             <h2>Great job! Everything is done.</h2>
           )}
+
           {visibleTaskList.map((task) => (
             <TaskItem
               key={task.id}
@@ -178,6 +177,7 @@ const TaskList = ({ activeList, taskList, setTaskList }: TaskListProps) => {
               activeList={activeList}
             />
           ))}
+
           {showTaskInput && (
             <NewTaskPrompt
               addTaskToTaskList={addTaskToTaskList}
@@ -187,6 +187,17 @@ const TaskList = ({ activeList, taskList, setTaskList }: TaskListProps) => {
             />
           )}
         </ul>
+      </div>
+
+      <div className="sticky bottom-0 z-20 backdrop-blur-md bg-white/60 border-t border-white/20">
+        <div className="mx-auto max-w-md p-3 flex justify-center">
+          <Button
+            onClick={() => setShowTaskInput(true)}
+            className="bg-gray-800 rounded-lg text-sm px-4 py-3 hover:cursor-pointer hover:bg-gray-900 transition-colors duration-200 shadow-lg mb-3"
+          >
+            <PlusIcon /> New task
+          </Button>
+        </div>
       </div>
     </div>
   )
