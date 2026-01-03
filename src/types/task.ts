@@ -4,11 +4,12 @@ export interface Task {
     completed: boolean;
     dueDate?: string;
     dueTime?: string;
-    filter: string;
+    list?: List;
     note?: string;
 }
 
 export interface List {
     id: string;
     title: string;
+    icon?: React.ElementType
 }
