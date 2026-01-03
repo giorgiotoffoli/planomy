@@ -42,7 +42,6 @@ function App() {
     <>
       <div className="flex h-screen overflow-hidden">
         <AppSidebar
-          activeList={activeList}
           setActiveList={setActiveList}
           deleteListTasks={deleteListTasks}
           lists={lists}

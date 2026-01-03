@@ -27,7 +27,6 @@ import {
 import { defaultLists } from '@/data/AppLists'
 
 type AppSidebarProps = {
-  activeList: List
   setActiveList: (list: List) => void
   deleteListTasks: (activeList: List) => void
   lists: List[]
@@ -35,7 +34,6 @@ type AppSidebarProps = {
 }
 
 export default function AppSidebar({
-  activeList,
   setActiveList,
   deleteListTasks,
   lists,
