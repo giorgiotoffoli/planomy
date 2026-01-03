@@ -1,4 +1,4 @@
-import type { Task } from '../types/task'
+import type { List, Task } from '../types/task'
 import { Checkbox } from './ui/checkbox'
 import { Button } from './ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
@@ -17,7 +17,7 @@ type TaskItemProps = {
   addTaskDate: (taskId: string, date: string) => void
   addTaskTime: (taskId: string, time: string) => void
   addTaskNote: (taskId: string, note: string) => void
-  listFilter: string
+  activeList: List
 }
 
 function TaskItem({
@@ -32,7 +32,7 @@ function TaskItem({
   addTaskDate,
   addTaskTime,
   addTaskNote,
-  listFilter,
+  activeList,
 }: TaskItemProps) {
   return (
     <li
@@ -67,8 +67,10 @@ function TaskItem({
           )}
         </div>
         <span className="text-xs">
-          {/* {task.filter === filter ? '' : task.filter} */}
-          {listFilter !== task.filter && `${task.filter}`}
+          {!task.list?.id && 'Uncategorized'}
+          {activeList.id !== task.list?.id &&
+            task.list?.id &&
+            `${task.list?.title}`}
           {task.dueDate && ` ${task.dueDate}`}
           {task.dueDate && task.dueTime && <span>, </span>}
           {task.dueTime && `${task.dueTime}`}

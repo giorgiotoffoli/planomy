@@ -1,11 +1,6 @@
 import {
-  Inbox,
-  Calendar,
-  Check,
   SidebarCloseIcon,
   SidebarOpenIcon,
-  ArchiveIcon,
-  SunIcon,
   PlusIcon,
   TrashIcon,
 } from 'lucide-react'
@@ -29,43 +24,25 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu'
+import { defaultLists } from '@/data/AppLists'
 
 type AppSidebarProps = {
-  changeFilter: (newFilter: string) => void
-  deleteListTasks: (listFilter: string) => void
+  activeList: List
+  setActiveList: (list: List) => void
+  deleteListTasks: (activeList: List) => void
   lists: List[]
   setLists: React.Dispatch<React.SetStateAction<List[]>>
 }
 
 export default function AppSidebar({
-  changeFilter,
+  activeList,
+  setActiveList,
   deleteListTasks,
   lists,
   setLists,
 }: AppSidebarProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [listName, setListName] = useState('')
-
-  const items = [
-    {
-      title: 'Inbox',
-      url: '#',
-      icon: Inbox,
-      filter: 'Inbox',
-    },
-    {
-      title: 'Scheduled',
-      url: '#',
-      icon: Calendar,
-      filter: 'Scheduled',
-    },
-    {
-      title: 'Today',
-      url: '#',
-      icon: SunIcon,
-      filter: 'Today',
-    },
-  ]
 
   const createList = () => {
     if (listName) {
@@ -78,10 +55,12 @@ export default function AppSidebar({
     }
   }
 
-  const deleteList = (listId: string, listFilter: string) => {
-    setLists((prev) => prev.filter((listObject) => listId !== listObject.id))
-    changeFilter('Inbox')
-    deleteListTasks(listFilter)
+  const deleteList = (currentList: List) => {
+    setLists((prevLists) =>
+      prevLists.filter((allLists) => currentList.id !== allLists.id)
+    )
+    setActiveList(defaultLists[0])
+    deleteListTasks(currentList)
   }
 
   return (
@@ -98,16 +77,15 @@ export default function AppSidebar({
               />
             </header>
             <section className="px-3">
-              {items.map((item) => (
-                <a
-                  key={item.title}
+              {defaultLists.map((list) => (
+                <button
+                  key={list.id}
                   className="flex items-center hover:bg-blue-700 rounded-xl p-2"
-                  href={item.url}
-                  onClick={() => changeFilter(item.filter)}
+                  onClick={() => setActiveList(list)}
                 >
-                  {<item.icon />}
-                  <p className="ml-3">{item.title}</p>
-                </a>
+                  {list.icon && <list.icon />}
+                  <p className="ml-3">{list.title}</p>
+                </button>
               ))}
             </section>
 
@@ -117,13 +95,10 @@ export default function AppSidebar({
               {/* List Dialog */}
               <Dialog>
                 <DialogTrigger>
-                  <a
-                    className="flex items-center hover:bg-blue-700 rounded-xl p-2"
-                    href="#"
-                  >
+                  <button className="flex items-center hover:bg-blue-700 rounded-xl p-2">
                     {<PlusIcon />}
                     <p>Create List</p>
-                  </a>
+                  </button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogTitle>Create List</DialogTitle>
@@ -168,7 +143,7 @@ export default function AppSidebar({
                     >
                       <button
                         className="flex items-center min-w-0 flex-1"
-                        onClick={() => changeFilter(list.title)}
+                        onClick={() => setActiveList(list)}
                       >
                         <p className="ml-3 truncate">{list.title}</p>
                       </button>
@@ -189,10 +164,7 @@ export default function AppSidebar({
                         >
                           <DropdownMenuItem
                             className="text-red-500"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              deleteList(list.id, list.title)
-                            }}
+                            onClick={() => deleteList(list)}
                           >
                             <TrashIcon />
                             Delete
@@ -206,28 +178,6 @@ export default function AppSidebar({
                 {/* bottom fade */}
                 <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-5 bg-linear-to-t from-blue-500 via-blue-500/70 to-transparent" />
               </div>
-            </section>
-          </div>
-
-          {/* Bottom part */}
-          <div className="pb-3 pl-3">
-            <section>
-              <a
-                className="flex items-center hover:bg-blue-700 rounded-xl p-2"
-                href="#"
-                onClick={() => changeFilter('Completed')}
-              >
-                <Check />
-                <p className="ml-3">Completed</p>
-              </a>
-              <a
-                className="flex items-center hover:bg-blue-700 rounded-xl p-2"
-                href="#"
-                onClick={() => changeFilter('All')}
-              >
-                <ArchiveIcon />
-                <p className="ml-3">All Tasks</p>
-              </a>
             </section>
           </div>
         </aside>

@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react'
 import TaskItem from './TaskItem'
 import NewTaskPrompt from './NewTaskPrompt'
-import type { Task } from '../types/task'
+import type { Task, List } from '../types/task'
 import type { KeyboardEvent } from 'react'
 import { Button } from './ui/button'
 import { PlusIcon } from 'lucide-react'
 
 type TaskListProps = {
-  filter: string
+  activeList: List
   taskList: Task[]
   setTaskList: React.Dispatch<React.SetStateAction<Task[]>>
+  lists: List[]
 }
 
-const TaskList = ({ filter, taskList, setTaskList }: TaskListProps) => {
+const TaskList = ({ activeList, taskList, setTaskList }: TaskListProps) => {
   const [visibleTaskList, setVisibleTaskList] = useState<Task[]>([])
   const [showTaskInput, setShowTaskInput] = useState(false)
   const [taskName, setTaskName] = useState('')
@@ -26,16 +27,19 @@ const TaskList = ({ filter, taskList, setTaskList }: TaskListProps) => {
 
   useEffect(() => {
     updateVisibleTasks()
-  }, [filter])
+  }, [activeList])
 
   const addTaskToTaskList = () => {
-    if (!taskName) return
-
     const newTask: Task = {
       id: crypto.randomUUID(),
       name: taskName,
       completed: false,
-      filter: filter,
+      ...(activeList.id !== 'All' &&
+        activeList.id !== 'Scheduled' &&
+        activeList.id !== 'Today' &&
+        activeList.id !== 'Completed' && {
+          list: activeList,
+        }),
     }
 
     setTaskList((prevTasks) => [...prevTasks, newTask])
@@ -44,31 +48,17 @@ const TaskList = ({ filter, taskList, setTaskList }: TaskListProps) => {
   }
 
   const updateVisibleTasks = () => {
-    if (filter === 'All') {
+    if (activeList.id === 'All') {
       setVisibleTaskList([...taskList])
-    } else if (filter === 'Inbox') {
-      setVisibleTaskList(
-        taskList.filter(
-          (taskObject) =>
-            !(
-              taskObject.filter !== 'Inbox' &&
-              taskObject.filter !== 'All' &&
-              taskObject.filter !== 'Completed' &&
-              taskObject.filter !== 'Scheduled' &&
-              taskObject.filter !== 'Today' &&
-              taskObject.filter !== 'Inbox'
-            )
-        )
-      )
-    } else if (filter === 'Completed') {
+    } else if (activeList.id === 'Completed') {
       setVisibleTaskList(taskList.filter((taskObject) => taskObject.completed))
-    } else if (filter === 'Scheduled') {
+    } else if (activeList.id === 'Scheduled') {
       setVisibleTaskList(
         taskList.filter(
           (taskObject) => taskObject.dueDate || taskObject.dueTime
         )
       )
-    } else if (filter === 'Today') {
+    } else if (activeList.id === 'Today') {
       const today = new Date().toISOString().slice(0, 10)
       setVisibleTaskList(
         taskList.filter(
@@ -80,7 +70,7 @@ const TaskList = ({ filter, taskList, setTaskList }: TaskListProps) => {
       )
     } else {
       setVisibleTaskList(
-        taskList.filter((taskObject) => taskObject.filter === filter)
+        taskList.filter((taskObject) => taskObject.list?.id === activeList.id)
       )
     }
   }
@@ -157,7 +147,7 @@ const TaskList = ({ filter, taskList, setTaskList }: TaskListProps) => {
   return (
     <div className="flex flex-col h-full">
       <header className="flex justify-between items-center bg-white border-b px-4 py-1">
-        <h1 className="font-bold text-3xl p-4">{filter}</h1>
+        <h1 className="font-bold text-3xl p-4">{activeList.title}</h1>
         <Button
           onClick={() => setShowTaskInput(true)}
           className="bg-gray-800 rounded-lg text-sm p-3 m-3 hover:cursor-pointer hover:bg-gray-900 transition-colors duration-200 float-end"
@@ -185,7 +175,7 @@ const TaskList = ({ filter, taskList, setTaskList }: TaskListProps) => {
               addTaskDate={addTaskDate}
               addTaskTime={addTaskTime}
               addTaskNote={addTaskNote}
-              listFilter={filter}
+              activeList={activeList}
             />
           ))}
           {showTaskInput && (
