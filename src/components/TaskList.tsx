@@ -5,6 +5,7 @@ import type { Task, List } from '../types/task'
 import type { KeyboardEvent } from 'react'
 import { Button } from './ui/button'
 import { PlusIcon } from 'lucide-react'
+import { ProgressiveBlur } from './ui/progressive-blur'
 
 type TaskListProps = {
   activeList: List
@@ -148,13 +149,13 @@ const TaskList = ({ activeList, taskList, setTaskList }: TaskListProps) => {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="flex justify-between items-center bg-white border-b px-4 py-1">
-        <h1 className="font-bold text-3xl p-4 sm:ml-0 ml-4">
+      <header className="flex justify-between items-center  border-b px-4 py-1">
+        <h1 className="font-bold text-3xl p-4 sm:ml-0 ml-4 truncate">
           {activeList.title}
         </h1>
       </header>
 
-      <div className="flex-1 overflow-y-auto scroll-smooth pb-24">
+      <div className="flex-1 overflow-y-auto scroll-smooth pb-6">
         <ul className="px-4 py-3">
           {!showTaskInput && visibleTaskList.length === 0 && (
             <h2>Great job! Everything is done.</h2>
@@ -188,17 +189,14 @@ const TaskList = ({ activeList, taskList, setTaskList }: TaskListProps) => {
           )}
         </ul>
       </div>
+      <Button
+        onClick={() => setShowTaskInput(true)}
+        className="bg-gray-800 rounded-lg text-sm px-4 py-3 hover:cursor-pointer hover:bg-gray-900 transition-colors duration-200 shadow-lg z-20 w-28 mx-auto mb-9"
+      >
+        <PlusIcon /> New task
+      </Button>
 
-      <div className="sticky bottom-0 z-20 backdrop-blur-md bg-white/60 border-t border-white/20">
-        <div className="mx-auto max-w-md p-3 flex justify-center">
-          <Button
-            onClick={() => setShowTaskInput(true)}
-            className="bg-gray-800 rounded-lg text-sm px-4 py-3 hover:cursor-pointer hover:bg-gray-900 transition-colors duration-200 shadow-lg mb-3"
-          >
-            <PlusIcon /> New task
-          </Button>
-        </div>
-      </div>
+      <ProgressiveBlur height="15%" position="bottom" />
     </div>
   )
 }

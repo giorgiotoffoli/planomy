@@ -3,7 +3,11 @@ import { Checkbox } from './ui/checkbox'
 import { Button } from './ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import { Textarea } from './ui/textarea'
-import { Trash } from 'lucide-react'
+import { ChevronDownIcon, Trash } from 'lucide-react'
+import { Label } from './ui/label'
+import { Calendar } from './ui/calendar'
+import { useState } from 'react'
+import confetti from 'canvas-confetti'
 
 type TaskItemProps = {
   task: Task
@@ -34,6 +38,8 @@ function TaskItem({
   addTaskNote,
   activeList,
 }: TaskItemProps) {
+  const [open, setOpen] = useState(false)
+
   return (
     <li
       className="flex justify-between items-center group 
@@ -44,10 +50,38 @@ function TaskItem({
         <div className="flex items-center">
           <Checkbox
             className="mr-2 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500 border-blue-500"
-            onCheckedChange={() => toggleComplete(task.id)}
-            checked={task.completed ? true : false}
-          />
+            checked={task.completed}
+            onCheckedChange={(checked) => {
+              // fire ONLY when changing to checked
+              if (checked && !task.completed) {
+                // locate the checkbox for origin
+                const el = document.activeElement as HTMLElement | null
+                const rect = el?.getBoundingClientRect()
 
+                if (rect) {
+                  const x = rect.left + rect.width / 2
+                  const y = rect.top + rect.height / 2
+
+                  confetti({
+                    origin: {
+                      x: x / window.innerWidth,
+                      y: y / window.innerHeight,
+                    },
+                    particleCount: 24,
+                    spread: 25,
+                    startVelocity: 30,
+                    gravity: 2,
+                    ticks: 90,
+                    scalar: 0.65,
+                  })
+                } else {
+                  confetti()
+                }
+              }
+
+              toggleComplete(task.id)
+            }}
+          />
           {editTaskId === task.id ? (
             <input
               className="outline-0 w-full"
@@ -85,21 +119,44 @@ function TaskItem({
               ⋯
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80">
+          <PopoverContent className="w-auto">
             <div className="p-2">
               <header className="flex items-center justify-between">
                 <h2 className="text-xl font-bold truncate">{task.name}</h2>
               </header>
               <div>
-                <label htmlFor="input">Date: </label>
-                <input
-                  type="date"
-                  autoFocus={false}
-                  onChange={(e) => {
-                    addTaskDate(task.id, e.target.value)
-                  }}
-                  value={task.dueDate ?? ''}
-                />
+                <div className="flex flex-col gap-3">
+                  <Label htmlFor="date" className="px-1">
+                    Date of birth
+                  </Label>
+                  <Popover open={open} onOpenChange={setOpen} modal={true}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        id="date"
+                        className="w-48 justify-between font-normal"
+                      >
+                        {task.dueDate ? task.dueDate : 'Select date'}
+                        <ChevronDownIcon />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-auto overflow-hidden p-0"
+                      align="start"
+                    >
+                      <Calendar
+                        mode="single"
+                        captionLayout="dropdown"
+                        onSelect={(date) => {
+                          if (!date) return
+                          const dateTime = date?.toDateString()
+                          addTaskDate(task.id, dateTime)
+                          setOpen(false)
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
               <div>
                 <label htmlFor="input">Time: </label>
