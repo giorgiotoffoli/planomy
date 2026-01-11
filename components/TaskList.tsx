@@ -15,17 +15,11 @@ import { TASK_ACTIONS } from '@/types/task'
 type TaskListProps = {
   activeList: List
   taskList: Task[]
-  setTaskList: React.Dispatch<React.SetStateAction<Task[]>>
   lists: List[]
   dispatch: ActionDispatch<[action: TaskAction]>
 }
 
-const TaskList = ({
-  activeList,
-  taskList,
-  setTaskList,
-  dispatch,
-}: TaskListProps) => {
+const TaskList = ({ activeList, taskList, dispatch }: TaskListProps) => {
   const [visibleTaskList, setVisibleTaskList] = useState<Task[]>([])
   const [showTaskInput, setShowTaskInput] = useState(false)
 
@@ -88,6 +82,7 @@ const TaskList = ({
             <NewTaskPrompt
               dispatch={dispatch}
               setShowTaskInput={setShowTaskInput}
+              activeList={activeList}
             />
           )}
         </ul>

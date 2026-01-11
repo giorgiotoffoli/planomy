@@ -24,8 +24,8 @@ export const TASK_ACTIONS = {
   } as const
   
   export type TaskAction =
-    | { type: typeof TASK_ACTIONS.ADD; title: string }
-    | { type: typeof TASK_ACTIONS.DELETE; id: string }
+    | { type: typeof TASK_ACTIONS.ADD; title: string, currentList?: List }
+    | { type: typeof TASK_ACTIONS.DELETE; id?: string, currentList?: List }
     | { type: typeof TASK_ACTIONS.TOGGLE_COMPLETE; id: string, completed: boolean}
     | { type: typeof TASK_ACTIONS.RENAME; id: string, newTitle: string}
     | { type: typeof TASK_ACTIONS.SET_NOTE; id: string, note: string}

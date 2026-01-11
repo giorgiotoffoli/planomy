@@ -21,10 +21,15 @@ function tasksReducer(tasks: Task[], action: TaskAction): Task[] {
           id: crypto.randomUUID(),
           title: action.title,
           completed: false,
+          list: action.currentList,
         },
       ]
     }
     case TASK_ACTIONS.DELETE: {
+      if (!action.id) {
+        return tasks.filter((t) => t.list !== action.currentList)
+      }
+
       return tasks.filter((t) => t.id !== action.id)
     }
     case TASK_ACTIONS.TOGGLE_COMPLETE: {
@@ -54,62 +59,59 @@ function tasksReducer(tasks: Task[], action: TaskAction): Task[] {
   }
 }
 
-export default function Page() {
-  const [tasks, dispatch] = useReducer(tasksReducer, [])
-  const [taskList, setTaskList] = useState<Task[]>([])
-  const [lists, setLists] = useState<List[]>([])
-  const [activeList, setActiveList] = useState<List>(defaultLists[0])
+// lazy initializer
+function init() {
+  try {
+    const storedTasks = localStorage.getItem(TASKS_KEY)
+    return storedTasks ? JSON.parse(storedTasks) : []
+  } catch {
+    return []
+  }
+}
 
-  // Prevent overwriting existing localStorage with [] on first paint
-  const [hydrated, setHydrated] = useState(false)
+function listsInit() {
+  try {
+    const storedLists = localStorage.getItem(LISTS_KEY)
+    return storedLists ? JSON.parse(storedLists) : []
+  } catch {
+    return []
+  }
+}
+
+export default function Page() {
+  const [tasks, dispatch] = useReducer(tasksReducer, [], init)
+  const [lists, setLists] = useState<List[]>(listsInit)
+  const [activeList, setActiveList] = useState<List>(defaultLists[0])
 
   useEffect(() => {
     try {
-      const storedTasks = localStorage.getItem(TASKS_KEY)
-      const storedLists = localStorage.getItem(LISTS_KEY)
-
-      setTaskList(storedTasks ? JSON.parse(storedTasks) : [])
-      setLists(storedLists ? JSON.parse(storedLists) : [])
+      localStorage.setItem(TASKS_KEY, JSON.stringify(tasks))
     } catch {
-      setTaskList([])
-      setLists([])
-    } finally {
-      setHydrated(true)
+      return
     }
-  }, [])
-
-  useEffect(() => {
-    if (!hydrated) return
-    localStorage.setItem(TASKS_KEY, JSON.stringify(taskList))
-  }, [taskList, hydrated])
-
-  useEffect(() => {
-    if (!hydrated) return
-    localStorage.setItem(LISTS_KEY, JSON.stringify(lists))
-  }, [lists, hydrated])
-
-  useEffect(() => {
-    console.log(tasks)
   }, [tasks])
 
-  const deleteListTasks = (list: List) => {
-    // setTaskList((prev) => prev.filter((task) => task.list?.id !== list.id))
-  }
+  useEffect(() => {
+    try {
+      localStorage.setItem(LISTS_KEY, JSON.stringify(lists))
+    } catch {
+      return
+    }
+  }, [lists])
 
   return (
     <div className="flex h-screen overflow-hidden">
       <AppSidebar
         setActiveList={setActiveList}
-        deleteListTasks={deleteListTasks}
         lists={lists}
         setLists={setLists}
+        dispatch={dispatch}
       />
       <main className="w-full flex-1">
         <TaskList
           taskList={tasks}
           dispatch={dispatch}
           activeList={activeList}
-          setTaskList={setTaskList}
           lists={lists}
         />
       </main>

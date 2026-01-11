@@ -8,20 +8,29 @@ import {
   type KeyboardEvent,
 } from 'react'
 
-import type { TaskAction } from '@/types/task'
+import type { List, TaskAction } from '@/types/task'
 import { TASK_ACTIONS } from '@/types/task'
 
 type NewTaskPromptProps = {
   dispatch: ActionDispatch<[action: TaskAction]>
   setShowTaskInput: Dispatch<SetStateAction<boolean>>
+  activeList: List
 }
 
-function NewTaskPrompt({ dispatch, setShowTaskInput }: NewTaskPromptProps) {
+function NewTaskPrompt({
+  dispatch,
+  setShowTaskInput,
+  activeList,
+}: NewTaskPromptProps) {
   const [taskName, setTaskName] = useState('')
 
   const addTask = () => {
     if (!taskName) return
-    dispatch({ type: TASK_ACTIONS.ADD, title: taskName })
+    dispatch({
+      type: TASK_ACTIONS.ADD,
+      title: taskName,
+      currentList: activeList,
+    })
     setShowTaskInput(false)
     setTaskName('')
   }

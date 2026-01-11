@@ -7,7 +7,7 @@ import {
   TrashIcon,
   PencilIcon,
 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, ActionDispatch } from 'react'
 import {
   Dialog,
   DialogClose,
@@ -19,7 +19,7 @@ import {
 } from './ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import type { List } from '@/types/task'
+import { TASK_ACTIONS, type List, type TaskAction } from '@/types/task'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,16 +31,16 @@ import { Label } from './ui/label'
 
 type AppSidebarProps = {
   setActiveList: (list: List) => void
-  deleteListTasks: (activeList: List) => void
   lists: List[]
   setLists: React.Dispatch<React.SetStateAction<List[]>>
+  dispatch: ActionDispatch<[action: TaskAction]>
 }
 
 export default function AppSidebar({
   setActiveList,
-  deleteListTasks,
   lists,
   setLists,
+  dispatch,
 }: AppSidebarProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -82,7 +82,11 @@ export default function AppSidebar({
       prevLists.filter((listItem) => currentList.id !== listItem.id)
     )
     setActiveList(defaultLists[0])
-    deleteListTasks(currentList)
+    deleteTasksInList(currentList)
+  }
+
+  const deleteTasksInList = (currentList: List) => {
+    dispatch({ type: TASK_ACTIONS.DELETE, currentList: currentList })
   }
 
   const renameList = (listId: string) => {
