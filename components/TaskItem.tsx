@@ -8,41 +8,41 @@ import { Textarea } from '@/components/ui/textarea'
 import { ChevronDownIcon, Trash } from 'lucide-react'
 import { Label } from './ui/label'
 import { Calendar } from './ui/calendar'
-import { useState } from 'react'
+import { ActionDispatch, useState } from 'react'
 import confetti from 'canvas-confetti'
 import { useRef } from 'react'
 
+import type { TaskAction } from '@/types/task'
+import { TASK_ACTIONS } from '@/types/task'
+
 type TaskItemProps = {
   task: Task
-  editTask: (taskId: string) => void
-  renameTask: (taskId: string, oldTaskName: string) => void
-  toggleComplete: (taskId: string) => void
-  removeTask: (taskId: string) => void
-  newTaskName: string
-  setNewTaskName: (e: string) => void
-  editTaskId: string
-  addTaskDate: (taskId: string, date: string) => void
-  addTaskTime: (taskId: string, time: string) => void
-  addTaskNote: (taskId: string, note: string) => void
   activeList: List
+  dispatch: ActionDispatch<[action: TaskAction]>
 }
 
-function TaskItem({
-  task,
-  editTask,
-  renameTask,
-  toggleComplete,
-  removeTask,
-  editTaskId,
-  newTaskName,
-  setNewTaskName,
-  addTaskDate,
-  addTaskTime,
-  addTaskNote,
-  activeList,
-}: TaskItemProps) {
+function TaskItem({ task, activeList, dispatch }: TaskItemProps) {
   const [open, setOpen] = useState(false)
+  const [newTitle, setNewTitle] = useState('')
+  const [editTaskId, setEditTaskId] = useState('')
+
   const checkboxRef = useRef<HTMLButtonElement | null>(null)
+
+  const renameTask = () => {
+    const trimmedTitle = newTitle.trim()
+    if (!newTitle || task.title === trimmedTitle) {
+      setEditTaskId('')
+      return
+    }
+
+    dispatch({
+      type: TASK_ACTIONS.RENAME,
+      id: task.id,
+      newTitle: trimmedTitle,
+    })
+
+    setEditTaskId('')
+  }
 
   return (
     <li
@@ -50,8 +50,8 @@ function TaskItem({
                transition-all duration-200 
                rounded-md p-2 hover:bg-gray-300"
     >
-      <div className="flex flex-col">
-        <div className="flex items-center">
+      <div className="flex flex-col w-full">
+        <div className="flex items-center ">
           <Checkbox
             ref={checkboxRef}
             className="mr-2 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500 border-blue-500"
@@ -77,25 +77,44 @@ function TaskItem({
                 })
               }
 
-              toggleComplete(task.id)
+              dispatch({
+                type: TASK_ACTIONS.TOGGLE_COMPLETE,
+                id: task.id,
+                completed: task.completed,
+              })
             }}
           />
 
           {editTaskId === task.id ? (
-            <input
-              className="outline-0 w-full"
-              type="text"
-              onBlur={() => renameTask(task.id, task.name)}
-              placeholder="Edit task name..."
-              value={newTaskName}
-              onChange={(e) => setNewTaskName(e.target.value)}
-            />
+            <form
+              className="w-full"
+              onSubmit={(e) => {
+                e.preventDefault()
+                renameTask()
+              }}
+            >
+              <input
+                className={`outline-0 w-full ${
+                  task.completed ? 'opacity-75 line-through' : 'my-auto'
+                }`}
+                type="text"
+                onBlur={renameTask}
+                placeholder="Edit task name..."
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+              />
+            </form>
           ) : (
             <span
-              onClick={() => editTask(task.id)}
-              className={task.completed ? 'opacity-75 line-through' : 'my-auto'}
+              onClick={() => {
+                setNewTitle(task.title)
+                setEditTaskId(task.id)
+              }}
+              className={` whitespace-pre-wrap ${
+                task.completed ? 'opacity-75 line-through' : 'my-auto'
+              }`}
             >
-              {task.name}
+              {task.title}
             </span>
           )}
         </div>
@@ -121,7 +140,7 @@ function TaskItem({
           <PopoverContent className="w-auto">
             <div className="p-2">
               <header className="flex items-center justify-between">
-                <h2 className="text-xl font-bold truncate">{task.name}</h2>
+                <h2 className="text-xl font-bold truncate">{task.title}</h2>
               </header>
               <div>
                 <div className="flex flex-col gap-3">
@@ -148,8 +167,12 @@ function TaskItem({
                         captionLayout="dropdown"
                         onSelect={(date) => {
                           if (!date) return
-                          const dateTime = date?.toDateString()
-                          addTaskDate(task.id, dateTime)
+                          const isoDate = date?.toLocaleDateString()
+                          dispatch({
+                            type: TASK_ACTIONS.SET_DATE,
+                            id: task.id,
+                            date: isoDate,
+                          })
                           setOpen(false)
                         }}
                       />
@@ -157,23 +180,19 @@ function TaskItem({
                   </Popover>
                 </div>
               </div>
+
               <div>
-                <label htmlFor="input">Time: </label>
-                <input
-                  type="time"
-                  autoFocus={false}
-                  onChange={(e) => {
-                    addTaskTime(task.id, e.target.value)
-                  }}
-                  value={task.dueTime ?? ''}
-                />
-              </div>
-              <div>
-                <p>Notes: </p>
+                <Label htmlFor="textarea" className="px-1">
+                  Notes
+                </Label>
                 <Textarea
                   autoFocus={false}
                   onChange={(e) => {
-                    addTaskNote(task.id, e.target.value)
+                    dispatch({
+                      type: TASK_ACTIONS.SET_NOTE,
+                      id: task.id,
+                      note: e.target.value,
+                    })
                   }}
                   value={task.note ?? ''}
                 />
@@ -186,7 +205,9 @@ function TaskItem({
                 <div className="flex items-center justify-between mt-3">
                   <button
                     className=" text-red-500  hover:text-red-700 p-2 rounded-2xl cursor-pointer"
-                    onClick={() => removeTask(task.id)}
+                    onClick={() =>
+                      dispatch({ type: TASK_ACTIONS.DELETE, id: task.id })
+                    }
                   >
                     <span className="flex">
                       <Trash />

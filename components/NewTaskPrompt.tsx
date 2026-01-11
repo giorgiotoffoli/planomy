@@ -1,27 +1,44 @@
 'use client'
 
-import type { KeyboardEvent } from 'react'
+import {
+  Dispatch,
+  SetStateAction,
+  useState,
+  type ActionDispatch,
+  type KeyboardEvent,
+} from 'react'
+
+import type { TaskAction } from '@/types/task'
+import { TASK_ACTIONS } from '@/types/task'
 
 type NewTaskPromptProps = {
-  addTaskToTaskList: () => void
-  handleOnKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void
-  taskName: string
-  setTaskName: (e: string) => void
+  dispatch: ActionDispatch<[action: TaskAction]>
+  setShowTaskInput: Dispatch<SetStateAction<boolean>>
 }
 
-function NewTaskPrompt({
-  addTaskToTaskList,
-  handleOnKeyDown,
-  taskName,
-  setTaskName,
-}: NewTaskPromptProps) {
+function NewTaskPrompt({ dispatch, setShowTaskInput }: NewTaskPromptProps) {
+  const [taskName, setTaskName] = useState('')
+
+  const addTask = () => {
+    if (!taskName) return
+    dispatch({ type: TASK_ACTIONS.ADD, title: taskName })
+    setShowTaskInput(false)
+    setTaskName('')
+  }
+
   return (
     <li>
       <input
         type="text"
         placeholder="Insert task name..."
-        onBlur={addTaskToTaskList}
-        onKeyDown={handleOnKeyDown}
+        onBlur={addTask}
+        onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+          if (e.key === 'Enter') {
+            addTask()
+          } else if (e.key === 'Escape') {
+            setShowTaskInput(false)
+          }
+        }}
         onChange={(e) => setTaskName(e.target.value)}
         value={taskName}
         autoFocus
