@@ -18,10 +18,11 @@ import { TASK_ACTIONS } from '@/types/task'
 type TaskItemProps = {
   task: Task
   activeList: List
-  dispatch: ActionDispatch<[action: TaskAction]>
+  tasksDispatch: ActionDispatch<[action: TaskAction]>
+  lists: List[]
 }
 
-function TaskItem({ task, activeList, dispatch }: TaskItemProps) {
+function TaskItem({ task, activeList, tasksDispatch, lists }: TaskItemProps) {
   const [open, setOpen] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [editTaskId, setEditTaskId] = useState('')
@@ -35,7 +36,7 @@ function TaskItem({ task, activeList, dispatch }: TaskItemProps) {
       return
     }
 
-    dispatch({
+    tasksDispatch({
       type: TASK_ACTIONS.RENAME,
       id: task.id,
       newTitle: trimmedTitle,
@@ -77,7 +78,7 @@ function TaskItem({ task, activeList, dispatch }: TaskItemProps) {
                 })
               }
 
-              dispatch({
+              tasksDispatch({
                 type: TASK_ACTIONS.TOGGLE_COMPLETE,
                 id: task.id,
                 completed: task.completed,
@@ -119,17 +120,20 @@ function TaskItem({ task, activeList, dispatch }: TaskItemProps) {
           )}
         </div>
         <span className="text-xs">
-          {!task.list?.id && 'Uncategorized'}
-          {activeList.id !== task.list?.id &&
-            task.list?.id &&
-            `${task.list?.title}`}
+          {task.listId !== activeList.id &&
+            (task.listId ? (
+              <span>
+                {lists.find((list) => list.id === task.listId)?.title}
+              </span>
+            ) : (
+              'Uncategorized'
+            ))}
           {task.dueDate && ` ${task.dueDate}`}
           {task.dueDate && task.dueTime && <span>, </span>}
           {task.dueTime && `${task.dueTime}`}
           {task.note && ` • ${task.note}`}
         </span>
       </div>
-
       <div>
         <Popover>
           <PopoverTrigger>
@@ -168,7 +172,7 @@ function TaskItem({ task, activeList, dispatch }: TaskItemProps) {
                         onSelect={(date) => {
                           if (!date) return
                           const isoDate = date?.toLocaleDateString()
-                          dispatch({
+                          tasksDispatch({
                             type: TASK_ACTIONS.SET_DATE,
                             id: task.id,
                             date: isoDate,
@@ -188,7 +192,7 @@ function TaskItem({ task, activeList, dispatch }: TaskItemProps) {
                 <Textarea
                   autoFocus={false}
                   onChange={(e) => {
-                    dispatch({
+                    tasksDispatch({
                       type: TASK_ACTIONS.SET_NOTE,
                       id: task.id,
                       note: e.target.value,
@@ -206,7 +210,7 @@ function TaskItem({ task, activeList, dispatch }: TaskItemProps) {
                   <button
                     className=" text-red-500  hover:text-red-700 p-2 rounded-2xl cursor-pointer"
                     onClick={() =>
-                      dispatch({ type: TASK_ACTIONS.DELETE, id: task.id })
+                      tasksDispatch({ type: TASK_ACTIONS.DELETE, id: task.id })
                     }
                   >
                     <span className="flex">
