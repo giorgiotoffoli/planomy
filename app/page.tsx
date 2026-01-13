@@ -9,6 +9,9 @@ import { useState, useEffect, useReducer } from 'react'
 import type { TaskAction } from '@/types/task'
 import { TASK_ACTIONS } from '@/types/task'
 
+import { ListsAction } from '@/types/task'
+import { LIST_ACTIONS } from '@/types/task'
+
 const TASKS_KEY = 'planomy_tasks'
 const LISTS_KEY = 'planomy_lists'
 
@@ -21,15 +24,14 @@ function tasksReducer(tasks: Task[], action: TaskAction): Task[] {
           id: crypto.randomUUID(),
           title: action.title,
           completed: false,
-          list: action.currentList,
+          listId: action.currentListId,
         },
       ]
     }
     case TASK_ACTIONS.DELETE: {
       if (!action.id) {
-        return tasks.filter((t) => t.list !== action.currentList)
+        return tasks.filter((t) => t.listId !== action.currentListId)
       }
-
       return tasks.filter((t) => t.id !== action.id)
     }
     case TASK_ACTIONS.TOGGLE_COMPLETE: {
@@ -59,8 +61,35 @@ function tasksReducer(tasks: Task[], action: TaskAction): Task[] {
   }
 }
 
+function listsReducer(lists: List[], action: ListsAction): List[] {
+  switch (action.type) {
+    case LIST_ACTIONS.ADD: {
+      if (action.title) {
+        return [
+          ...lists,
+          {
+            id: crypto.randomUUID(),
+            title: action.title,
+          },
+        ]
+      }
+      return lists
+    }
+    case LIST_ACTIONS.DELETE: {
+      return lists.filter((list) => list.id !== action.listId)
+    }
+    case LIST_ACTIONS.RENAME: {
+      return lists.map((list) =>
+        list.id === action.listId ? { ...list, title: action.newTitle } : list
+      )
+    }
+    default:
+      return lists
+  }
+}
+
 // lazy initializer
-function init() {
+function taskInit() {
   try {
     const storedTasks = localStorage.getItem(TASKS_KEY)
     return storedTasks ? JSON.parse(storedTasks) : []
@@ -79,8 +108,8 @@ function listsInit() {
 }
 
 export default function Page() {
-  const [tasks, dispatch] = useReducer(tasksReducer, [], init)
-  const [lists, setLists] = useState<List[]>(listsInit)
+  const [tasks, tasksDispatch] = useReducer(tasksReducer, [], taskInit)
+  const [lists, listsDispatch] = useReducer(listsReducer, [], listsInit)
   const [activeList, setActiveList] = useState<List>(defaultLists[0])
 
   useEffect(() => {
@@ -89,6 +118,7 @@ export default function Page() {
     } catch {
       return
     }
+    console.log(tasks)
   }, [tasks])
 
   useEffect(() => {
@@ -97,6 +127,7 @@ export default function Page() {
     } catch {
       return
     }
+    console.log(lists)
   }, [lists])
 
   return (
@@ -104,13 +135,13 @@ export default function Page() {
       <AppSidebar
         setActiveList={setActiveList}
         lists={lists}
-        setLists={setLists}
-        dispatch={dispatch}
+        tasksDispatch={tasksDispatch}
+        listsDispatch={listsDispatch}
       />
       <main className="w-full flex-1">
         <TaskList
           taskList={tasks}
-          dispatch={dispatch}
+          tasksDispatch={tasksDispatch}
           activeList={activeList}
           lists={lists}
         />

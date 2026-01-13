@@ -16,10 +16,15 @@ type TaskListProps = {
   activeList: List
   taskList: Task[]
   lists: List[]
-  dispatch: ActionDispatch<[action: TaskAction]>
+  tasksDispatch: ActionDispatch<[action: TaskAction]>
 }
 
-const TaskList = ({ activeList, taskList, dispatch }: TaskListProps) => {
+const TaskList = ({
+  activeList,
+  taskList,
+  tasksDispatch,
+  lists,
+}: TaskListProps) => {
   const [visibleTaskList, setVisibleTaskList] = useState<Task[]>([])
   const [showTaskInput, setShowTaskInput] = useState(false)
 
@@ -31,6 +36,10 @@ const TaskList = ({ activeList, taskList, dispatch }: TaskListProps) => {
   useEffect(() => {
     updateVisibleTasks()
   }, [activeList])
+
+  useEffect(() => {
+    updateVisibleTasks()
+  }, [lists])
 
   const updateVisibleTasks = () => {
     if (activeList.id === 'All') {
@@ -50,7 +59,7 @@ const TaskList = ({ activeList, taskList, dispatch }: TaskListProps) => {
       )
     } else {
       setVisibleTaskList(
-        taskList.filter((taskObject) => taskObject.list?.id === activeList.id)
+        taskList.filter((taskObject) => taskObject.listId === activeList.id)
       )
     }
   }
@@ -74,13 +83,14 @@ const TaskList = ({ activeList, taskList, dispatch }: TaskListProps) => {
               key={task.id}
               task={task}
               activeList={activeList}
-              dispatch={dispatch}
+              tasksDispatch={tasksDispatch}
+              lists={lists}
             />
           ))}
 
           {showTaskInput && (
             <NewTaskPrompt
-              dispatch={dispatch}
+              tasksDispatch={tasksDispatch}
               setShowTaskInput={setShowTaskInput}
               activeList={activeList}
             />

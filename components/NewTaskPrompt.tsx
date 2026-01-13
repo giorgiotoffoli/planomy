@@ -12,13 +12,13 @@ import type { List, TaskAction } from '@/types/task'
 import { TASK_ACTIONS } from '@/types/task'
 
 type NewTaskPromptProps = {
-  dispatch: ActionDispatch<[action: TaskAction]>
+  tasksDispatch: ActionDispatch<[action: TaskAction]>
   setShowTaskInput: Dispatch<SetStateAction<boolean>>
   activeList: List
 }
 
 function NewTaskPrompt({
-  dispatch,
+  tasksDispatch,
   setShowTaskInput,
   activeList,
 }: NewTaskPromptProps) {
@@ -26,10 +26,10 @@ function NewTaskPrompt({
 
   const addTask = () => {
     if (!taskName) return
-    dispatch({
+    tasksDispatch({
       type: TASK_ACTIONS.ADD,
       title: taskName,
-      currentList: activeList,
+      currentListId: activeList.id,
     })
     setShowTaskInput(false)
     setTaskName('')

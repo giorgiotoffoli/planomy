@@ -19,7 +19,13 @@ import {
 } from './ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { TASK_ACTIONS, type List, type TaskAction } from '@/types/task'
+import {
+  LIST_ACTIONS,
+  ListsAction,
+  TASK_ACTIONS,
+  type List,
+  type TaskAction,
+} from '@/types/task'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,17 +38,19 @@ import { Label } from './ui/label'
 type AppSidebarProps = {
   setActiveList: (list: List) => void
   lists: List[]
-  setLists: React.Dispatch<React.SetStateAction<List[]>>
-  dispatch: ActionDispatch<[action: TaskAction]>
+  tasksDispatch: ActionDispatch<[action: TaskAction]>
+  listsDispatch: ActionDispatch<[action: ListsAction]>
 }
 
 export default function AppSidebar({
   setActiveList,
   lists,
-  setLists,
-  dispatch,
+  tasksDispatch,
+  listsDispatch,
 }: AppSidebarProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [listTitle, setListTitle] = useState('')
+  const [newListTitle, setNewListTitle] = useState('')
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 640px)') // sm breakpoint
@@ -57,46 +65,14 @@ export default function AppSidebar({
     return () => media.removeEventListener('change', syncSidebar)
   }, [])
 
-  const [listName, setListName] = useState('')
-  const [newListName, setNewListName] = useState('')
-
   const closeSidebarOnMobile = () => {
     if (window.innerWidth < 640) {
       setSidebarOpen(false)
     }
   }
 
-  const createList = () => {
-    if (listName) {
-      const newList: List = {
-        id: crypto.randomUUID(),
-        title: listName.trim(),
-      }
-      setLists((prev) => [...prev, newList])
-      setListName('')
-    }
-  }
-
-  const deleteList = (currentList: List) => {
-    setLists((prevLists) =>
-      prevLists.filter((listItem) => currentList.id !== listItem.id)
-    )
-    setActiveList(defaultLists[0])
-    deleteTasksInList(currentList)
-  }
-
   const deleteTasksInList = (currentList: List) => {
-    dispatch({ type: TASK_ACTIONS.DELETE, currentList: currentList })
-  }
-
-  const renameList = (listId: string) => {
-    if (!newListName) return
-    setLists((prevLists) =>
-      prevLists.map((listItem) =>
-        listId === listItem.id ? { ...listItem, title: newListName } : listItem
-      )
-    )
-    setNewListName('')
+    // tasksDispatch({ type: TASK_ACTIONS.DELETE, currentList: currentList })
   }
 
   return (
@@ -160,8 +136,8 @@ export default function AppSidebar({
                     <Input
                       id="list-title"
                       type="text"
-                      onChange={(e) => setListName(e.target.value)}
-                      value={listName}
+                      onChange={(e) => setListTitle(e.target.value)}
+                      value={listTitle}
                     />
                   </div>
                   <DialogFooter>
@@ -172,7 +148,16 @@ export default function AppSidebar({
                     </DialogClose>
 
                     <DialogClose>
-                      <Button className="cursor-pointer" onClick={createList}>
+                      <Button
+                        className="cursor-pointer"
+                        onClick={() => {
+                          listsDispatch({
+                            type: LIST_ACTIONS.ADD,
+                            title: listTitle,
+                          })
+                          setListTitle('')
+                        }}
+                      >
                         Create
                       </Button>
                     </DialogClose>
@@ -230,14 +215,16 @@ export default function AppSidebar({
 
                               <Label>Choose a new List name</Label>
                               <Input
-                                onChange={(e) => setNewListName(e.target.value)}
-                                value={newListName}
+                                onChange={(e) =>
+                                  setNewListTitle(e.target.value)
+                                }
+                                value={newListTitle}
                               />
                               <DialogFooter>
                                 <DialogClose>
                                   <Button
                                     variant={'outline'}
-                                    onClick={() => setNewListName('')}
+                                    onClick={() => setNewListTitle('')}
                                   >
                                     Cancel
                                   </Button>
@@ -245,7 +232,16 @@ export default function AppSidebar({
                                 <DialogClose>
                                   <Button
                                     variant={'default'}
-                                    onClick={() => renameList(list.id)}
+                                    onClick={() => {
+                                      if (newListTitle) {
+                                        listsDispatch({
+                                          type: LIST_ACTIONS.RENAME,
+                                          listId: list.id,
+                                          newTitle: newListTitle,
+                                        })
+                                        setNewListTitle('')
+                                      }
+                                    }}
                                   >
                                     Rename
                                   </Button>
@@ -282,7 +278,17 @@ export default function AppSidebar({
                                 </DialogClose>
                                 <Button
                                   variant={'destructive'}
-                                  onClick={() => deleteList(list)}
+                                  onClick={() => {
+                                    listsDispatch({
+                                      type: LIST_ACTIONS.DELETE,
+                                      listId: list.id,
+                                    })
+
+                                    tasksDispatch({
+                                      type: TASK_ACTIONS.DELETE,
+                                      currentListId: list.id,
+                                    })
+                                  }}
                                   className="cursor-pointer text-white"
                                 >
                                   Delete
