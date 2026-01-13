@@ -71,10 +71,6 @@ export default function AppSidebar({
     }
   }
 
-  const deleteTasksInList = (currentList: List) => {
-    // tasksDispatch({ type: TASK_ACTIONS.DELETE, currentList: currentList })
-  }
-
   return (
     <>
       {sidebarOpen ? (
