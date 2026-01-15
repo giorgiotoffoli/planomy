@@ -40,7 +40,6 @@ export function ListsProvider({ children }: { children: React.ReactNode }) {
     } catch {
       return
     }
-    console.log(lists)
   }, [lists])
 
   return (

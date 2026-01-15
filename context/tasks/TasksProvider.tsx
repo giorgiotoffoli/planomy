@@ -40,7 +40,6 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
     } catch {
       return
     }
-    console.log(tasks)
   }, [tasks])
 
   return (

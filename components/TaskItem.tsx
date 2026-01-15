@@ -9,7 +9,6 @@ import { ChevronDownIcon, Trash } from 'lucide-react'
 import { Label } from './ui/label'
 import { Calendar } from './ui/calendar'
 import { useState } from 'react'
-import confetti from 'canvas-confetti'
 import { useRef } from 'react'
 import { useTasks } from '@/context/tasks/TasksProvider'
 import { TASK_ACTIONS } from '@/context/tasks/tasksActions'
@@ -54,7 +53,7 @@ function TaskItem({ task }: TaskItemProps) {
             ref={checkboxRef}
             className="mr-2 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500 border-blue-500"
             checked={task.completed}
-            onCheckedChange={(checked) => {
+            onCheckedChange={() => {
               tasksDispatch({
                 type: TASK_ACTIONS.TOGGLE_COMPLETE,
                 id: task.id,
@@ -118,7 +117,7 @@ function TaskItem({ task }: TaskItemProps) {
               <div>
                 <div className="flex flex-col gap-3">
                   <Label htmlFor="date" className="px-1">
-                    Date of birth
+                    Due date
                   </Label>
                   <Popover open={open} onOpenChange={setOpen} modal={true}>
                     <PopoverTrigger asChild>
@@ -140,7 +139,7 @@ function TaskItem({ task }: TaskItemProps) {
                         captionLayout="dropdown"
                         onSelect={(date) => {
                           if (!date) return
-                          const isoDate = date?.toLocaleDateString()
+                          const isoDate = date?.toISOString()
                           tasksDispatch({
                             type: TASK_ACTIONS.SET_DATE,
                             id: task.id,

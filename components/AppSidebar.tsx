@@ -32,7 +32,7 @@ import { useLists } from '@/context/lists/ListsProvider'
 import { LIST_ACTIONS } from '@/context/lists/ListsActions'
 import { TASK_ACTIONS } from '@/context/tasks/tasksActions'
 import { useTasks } from '@/context/tasks/TasksProvider'
-import { redirect, RedirectType } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 
 export default function AppSidebar() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -41,6 +41,8 @@ export default function AppSidebar() {
 
   const { lists, dispatch: listsDispatch } = useLists()
   const { dispatch: tasksDispatch } = useTasks()
+
+  const router = useRouter()
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 640px)') // sm breakpoint
@@ -89,7 +91,7 @@ export default function AppSidebar() {
                   className="flex items-center hover:bg-blue-700 rounded-xl p-2 w-full cursor-pointer"
                   onClick={() => {
                     closeSidebarOnMobile()
-                    redirect(list.url)
+                    router.push(list.url)
                   }}
                 >
                   {list.icon && <list.icon />}
@@ -167,7 +169,7 @@ export default function AppSidebar() {
                         className="flex items-center min-w-0 flex-1"
                         onClick={() => {
                           closeSidebarOnMobile()
-                          redirect(`/lists/${list.id}`)
+                          router.push(`/lists/${list.id}`)
                         }}
                       >
                         <p className="ml-3 truncate">{list.title}</p>

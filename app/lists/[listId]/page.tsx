@@ -10,7 +10,7 @@ export default async function ListPage({
 
   return (
     <>
-      <TaskListHeader title="List" />
+      <TaskListHeader listId={listId} />
       <VisibleTaskList view={{ kind: 'list', listId: listId }} />
     </>
   )
