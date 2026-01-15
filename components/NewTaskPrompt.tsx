@@ -1,35 +1,26 @@
 'use client'
 
-import {
-  Dispatch,
-  SetStateAction,
-  useState,
-  type ActionDispatch,
-  type KeyboardEvent,
-} from 'react'
-
-import type { List, TaskAction } from '@/types/task'
-import { TASK_ACTIONS } from '@/types/task'
+import { TASK_ACTIONS } from '@/context/tasks/tasksActions'
+import { useTasks } from '@/context/tasks/TasksProvider'
+import { Dispatch, SetStateAction, useState, type KeyboardEvent } from 'react'
+import useCurrentListId from './useCurrentListId'
 
 type NewTaskPromptProps = {
-  tasksDispatch: ActionDispatch<[action: TaskAction]>
   setShowTaskInput: Dispatch<SetStateAction<boolean>>
-  activeList: List
 }
 
-function NewTaskPrompt({
-  tasksDispatch,
-  setShowTaskInput,
-  activeList,
-}: NewTaskPromptProps) {
+function NewTaskPrompt({ setShowTaskInput }: NewTaskPromptProps) {
   const [taskName, setTaskName] = useState('')
+  const { dispatch } = useTasks()
+
+  const listId = useCurrentListId()
 
   const addTask = () => {
     if (!taskName) return
-    tasksDispatch({
+    dispatch({
       type: TASK_ACTIONS.ADD,
       title: taskName,
-      currentListId: activeList.id,
+      currentListId: listId,
     })
     setShowTaskInput(false)
     setTaskName('')

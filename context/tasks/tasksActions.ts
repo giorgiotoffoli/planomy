@@ -1,22 +1,3 @@
-export interface Task {
-    id: string;
-    title: string;
-    completed: boolean;
-    dueDate?: string;
-    dueTime?: string;
-    listId?: string;
-    note?: string;
-}
-
-export interface List {
-    id: string;
-    title: string;
-    icon?: React.ElementType
-}
-
-
-// Tasks
-
 export const TASK_ACTIONS = {
     ADD: 'tasks/add',
     DELETE: 'tasks/delete',
@@ -34,17 +15,3 @@ export const TASK_ACTIONS = {
     | { type: typeof TASK_ACTIONS.SET_NOTE; id: string, note: string}
     | { type: typeof TASK_ACTIONS.SET_DATE; id: string, date: string}
   
-
-
-// Lists
-
-export const LIST_ACTIONS = {
-    ADD: 'lists/add',
-    DELETE: 'lists/delete',
-    RENAME: 'lists/rename',
-} as const
-
-export type ListsAction =
-| { type: typeof LIST_ACTIONS.ADD; title: string }
-| { type: typeof LIST_ACTIONS.DELETE; listId: string }
-| { type: typeof LIST_ACTIONS.RENAME; listId: string, newTitle: string}

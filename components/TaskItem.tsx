@@ -1,6 +1,6 @@
 'use client'
 
-import type { List, Task } from '@/types/task'
+import type { Task } from '@/context/tasks/taskTypes'
 import { Checkbox } from './ui/checkbox'
 import { Button } from './ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
@@ -8,26 +8,23 @@ import { Textarea } from '@/components/ui/textarea'
 import { ChevronDownIcon, Trash } from 'lucide-react'
 import { Label } from './ui/label'
 import { Calendar } from './ui/calendar'
-import { ActionDispatch, useState } from 'react'
+import { useState } from 'react'
 import confetti from 'canvas-confetti'
 import { useRef } from 'react'
-
-import type { TaskAction } from '@/types/task'
-import { TASK_ACTIONS } from '@/types/task'
+import { useTasks } from '@/context/tasks/TasksProvider'
+import { TASK_ACTIONS } from '@/context/tasks/tasksActions'
 
 type TaskItemProps = {
   task: Task
-  activeList: List
-  tasksDispatch: ActionDispatch<[action: TaskAction]>
-  lists: List[]
 }
 
-function TaskItem({ task, activeList, tasksDispatch, lists }: TaskItemProps) {
+function TaskItem({ task }: TaskItemProps) {
   const [open, setOpen] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [editTaskId, setEditTaskId] = useState('')
 
   const checkboxRef = useRef<HTMLButtonElement | null>(null)
+  const { dispatch: tasksDispatch } = useTasks()
 
   const renameTask = () => {
     const trimmedTitle = newTitle.trim()
@@ -58,26 +55,6 @@ function TaskItem({ task, activeList, tasksDispatch, lists }: TaskItemProps) {
             className="mr-2 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500 border-blue-500"
             checked={task.completed}
             onCheckedChange={(checked) => {
-              if (checked && !task.completed) {
-                requestAnimationFrame(() => {
-                  const rect = checkboxRef.current?.getBoundingClientRect()
-                  if (!rect) return confetti()
-
-                  const x = (rect.left + rect.width / 2) / window.innerWidth
-                  const y = (rect.top + rect.height / 2) / window.innerHeight
-
-                  confetti({
-                    origin: { x, y },
-                    particleCount: 24,
-                    spread: 25,
-                    startVelocity: 30,
-                    gravity: 2,
-                    ticks: 90,
-                    scalar: 0.65,
-                  })
-                })
-              }
-
               tasksDispatch({
                 type: TASK_ACTIONS.TOGGLE_COMPLETE,
                 id: task.id,
@@ -120,14 +97,6 @@ function TaskItem({ task, activeList, tasksDispatch, lists }: TaskItemProps) {
           )}
         </div>
         <span className="text-xs">
-          {task.listId !== activeList.id &&
-            (task.listId ? (
-              <span>
-                {lists.find((list) => list.id === task.listId)?.title}
-              </span>
-            ) : (
-              'Uncategorized'
-            ))}
           {task.dueDate && ` ${task.dueDate}`}
           {task.dueDate && task.dueTime && <span>, </span>}
           {task.dueTime && `${task.dueTime}`}
