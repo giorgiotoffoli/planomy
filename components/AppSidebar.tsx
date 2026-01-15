@@ -88,8 +88,8 @@ export default function AppSidebar() {
                   key={list.title}
                   className="flex items-center hover:bg-blue-700 rounded-xl p-2 w-full cursor-pointer"
                   onClick={() => {
-                    redirect(list.url)
                     closeSidebarOnMobile()
+                    redirect(list.url)
                   }}
                 >
                   {list.icon && <list.icon />}
@@ -166,8 +166,8 @@ export default function AppSidebar() {
                       <button
                         className="flex items-center min-w-0 flex-1"
                         onClick={() => {
-                          redirect(`/lists/${list.id}`)
                           closeSidebarOnMobile()
+                          redirect(`/lists/${list.id}`)
                         }}
                       >
                         <p className="ml-3 truncate">{list.title}</p>
