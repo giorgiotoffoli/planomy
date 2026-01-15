@@ -1,3 +1,4 @@
+import TaskListHeader from '@/components/TaskListHeader'
 import VisibleTaskList from '@/components/VisibleTaskList'
 
 export default async function ListPage({
@@ -6,5 +7,11 @@ export default async function ListPage({
   params: Promise<{ listId: string }>
 }) {
   const { listId } = await params
-  return <VisibleTaskList view={{ kind: 'list', listId: listId }} />
+
+  return (
+    <>
+      <TaskListHeader title="List" />
+      <VisibleTaskList view={{ kind: 'list', listId: listId }} />
+    </>
+  )
 }
