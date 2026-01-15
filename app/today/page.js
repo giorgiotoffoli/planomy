@@ -1,9 +1,9 @@
 import VisibleTaskList from '@/components/VisibleTaskList'
 
-export default function InboxPage() {
+export default function TodayPage() {
   return (
     <>
-      <VisibleTaskList view={{ kind: 'inbox' }} />
+      <VisibleTaskList view={{ kind: 'today' }} />
     </>
   )
 }

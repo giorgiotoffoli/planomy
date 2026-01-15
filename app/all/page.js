@@ -1,9 +1,9 @@
 import VisibleTaskList from '@/components/VisibleTaskList'
 
-export default function InboxPage() {
+export default function AllPage() {
   return (
     <>
-      <VisibleTaskList view={{ kind: 'inbox' }} />
+      <VisibleTaskList view={{ kind: 'all' }} />
     </>
   )
 }

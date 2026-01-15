@@ -7,7 +7,7 @@ import {
   TrashIcon,
   PencilIcon,
 } from 'lucide-react'
-import { useState, useEffect, ActionDispatch } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogClose,
@@ -19,13 +19,7 @@ import {
 } from './ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  LIST_ACTIONS,
-  ListsAction,
-  TASK_ACTIONS,
-  type List,
-  type TaskAction,
-} from '@/types/task'
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,23 +28,19 @@ import {
 } from './ui/dropdown-menu'
 import { defaultLists } from '@/data/AppLists'
 import { Label } from './ui/label'
+import { useLists } from '@/context/lists/ListsProvider'
+import { LIST_ACTIONS } from '@/context/lists/ListsActions'
+import { TASK_ACTIONS } from '@/context/tasks/tasksActions'
+import { useTasks } from '@/context/tasks/TasksProvider'
+import { redirect, RedirectType } from 'next/navigation'
 
-type AppSidebarProps = {
-  setActiveList: (list: List) => void
-  lists: List[]
-  tasksDispatch: ActionDispatch<[action: TaskAction]>
-  listsDispatch: ActionDispatch<[action: ListsAction]>
-}
-
-export default function AppSidebar({
-  setActiveList,
-  lists,
-  tasksDispatch,
-  listsDispatch,
-}: AppSidebarProps) {
+export default function AppSidebar() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [listTitle, setListTitle] = useState('')
   const [newListTitle, setNewListTitle] = useState('')
+
+  const { lists, dispatch: listsDispatch } = useLists()
+  const { dispatch: tasksDispatch } = useTasks()
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 640px)') // sm breakpoint
@@ -95,10 +85,10 @@ export default function AppSidebar({
             <section className="px-3">
               {defaultLists.map((list) => (
                 <button
-                  key={list.id}
-                  className="flex items-center hover:bg-blue-700 rounded-xl p-2"
+                  key={list.title}
+                  className="flex items-center hover:bg-blue-700 rounded-xl p-2 w-full cursor-pointer"
                   onClick={() => {
-                    setActiveList(list)
+                    redirect(list.url)
                     closeSidebarOnMobile()
                   }}
                 >
@@ -116,7 +106,7 @@ export default function AppSidebar({
                 <DialogTrigger>
                   <Button
                     variant="ghost"
-                    className="flex items-center hover:bg-blue-700 rounded-xl p-2"
+                    className="flex items-center hover:bg-blue-700 rounded-xl p-2 w-full"
                   >
                     {<PlusIcon />}
                     <p>Create List</p>
@@ -176,7 +166,7 @@ export default function AppSidebar({
                       <button
                         className="flex items-center min-w-0 flex-1"
                         onClick={() => {
-                          setActiveList(list)
+                          redirect(`/lists/${list.id}`)
                           closeSidebarOnMobile()
                         }}
                       >

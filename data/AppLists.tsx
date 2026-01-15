@@ -1,25 +1,29 @@
-import type { List } from '@/types/task'
-import { Inbox, Calendar, SunIcon, Check } from 'lucide-react'
+import { Inbox, Calendar, SunIcon, Check, Archive } from 'lucide-react'
 
-export const defaultLists: List[] = [
+export const defaultLists = [
   {
-    id: 'All',
-    title: 'All',
+    title: 'Inbox',
     icon: Inbox,
+    url: '/inbox',
   },
   {
-    id: 'Scheduled',
+    title: 'All',
+    icon: Archive,
+    url: '/all',
+  },
+  {
     title: 'Scheduled',
     icon: Calendar,
+    url: '/scheduled',
   },
   {
-    id: 'Today',
     title: 'Today',
     icon: SunIcon,
+    url: '/today',
   },
   {
-    id: 'Completed',
     title: 'Completed',
     icon: Check,
+    url: '/completed',
   },
 ]
