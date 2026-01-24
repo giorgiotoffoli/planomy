@@ -26,7 +26,7 @@ export default function VisibleTaskList({ view }: { view: View }) {
       case 'today': {
         const today = new Date()
         return tasks.filter(
-          (task) => task.dueDate && task.dueDate === today.toISOString()
+          (task) => task.dueDate && task.dueDate === today.toLocaleDateString()
         )
       }
       case 'completed':

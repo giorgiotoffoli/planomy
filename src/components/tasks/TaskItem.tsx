@@ -139,7 +139,7 @@ function TaskItem({ task }: TaskItemProps) {
                         captionLayout="dropdown"
                         onSelect={(date) => {
                           if (!date) return
-                          const isoDate = date?.toISOString()
+                          const isoDate = date?.toLocaleDateString()
                           tasksDispatch({
                             type: TASK_ACTIONS.SET_DATE,
                             id: task.id,
