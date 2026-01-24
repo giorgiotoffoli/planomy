@@ -1,5 +1,5 @@
 
-import { ListsAction } from "./actions"
+import { LIST_ACTIONS, ListsAction } from "./actions"
 import type { List } from "./types"
 
 export function listsReducer(lists: List[], action: ListsAction): List[] {

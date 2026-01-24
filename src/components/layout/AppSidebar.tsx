@@ -71,7 +71,7 @@ export default function AppSidebar() {
           className={`
           bg-blue-500 text-white
           fixed inset-0 z-40        /* mobile fullscreen */
-          sm:static sm:h-screen    /* desktop normal */
+          sm:static sm:h-screen   /* desktop normal */
           sm:flex sm:w-46
           ${sidebarOpen ? 'flex flex-col' : 'hidden sm:flex'}
         `}
@@ -81,7 +81,7 @@ export default function AppSidebar() {
               <h1 className="font-stretch-125% text-2xl">Planomy</h1>
               <SidebarCloseIcon
                 onClick={() => setSidebarOpen(false)}
-                className="cursor-pointer m-3 "
+                className="cursor-pointer m-3"
               />
             </header>
             <section className="px-3">

@@ -22,7 +22,7 @@ export default function TaskListHeader({ title, listId }: TaskListHeaderProps) {
 
   return (
     <header>
-      <h1 className="text-3xl font-bold px-5 pt-3">{resolvedTitle}</h1>
+      <h1 className="text-3xl font-bold sm:mx-auto sm:px-5 sm:pt-3 mx-12 pt-4">{resolvedTitle}</h1>
     </header>
   )
 }
