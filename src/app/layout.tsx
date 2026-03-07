@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
 import AppSidebar from '@/components/layout/AppSidebar'
+import { ProgressiveBlur } from '@/components/ui/progressive-blur'
+import CreateTaskButton from '../components/tasks/create-task/create-task-button'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -32,7 +34,10 @@ export default function RootLayout({
         <Providers>
           <div className="flex h-screen overflow-hidden">
             <AppSidebar />
-            <main className="w-full flex-1">{children}</main>
+            <main className="w-full flex-1">
+              {children}
+              <ProgressiveBlur height="15%" position="bottom" />
+            </main>
           </div>
         </Providers>
       </body>

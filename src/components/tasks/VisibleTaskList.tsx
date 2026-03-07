@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import TaskList from '@/components/tasks/TaskList'
-import { useTasks } from '@/state/tasks/provider'
-import { useMemo } from 'react'
+import TaskList from '@/components/tasks/TaskList';
+import { useTasks } from '@/state/tasks/provider';
+import { useMemo } from 'react';
 
 type View =
   | { kind: 'inbox' }
@@ -10,37 +10,37 @@ type View =
   | { kind: 'scheduled' }
   | { kind: 'today' }
   | { kind: 'completed' }
-  | { kind: 'list'; listId: string }
+  | { kind: 'list'; listId: string };
 
 export default function VisibleTaskList({ view }: { view: View }) {
-  const { tasks } = useTasks()
+  const { tasks } = useTasks();
 
   const visibleTasks = useMemo(() => {
     switch (view.kind) {
       case 'inbox':
-        return tasks.filter((task) => !task.listId)
+        return tasks.filter((task) => !task.listId);
       case 'all':
-        return tasks
+        return tasks;
       case 'scheduled':
-        return tasks.filter((task) => task.dueDate)
+        return tasks.filter((task) => task.dueDate);
       case 'today': {
-        const today = new Date()
+        const today = new Date();
         return tasks.filter(
-          (task) => task.dueDate && task.dueDate === today.toLocaleDateString()
-        )
+          (task) => task.dueDate && task.dueDate === today.toLocaleDateString(),
+        );
       }
       case 'completed':
-        return tasks.filter((task) => task.completed)
+        return tasks.filter((task) => task.completed);
       case 'list':
-        return tasks.filter((task) => task.listId === view.listId)
+        return tasks.filter((task) => task.listId === view.listId);
       default:
-        return []
+        return [];
     }
-  }, [tasks, view])
+  }, [tasks, view]);
 
   return (
     <>
       <TaskList tasks={visibleTasks} />
     </>
-  )
+  );
 }

@@ -1,29 +1,31 @@
-'use client'
+import { type KeyboardEvent } from 'react'
+// import useCurrentListId from '@/hooks/useCurrentListId';
+import { createClient } from '@/lib/supabase/server'
 
-import { TASK_ACTIONS } from '@/state/tasks/actions'
-import { useTasks } from '@/state/tasks/provider'
-import { Dispatch, SetStateAction, useState, type KeyboardEvent } from 'react'
-import useCurrentListId from '@/hooks/useCurrentListId'
+// type NewTaskPromptProps = {
+//   setShowTaskInput: Dispatch<SetStateAction<boolean>>;
+// };
 
-type NewTaskPromptProps = {
-  setShowTaskInput: Dispatch<SetStateAction<boolean>>
-}
+async function NewTaskPrompt() {
+  // const [taskName, setTaskName] = useState('');
+  // const { dispatch } = useTasks();
+  // const listId = useCurrentListId();
+  const supabase = await createClient()
 
-function NewTaskPrompt({ setShowTaskInput }: NewTaskPromptProps) {
-  const [taskName, setTaskName] = useState('')
-  const { dispatch } = useTasks()
-
-  const listId = useCurrentListId()
-
-  const addTask = () => {
-    if (!taskName) return
-    dispatch({
-      type: TASK_ACTIONS.ADD,
-      title: taskName,
-      currentListId: listId,
-    })
-    setShowTaskInput(false)
-    setTaskName('')
+  async function addTask() {
+    // if (!taskName) return;
+    await supabase.from('tasks').insert([
+      {
+        title: 'test task',
+      },
+    ])
+    // dispatch({
+    //   type: TASK_ACTIONS.ADD,
+    //   title: taskName,
+    //   currentListId: listId,
+    // })
+    // setShowTaskInput(false);
+    // setTaskName('');
   }
 
   return (
@@ -36,11 +38,11 @@ function NewTaskPrompt({ setShowTaskInput }: NewTaskPromptProps) {
           if (e.key === 'Enter') {
             addTask()
           } else if (e.key === 'Escape') {
-            setShowTaskInput(false)
+            // setShowTaskInput(false);
           }
         }}
-        onChange={(e) => setTaskName(e.target.value)}
-        value={taskName}
+        // onChange={(e) => setTaskName(e.target.value)}
+        // value={taskName}
         autoFocus
         className="outline-0"
       />
