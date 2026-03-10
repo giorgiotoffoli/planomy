@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
 
-export default function Page() {
-  return redirect('/inbox')
+export default async function Page() {
+  redirect('/inbox')
 }
