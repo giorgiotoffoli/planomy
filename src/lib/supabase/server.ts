@@ -19,8 +19,9 @@ export async function createClient() {
               cookieStore.set(name, value, options),
             )
           } catch {
-            // Ignore if called from a Server Component where setting cookies isn't allowed.
-            // In that case, refresh session in middleware/proxy instead.
+            // The `setAll` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
           }
         },
       },
