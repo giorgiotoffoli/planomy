@@ -1,10 +1,6 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
-import { Providers } from './providers'
-import AppSidebar from '@/components/layout/AppSidebar'
-import { ProgressiveBlur } from '@/components/ui/progressive-blur'
-import CreateTaskButton from '../components/tasks/create-task/CreateTaskButton'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
