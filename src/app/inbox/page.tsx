@@ -29,21 +29,12 @@ export default async function InboxPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-bold px-4 py-3">Inbox</h1>
       <Suspense fallback={<h1>Loading tasks...</h1>}>
         <TaskList tasks={tasks} />
       </Suspense>
-      <div className="flex justify-center mt-4">
-        <CreateTaskDialog>
-          <CreateTaskButton />
-        </CreateTaskDialog>
-      </div>
-
-      <form action={signOut} className="">
-        <Button variant="outline" className="font-bold">
-          Sign out
-        </Button>
-      </form>
+      <CreateTaskDialog>
+        <CreateTaskButton />
+      </CreateTaskDialog>
     </>
   )
 }
