@@ -1,5 +1,3 @@
-import { signOut } from '@/app/auth/actions'
-import { Button } from '@/components/ui/button'
 import {
   Sidebar,
   SidebarContent,
@@ -13,9 +11,11 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
-import { Ghost, Inbox, Plus, Pyramid, User } from 'lucide-react'
+import { Plus, Pyramid } from 'lucide-react'
 import CreateTaskDialog from '../create-task/CreateTaskDialog'
 import NavMain from './NavMain'
+
+import { ProfileButton } from './ProfileButton'
 
 export function AppSidebar() {
   return (
@@ -54,12 +54,9 @@ export function AppSidebar() {
         <SidebarGroup />
       </SidebarContent>
       <SidebarFooter>
-        <form action={signOut} className="">
-          <Button variant="outline" className="font-bold">
-            <User />
-            Sign out
-          </Button>
-        </form>
+        <SidebarMenu>
+          <ProfileButton />
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   )
