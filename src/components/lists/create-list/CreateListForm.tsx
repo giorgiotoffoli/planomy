@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 export default function CreateTaskForm() {
   return (
     <FieldGroup>
-      <FieldLegend>New Task</FieldLegend>
+      <FieldLegend>New List</FieldLegend>
       <Field>
         <FieldLabel htmlFor="title">List Title</FieldLabel>
         <Input
