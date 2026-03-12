@@ -27,12 +27,17 @@ export function ProfileButton() {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" asChild>
-            <form action={signOut}>
-              <button type="submit" className="flex w-full items-center gap-2">
-                <LogOutIcon />
-                Log out
-              </button>
-            </form>
+            <div>
+              <LogOutIcon />
+              <form action={signOut}>
+                <button
+                  type="submit"
+                  className="flex w-full items-center gap-2"
+                >
+                  Log out
+                </button>
+              </form>
+            </div>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
