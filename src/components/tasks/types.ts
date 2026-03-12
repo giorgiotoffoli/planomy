@@ -7,3 +7,9 @@ export interface Task {
   due_date?: string
   notes?: string
 }
+
+export interface List {
+  user_id: string
+  id: string
+  title: string
+}
