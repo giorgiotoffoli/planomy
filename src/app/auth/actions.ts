@@ -39,6 +39,10 @@ export async function signIn(formData: FormData) {
 
 export async function signOut() {
   const supabase = await createClient()
-  await supabase.auth.signOut()
+  const { error } = await supabase.auth.signOut()
+
+  if (error && error.message !== 'Auth session missing!') {
+    throw new Error(error.message)
+  }
   redirect('/auth')
 }

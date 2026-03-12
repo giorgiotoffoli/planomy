@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { isToday } from 'date-fns'
 import { redirect } from 'next/navigation'
 
 export async function getTasks(view: 'inbox' | 'today' | 'scheduled' | 'all') {
@@ -9,12 +8,7 @@ export async function getTasks(view: 'inbox' | 'today' | 'scheduled' | 'all') {
 
   const {
     data: { user },
-    error: userError,
   } = await supabase.auth.getUser()
-
-  if (userError) {
-    throw new Error(userError.message)
-  }
 
   if (!user) {
     redirect('/auth')
