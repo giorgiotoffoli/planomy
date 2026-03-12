@@ -1,3 +1,4 @@
+'use client'
 import { signOut } from '@/app/auth/actions'
 import {
   DropdownMenu,
@@ -25,14 +26,14 @@ export function ProfileButton() {
             Settings
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <form action={signOut}>
-            <DropdownMenuItem variant="destructive" asChild>
+          <DropdownMenuItem variant="destructive" asChild>
+            <form action={signOut}>
               <button type="submit" className="flex w-full items-center gap-2">
                 <LogOutIcon />
                 Log out
               </button>
-            </DropdownMenuItem>
-          </form>
+            </form>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </SidebarMenuItem>
