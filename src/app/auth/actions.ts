@@ -17,7 +17,7 @@ export async function signUp(formData: FormData) {
   if (error) {
     redirect(`/auth?message=${encodeURIComponent(error.message)}`)
   }
-  redirect('/inbox')
+  redirect('/auth/verify-email')
 }
 
 export async function signIn(formData: FormData) {
