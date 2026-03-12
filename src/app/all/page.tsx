@@ -5,7 +5,7 @@ import { getTasks } from '../queries'
 import { Suspense } from 'react'
 
 export default async function InboxPage() {
-  const tasks = await getTasks('inbox')
+  const tasks = await getTasks('all')
 
   return (
     <>

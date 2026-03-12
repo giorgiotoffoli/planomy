@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'Planomy',
-  description: 'Your private, digital planner',
+  description: 'Your private digital planner',
 }
 
 export default function RootLayout({

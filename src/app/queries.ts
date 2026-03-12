@@ -1,0 +1,54 @@
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { isToday } from 'date-fns'
+import { redirect } from 'next/navigation'
+
+export async function getTasks(view: 'inbox' | 'today' | 'scheduled' | 'all') {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError) {
+    throw new Error(userError.message)
+  }
+
+  if (!user) {
+    redirect('/auth')
+  }
+  let query = supabase.from('tasks').select('*').eq('user_id', user!.id)
+
+  switch (view) {
+    case 'inbox':
+      query = query.is('list_id', null)
+      break
+
+    case 'today':
+      const today = new Date().toISOString().split('T')[0]
+      query = query.eq('due_date', today)
+      break
+
+    case 'scheduled':
+      query = query.not('due_date', 'is', null)
+      break
+
+    case 'all':
+      break
+
+    default:
+      break
+  }
+
+  const { data: tasks, error } = await query.order('created_at', {
+    ascending: false,
+  })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return tasks
+}
