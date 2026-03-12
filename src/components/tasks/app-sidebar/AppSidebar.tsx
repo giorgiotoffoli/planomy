@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/sidebar'
 import { Ghost, Inbox, Plus, Pyramid, User } from 'lucide-react'
 import CreateTaskDialog from '../create-task/CreateTaskDialog'
+import NavMain from './NavMain'
 
 export function AppSidebar() {
   return (
@@ -43,14 +44,7 @@ export function AppSidebar() {
             </CreateTaskDialog>
             <span className="sr-only">Add Task</span>
           </SidebarGroupAction>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <a href="#">
-                <Inbox />
-                <span>Inbox</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          <NavMain />
         </SidebarGroup>
 
         <SidebarGroup>

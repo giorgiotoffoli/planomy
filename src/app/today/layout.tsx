@@ -26,7 +26,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Inbox – Planomy',
+  title: 'Today – Planomy',
   description: 'Planomy – Your private, digital planner',
 }
 
@@ -56,7 +56,7 @@ export default function RootLayout({
                     <BreadcrumbList>
                       <BreadcrumbItem>
                         <BreadcrumbPage className="line-clamp-1 text-lg font-bold">
-                          Inbox
+                          Today
                         </BreadcrumbPage>
                       </BreadcrumbItem>
                     </BreadcrumbList>
