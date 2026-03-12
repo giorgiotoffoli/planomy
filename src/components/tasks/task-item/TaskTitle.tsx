@@ -1,5 +1,5 @@
 'use client'
-import { renameTask } from '@/app/actions'
+import { renameTask } from '@/components/tasks/actions'
 import { Task } from '../types'
 import { useState } from 'react'
 

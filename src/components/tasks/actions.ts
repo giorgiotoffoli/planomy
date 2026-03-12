@@ -14,16 +14,22 @@ export async function createTask(formData: FormData) {
   const title = formData.get('title') as string
   const dueDate = formData.get('due_date') as string
   const due_date = new Date(dueDate)
-  console.log(title)
+  const list_id = formData.get('list_id') as string
+
   if (!title) return
 
-  const { error } = await supabase.from('tasks').insert([
-    {
-      user_id: user!.id,
-      title,
-      due_date,
-    },
-  ])
+  // Adds list ID later
+  const task: any = {
+    user_id: user!.id,
+    title,
+    due_date,
+  }
+
+  if (list_id) {
+    task.list_id = list_id
+  }
+
+  const { error } = await supabase.from('tasks').insert([task])
 
   if (error) {
     throw new Error(error.message)

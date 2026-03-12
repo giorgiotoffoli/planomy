@@ -1,5 +1,5 @@
 'use client'
-import { deleteTask } from '@/app/actions'
+import { deleteTask } from '@/components/tasks/actions'
 import { Button } from '@/components/ui/button'
 
 export function TaskDeleteButton({ taskId }: { taskId: string }) {

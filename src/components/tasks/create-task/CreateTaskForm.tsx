@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button'
 import {
   Field,
   FieldDescription,
@@ -9,8 +8,12 @@ import {
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { TaskDatePicker } from '../TaskDatePicker'
+import { useParams } from 'next/navigation'
 
 export default function CreateTaskForm() {
+  const params = useParams()
+  const listId = params.listId as string
+
   return (
     <FieldGroup>
       <FieldSet>
@@ -25,6 +28,8 @@ export default function CreateTaskForm() {
       <Field>
         <TaskDatePicker taskDate="" />
       </Field>
+      {/* Sees List ID */}
+      <Input hidden name="list_id" value={listId} />
     </FieldGroup>
   )
 }

@@ -6,7 +6,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
-import { AppSidebar } from '@/components/tasks/app-sidebar/AppSidebar'
+import { AppSidebar } from '@/components/app-sidebar/AppSidebar'
 import {
   Breadcrumb,
   BreadcrumbItem,

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
-import '../globals.css'
 import {
   SidebarInset,
   SidebarProvider,
@@ -14,6 +13,7 @@ import {
   BreadcrumbPage,
 } from '@/components/ui/breadcrumb'
 import { Separator } from '@/components/ui/separator'
+import { getList } from '@/components/lists/queries'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -25,16 +25,30 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 })
 
-export const metadata: Metadata = {
-  title: 'Today – Planomy',
-  description: 'Planomy – Your private, digital planner',
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ listId: string }>
+}): Promise<Metadata> {
+  const { listId } = await params
+  const list = await getList(listId)
+
+  return {
+    title: `${list.title} – Planomy`,
+    description: 'Planomy – Your private, digital planner',
+  }
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
+  params,
 }: Readonly<{
   children: React.ReactNode
+  params: Promise<{ listId: string }>
 }>) {
+  const { listId } = await params
+  const list = await getList(listId)
+
   return (
     <html lang="en">
       <body
@@ -56,7 +70,7 @@ export default function RootLayout({
                     <BreadcrumbList>
                       <BreadcrumbItem>
                         <BreadcrumbPage className="line-clamp-1 text-lg font-bold">
-                          Today
+                          {list.title}
                         </BreadcrumbPage>
                       </BreadcrumbItem>
                     </BreadcrumbList>

@@ -12,12 +12,16 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { Plus, Pyramid } from 'lucide-react'
-import CreateTaskDialog from '../create-task/CreateTaskDialog'
+import CreateTaskDialog from '../tasks/create-task/CreateTaskDialog'
 import NavMain from './NavMain'
 
 import { ProfileButton } from './ProfileButton'
+import { NavLists } from './NavLists'
+import { getUserLists } from '@/components/lists/queries'
+import CreateListDialog from '../lists/create-list/CreateListDialog'
 
-export function AppSidebar() {
+export async function AppSidebar() {
+  const lists = await getUserLists()
   return (
     <Sidebar variant="floating" collapsible="icon">
       <SidebarHeader>
@@ -36,6 +40,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
+        {/* Tasks */}
         <SidebarGroup>
           <SidebarGroupLabel>Tasks</SidebarGroupLabel>
           <SidebarGroupAction>
@@ -46,10 +51,21 @@ export function AppSidebar() {
           </SidebarGroupAction>
           <NavMain />
         </SidebarGroup>
-
+        {/* Lists */}
         <SidebarGroup>
-          <SidebarGroupContent></SidebarGroupContent>
+          <SidebarGroupLabel>Lists</SidebarGroupLabel>
+          <SidebarGroupAction>
+            <CreateListDialog>
+              <Plus />
+            </CreateListDialog>
+            <span className="sr-only">Add List</span>
+          </SidebarGroupAction>
+          <SidebarGroupContent>
+            {/* User Lists */}
+            <NavLists lists={lists} />
+          </SidebarGroupContent>
         </SidebarGroup>
+
         <SidebarGroup />
         <SidebarGroup />
       </SidebarContent>

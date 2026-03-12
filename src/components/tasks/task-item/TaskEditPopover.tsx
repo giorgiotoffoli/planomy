@@ -12,7 +12,7 @@ import { Task } from '../types'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { TaskDatePicker } from '../TaskDatePicker'
 import { TaskDeleteButton } from './TaskDeleteButton'
-import { updateTask } from '@/app/actions'
+import { updateTask } from '@/components/tasks/actions'
 
 export function TaskEditPopover({ task }: { task: Task }) {
   return (

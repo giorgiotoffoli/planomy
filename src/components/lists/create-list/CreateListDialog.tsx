@@ -10,8 +10,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { FieldGroup } from '@/components/ui/field'
 import { ReactNode, useState } from 'react'
-import CreateTaskForm from './CreateTaskForm'
-import { createTask } from '@/components/tasks/actions'
+import CreateTaskForm from './CreateListForm'
+import { createList } from '../actions'
+import { DialogTitle } from '@radix-ui/react-dialog'
 
 export default function CreateTaskDialog({
   children,
@@ -21,13 +22,14 @@ export default function CreateTaskDialog({
   const [open, setOpen] = useState(false)
 
   async function handleSubmit(formData: FormData) {
-    await createTask(formData)
+    await createList(formData)
     setOpen(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogTitle hidden>Add List</DialogTitle>
       <DialogContent className="sm:max-w-sm">
         <FieldGroup>
           <form action={handleSubmit}>
@@ -37,7 +39,7 @@ export default function CreateTaskDialog({
               <DialogClose asChild>
                 <Button variant="outline">Cancel</Button>
               </DialogClose>
-              <Button type="submit">Add Task</Button>
+              <Button type="submit">Add List</Button>
             </DialogFooter>
           </form>
         </FieldGroup>
