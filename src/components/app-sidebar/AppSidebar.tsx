@@ -47,7 +47,9 @@ export async function AppSidebar() {
             <CreateTaskDialog>
               <Plus />
             </CreateTaskDialog>
-            <span className="sr-only">Add Task</span>
+            <span className="sr-only">
+              <CreateTaskDialog>Add Task</CreateTaskDialog>
+            </span>
           </SidebarGroupAction>
           <NavMain />
         </SidebarGroup>

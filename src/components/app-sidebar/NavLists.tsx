@@ -5,11 +5,9 @@ import Link from 'next/link'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu'
 import { DeleteListButton } from '../lists/delete-list/DeleteListButton'
-import { RenameListDialog } from '../lists/rename-list/RenameListDialog'
 import { RenameListButton } from '../lists/rename-list/RenameListButton'
 
 export async function NavLists({ lists }: { lists: List[] }) {

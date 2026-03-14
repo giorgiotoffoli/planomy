@@ -1,5 +1,6 @@
 import { Task } from '../types'
-import { TaskEditPopover } from './TaskEditPopover'
+import { TaskEditButton } from './task-edit/TaskEditButton'
+import { TaskEditDropdown } from './task-edit/TaskEditDropdown'
 import { TaskCheckbox } from './TaskCheckbox'
 import { TaskTitle } from './TaskTitle'
 import { format } from 'date-fns'
@@ -22,7 +23,9 @@ export function TaskItem({ task }: { task: Task }) {
         </span>
       </div>
       <div>
-        <TaskEditPopover task={task} />
+        <TaskEditDropdown task={task}>
+          <TaskEditButton />
+        </TaskEditDropdown>
       </div>
     </li>
   )
