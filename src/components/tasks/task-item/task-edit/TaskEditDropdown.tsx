@@ -34,7 +34,7 @@ export async function TaskEditDropdown({
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <ListEnd />
-            Move to List
+            Move
           </DropdownMenuSubTrigger>
           <TaskEditMoveList />
         </DropdownMenuSub>
