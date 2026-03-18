@@ -3,7 +3,6 @@ import {
   DropdownMenuItem,
   DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu'
-import { Circle } from 'lucide-react'
 
 export async function TaskEditMoveList() {
   const lists = await getUserLists()
