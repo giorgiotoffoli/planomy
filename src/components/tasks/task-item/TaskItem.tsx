@@ -19,10 +19,7 @@ export function TaskItem({ task }: { task: Task }) {
           <TaskCheckbox task={task} />
           <TaskTitle task={task} />
         </div>
-        <span className="text-xs flex justify-start gap-2 text-gray-600">
-          {/* Notes */}
-          <span>{task.notes && `${task.notes}`}</span>
-          <br />
+        <span className="text-xs text-gray-600">
           {/* Date */}
           {task.due_date && isToday(task.due_date) ? (
             <span>Today</span>
@@ -35,6 +32,9 @@ export function TaskItem({ task }: { task: Task }) {
               {task.due_date && `${format(task.due_date, 'M/dd/yyyy')}`}
             </span>
           )}
+          {task.due_date && <br />}
+          {/* Notes */}
+          <span>{task.notes && `${task.notes}`}</span>
         </span>
       </div>
       <div>
