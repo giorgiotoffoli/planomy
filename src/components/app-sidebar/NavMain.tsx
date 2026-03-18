@@ -32,7 +32,7 @@ export default function NavMain() {
           <SidebarMenuButton asChild key={tab.title}>
             <a href={tab.link}>
               {tab.icon}
-              <span>{tab.title}</span>
+              <span className="text-base">{tab.title}</span>
             </a>
           </SidebarMenuButton>
         )

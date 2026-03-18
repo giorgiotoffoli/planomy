@@ -30,7 +30,7 @@ export async function AppSidebar() {
             <SidebarMenuButton>
               <Pyramid />
               <a href="/">
-                <span className="text-lg font-semibold font-stretch-125%">
+                <span className="text-2xl font-semibold font-stretch-125%">
                   Planomy
                 </span>
               </a>
@@ -42,7 +42,7 @@ export async function AppSidebar() {
       <SidebarContent>
         {/* Tasks */}
         <SidebarGroup>
-          <SidebarGroupLabel>Tasks</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sm">Tasks</SidebarGroupLabel>
           <SidebarGroupAction>
             <CreateTaskDialog>
               <Plus />
@@ -55,7 +55,7 @@ export async function AppSidebar() {
         </SidebarGroup>
         {/* Lists */}
         <SidebarGroup>
-          <SidebarGroupLabel>Lists</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sm">Lists</SidebarGroupLabel>
           <SidebarGroupAction>
             <CreateListDialog>
               <Plus />
