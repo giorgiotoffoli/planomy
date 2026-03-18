@@ -9,7 +9,7 @@ export function TaskList({ tasks }: { tasks: Task[] }) {
       <CreateTaskDialog>
         <CreateTaskButton />
       </CreateTaskDialog>
-      <div className="flex-1 overflow-y-auto scroll-smooth pb-6">
+      <div className="flex-1 overflow-y-auto scroll-smooth pb-19">
         {tasks?.length ? (
           <ul>
             {tasks?.map((task) => (
