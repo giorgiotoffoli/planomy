@@ -3,10 +3,11 @@ import { TaskEditButton } from './task-edit/TaskEditButton'
 import { TaskEditDropdown } from './task-edit/TaskEditDropdown'
 import { TaskCheckbox } from './TaskCheckbox'
 import { TaskTitle } from './TaskTitle'
-import { format, isBefore, isToday, parseISO } from 'date-fns'
+import { format, isBefore, isToday } from 'date-fns'
 
 export function TaskItem({ task }: { task: Task }) {
   const today = new Date()
+
   return (
     <li
       className="flex justify-between items-center group 
@@ -18,17 +19,22 @@ export function TaskItem({ task }: { task: Task }) {
           <TaskCheckbox task={task} />
           <TaskTitle task={task} />
         </div>
-        <span className="text-xs flex justify-start gap-2">
-          {/* Date */}
-          {task.due_date && isBefore(task.due_date, today) ? (
-            <span className="text-rose-500">
-              {task.due_date && `${format(task.due_date, 'PPP')}`}
-            </span>
-          ) : (
-            <span>{task.due_date && `${format(task.due_date, 'PPP')}`}</span>
-          )}
+        <span className="text-xs flex justify-start gap-2 text-gray-600">
           {/* Notes */}
           <span>{task.notes && `${task.notes}`}</span>
+          <br />
+          {/* Date */}
+          {task.due_date && isToday(task.due_date) ? (
+            <span>Today</span>
+          ) : task.due_date && isBefore(task.due_date, today) ? (
+            <span className="text-rose-500">
+              {task.due_date && `${format(task.due_date, 'M/dd/yyyy')}`}
+            </span>
+          ) : (
+            <span>
+              {task.due_date && `${format(task.due_date, 'M/dd/yyyy')}`}
+            </span>
+          )}
         </span>
       </div>
       <div>
