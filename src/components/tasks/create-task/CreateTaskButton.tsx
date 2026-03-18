@@ -6,10 +6,10 @@ export default function CreateTaskButton() {
     <Button
       type="button"
       variant="default"
-      className="rounded-2xl sm:rounded-md sm:relative fixed bottom-0 right-0 m-6 sm:m-0"
+      className="rounded-full w-12 h-12 sm:w-auto sm:h-auto sm:rounded-md sm:relative fixed bottom-0 right-0 my-6 mx-4 sm:mx-0 sm:mt-0 sm:mb-3 shadow-lg hover:scale-105 transition sm:hover:scale-100 bg-blue-500 hover:bg-blue-800"
     >
-      <PlusIcon />
-      <span className="hidden sm:inline ">Add task</span>
+      <PlusIcon className="size-6 sm:size-4" />
+      <span className="hidden sm:inline">Add task</span>
     </Button>
   )
 }

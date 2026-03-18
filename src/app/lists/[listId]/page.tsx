@@ -16,9 +16,6 @@ export default async function InboxPage({
       <Suspense fallback={<h1>Loading tasks...</h1>}>
         <TaskList tasks={tasks} />
       </Suspense>
-      <CreateTaskDialog>
-        <CreateTaskButton />
-      </CreateTaskDialog>
     </>
   )
 }

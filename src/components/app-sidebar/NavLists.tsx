@@ -19,7 +19,7 @@ export async function NavLists({ lists }: { lists: List[] }) {
             <SidebarMenuButton asChild key={list.id}>
               <Link href={`/lists/${encodeURIComponent(list.id)}`}>
                 <Circle />
-                <span>{list.title}</span>
+                <span className="text-base">{list.title}</span>
                 <DropdownMenuTrigger asChild>
                   <MoreHorizontal className="ml-auto" />
                 </DropdownMenuTrigger>
