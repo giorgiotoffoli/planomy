@@ -5,22 +5,26 @@ import { Task } from './types'
 
 export function TaskList({ tasks }: { tasks: Task[] }) {
   return (
-    <div className="flex flex-col h-full sm:w-full">
-      <CreateTaskDialog>
-        <CreateTaskButton />
-      </CreateTaskDialog>
-      <div className="flex-1 overflow-y-auto scroll-smooth pb-16">
-        {tasks?.length ? (
-          <ul>
-            {tasks?.map((task) => (
-              <TaskItem key={task.id} task={task} />
-            ))}
-          </ul>
-        ) : (
-          <p className="py-4">Great job! Everything is done</p>
-        )}
+    <>
+      <div className="flex flex-col h-full sm:w-full">
+        <CreateTaskDialog>
+          <CreateTaskButton />
+        </CreateTaskDialog>
       </div>
-    </div>
+      <div className="flex flex-col h-full sm:w-full">
+        <div className="flex-1 overflow-y-auto scroll-smooth pb-16">
+          {tasks?.length ? (
+            <ul>
+              {tasks?.map((task) => (
+                <TaskItem key={task.id} task={task} />
+              ))}
+            </ul>
+          ) : (
+            <p className="py-4">Great job! Everything is done</p>
+          )}
+        </div>
+      </div>
+    </>
   )
 }
 
