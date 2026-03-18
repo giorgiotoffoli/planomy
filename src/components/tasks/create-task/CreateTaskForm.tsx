@@ -9,6 +9,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { TaskDatePicker } from '../TaskDatePicker'
 import { useParams } from 'next/navigation'
+import { Textarea } from '@/components/ui/textarea'
 
 export default function CreateTaskForm() {
   const params = useParams()
@@ -18,18 +19,21 @@ export default function CreateTaskForm() {
     <FieldGroup>
       <FieldSet>
         <FieldLegend>New Task</FieldLegend>
-      </FieldSet>
-      <Field>
-        <FieldLabel htmlFor="title">Task Title</FieldLabel>
         <FieldDescription>What needs to be done?</FieldDescription>
-        <Input placeholder="Go dancing..." name="title" id="title" required />
-        {/* Would be cool if this ^ cycles to random tasks */}
-      </Field>
-      <Field>
-        <TaskDatePicker taskDate="" />
-      </Field>
-      {/* Sees List ID */}
-      <Input hidden name="list_id" value={listId} />
+        <Field>
+          <FieldLabel htmlFor="title">Title</FieldLabel>
+          <Input placeholder="Task title..." name="title" id="title" required />
+        </Field>
+        <Field>
+          <TaskDatePicker taskDate="" />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="title">Notes</FieldLabel>
+          <Textarea placeholder="Task notes..." name="notes" />
+        </Field>
+        {/* Sees List ID we are currently in*/}
+        <Input hidden name="list_id" value={listId} />
+      </FieldSet>
     </FieldGroup>
   )
 }

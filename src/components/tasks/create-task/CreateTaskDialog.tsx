@@ -29,18 +29,18 @@ export default function CreateTaskDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-sm">
-        <FieldGroup>
-          <form action={handleSubmit}>
-            <CreateTaskForm />
-            <br />
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button type="submit">Add Task</Button>
-            </DialogFooter>
-          </form>
-        </FieldGroup>
+        <form action={handleSubmit}>
+          <CreateTaskForm />
+          <br />
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button type="submit" className="bg-blue-500 hover:bg-blue-700">
+              Add Task
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

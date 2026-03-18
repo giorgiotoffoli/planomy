@@ -14,6 +14,7 @@ export async function createTask(formData: FormData) {
   const title = formData.get('title') as string
   const dueDate = formData.get('due_date') as string
   const due_date = new Date(dueDate)
+  const notes = formData.get('notes') as string
   const list_id = formData.get('list_id') as string
 
   if (!title) return
@@ -23,6 +24,7 @@ export async function createTask(formData: FormData) {
     user_id: user!.id,
     title,
     due_date,
+    notes,
   }
 
   if (list_id) {
