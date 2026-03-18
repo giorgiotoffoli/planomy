@@ -10,8 +10,6 @@ export function TaskList({ tasks }: { tasks: Task[] }) {
         <CreateTaskDialog>
           <CreateTaskButton />
         </CreateTaskDialog>
-      </div>
-      <div className="flex flex-col h-full sm:w-full">
         <div className="flex-1 overflow-y-auto scroll-smooth pb-16">
           {tasks?.length ? (
             <ul>
