@@ -2,11 +2,15 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Mail, Lock, ArrowRight } from 'lucide-react'
+import { Mail, Lock, ArrowRight, Pyramid } from 'lucide-react'
 import { signIn, signUp } from './actions'
 
 export default function App() {
   const [isLogin, setIsLogin] = useState(true)
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState<string | null>(null)
+
+  const passwordsMatch = password === confirmPassword
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans text-slate-900 relative overflow-hidden">
@@ -23,7 +27,10 @@ export default function App() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="text-3xl font-bold tracking-tight text-slate-900 font-stretch-150%"
           >
-            Planomy
+            <span className="flex align-baseline justify-center gap-2">
+              <Pyramid className="relative top-1" />
+              Planomy
+            </span>
           </motion.h1>
           <motion.p
             initial={{ y: 10, opacity: 0 }}
@@ -93,13 +100,45 @@ export default function App() {
                       name="password"
                       className="block w-full pl-11 pr-3 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors bg-slate-50/50 focus:bg-white sm:text-sm outline-none"
                       placeholder="••••••••"
+                      onChange={(e) => setPassword(e.target.value)}
                     />
                   </div>
                 </div>
+                {!isLogin && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-sm font-medium text-slate-700">
+                        Confirm password
+                      </label>
+                      {password && confirmPassword && passwordsMatch ? (
+                        <span className="text-sm font-medium text-green-500 transition-colors">
+                          Passwords match
+                        </span>
+                      ) : (
+                        <span className="text-sm font-medium text-rose-500 transition-colors">
+                          Passwords do not match
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <Lock className="h-5 w-5" />
+                      </div>
+                      <input
+                        type="password"
+                        name="confirm-password"
+                        className="block w-full pl-11 pr-3 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors bg-slate-50/50 focus:bg-white sm:text-sm outline-none"
+                        placeholder="••••••••"
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <button
                   type="submit"
-                  className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 transition-all active:scale-[0.98]"
+                  disabled={!passwordsMatch}
+                  className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-blue-700"
                 >
                   {isLogin ? 'Sign in' : 'Create account'}
                   <ArrowRight className="ml-2 h-4 w-4" />
