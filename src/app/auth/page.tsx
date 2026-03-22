@@ -13,7 +13,7 @@ export default function App() {
   const passwordsMatch = password === confirmPassword
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans text-slate-900 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4  text-slate-900 relative overflow-hidden">
       {/* Background decorations */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-400/20 blur-[100px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/10 blur-[100px] pointer-events-none" />
@@ -25,12 +25,12 @@ export default function App() {
             initial={{ y: 10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-3xl font-bold tracking-tight text-slate-900 font-stretch-150%"
+            className="text-3xl font-bold tracking-tight text-slate-900 font-stretch-expanded"
           >
-            <span className="flex align-baseline justify-center gap-2">
-              <Pyramid className="relative top-1" />
-              Planomy
-            </span>
+            <div className="flex align-baseline justify-center gap-2 ">
+              <Pyramid className="relative top-1.5" />
+              <h2 className="font-stretch-expanded">Planomy</h2>
+            </div>
           </motion.h1>
           <motion.p
             initial={{ y: 10, opacity: 0 }}
@@ -137,7 +137,7 @@ export default function App() {
 
                 <button
                   type="submit"
-                  disabled={!passwordsMatch}
+                  disabled={!isLogin && !passwordsMatch}
                   className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-blue-700"
                 >
                   {isLogin ? 'Sign in' : 'Create account'}
