@@ -137,7 +137,7 @@ export default function App() {
 
                 <button
                   type="submit"
-                  disabled={!passwordsMatch}
+                  disabled={!isLogin && !passwordsMatch}
                   className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-blue-700"
                 >
                   {isLogin ? 'Sign in' : 'Create account'}
