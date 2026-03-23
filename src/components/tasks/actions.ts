@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 
 // Creates new task to the database
-export async function createTask(formData: FormData) {
+export async function createTask(formData: FormData, pathName?: string) {
   const supabase = await createClient()
 
   const {
@@ -13,7 +13,13 @@ export async function createTask(formData: FormData) {
 
   const title = formData.get('title') as string
   const dueDate = formData.get('due_date') as string
-  const due_date = new Date(dueDate)
+  // Checks if '/today' is current path, so when you make a task there it automatically is due today
+  let due_date
+  if (pathName === '/today') {
+    due_date = dueDate ? new Date(dueDate) : new Date()
+  } else {
+    due_date = new Date(dueDate)
+  }
   const notes = formData.get('notes') as string
   const list_id = formData.get('list_id') as string
 

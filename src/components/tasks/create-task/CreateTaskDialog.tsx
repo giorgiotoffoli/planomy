@@ -8,10 +8,10 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { FieldGroup } from '@/components/ui/field'
 import { ReactNode, useState } from 'react'
 import CreateTaskForm from './CreateTaskForm'
 import { createTask } from '@/components/tasks/actions'
+import { usePathname } from 'next/navigation'
 
 export default function CreateTaskDialog({
   children,
@@ -19,9 +19,10 @@ export default function CreateTaskDialog({
   children: ReactNode
 }) {
   const [open, setOpen] = useState(false)
+  const pathName = usePathname()
 
   async function handleSubmit(formData: FormData) {
-    await createTask(formData)
+    await createTask(formData, pathName)
     setOpen(false)
   }
 
@@ -30,8 +31,10 @@ export default function CreateTaskDialog({
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-sm">
         <form action={handleSubmit}>
+          {/* Task form */}
           <CreateTaskForm />
           <br />
+          {/* Rest of dialog styling */}
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
