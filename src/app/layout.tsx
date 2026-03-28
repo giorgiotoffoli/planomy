@@ -15,6 +15,26 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'Planomy',
   description: 'Plan privately',
+  openGraph: {
+    title: 'Planomy',
+    description: 'Your private, digital planner.',
+    url: 'https://www.planomy.com',
+    siteName: 'Planomy',
+    images: [
+      {
+        url: 'https://www.planomy.com/og-image.png',
+        width: 1200,
+        height: 630,
+      },
+    ],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Planomy',
+    description: 'Your private, digital planner.',
+    images: ['https://www.planomy.com/og-image.png'],
+  },
 }
 
 export default function RootLayout({
