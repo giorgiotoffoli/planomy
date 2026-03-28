@@ -25,7 +25,7 @@ export function NavLists({ lists }: { lists: List[] }) {
       {lists.map((list) => {
         return (
           <DropdownMenu key={list.id}>
-            <div className="flex items-center hover:bg-muted transition duration-200 rounded-md group/list">
+            <div className="flex items-center hover:bg-muted rounded-md group/list">
               <SidebarMenuButton
                 asChild
                 className="group-hover/list:text-black hover:bg-transparent"
