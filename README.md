@@ -2,13 +2,6 @@
   <img src="src/app/opengraph-image.jpeg" alt="Planomy header">
 </p>
 
-<h1 align="center">Planomy</h1>
-<p align="center">
-  The modern task manager for the privacy concious.
-</p>
-
----
-
 ## 🚀 Overview
 
 **Planomy** is an open-source task manager designed to make planning feel simple, fast, and distraction-free — without compromising your privacy.
