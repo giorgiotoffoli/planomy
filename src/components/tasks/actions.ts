@@ -109,3 +109,18 @@ export async function deleteTask(id: string) {
 
   revalidatePath('/')
 }
+
+export async function moveTask(taskId: string, newListId: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('tasks')
+    .update({ list_id: newListId })
+    .eq('id', taskId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  revalidatePath('/')
+}

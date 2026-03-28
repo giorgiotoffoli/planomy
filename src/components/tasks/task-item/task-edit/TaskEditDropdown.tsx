@@ -9,16 +9,20 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Edit, ListEnd } from 'lucide-react'
 import { ReactNode } from 'react'
-import { Task } from '../../types'
+import { List, Task } from '../../types'
 import { TaskEditDialog } from './TaskEditDialog'
 import { TaskEditMoveList } from './TaskEditMoveList'
 import { TaskDeleteButton } from './TaskDeleteButton'
 
 export async function TaskEditDropdown({
   task,
+  lists,
+  currentListId,
   children,
 }: {
   task: Task
+  lists: List[]
+  currentListId?: string
   children: ReactNode
 }) {
   return (
@@ -36,7 +40,11 @@ export async function TaskEditDropdown({
             <ListEnd />
             Move
           </DropdownMenuSubTrigger>
-          <TaskEditMoveList />
+          <TaskEditMoveList
+            taskId={task.id}
+            lists={lists}
+            currentListId={currentListId}
+          />
         </DropdownMenuSub>
         <DropdownMenuSeparator />
         <TaskDeleteButton taskId={task.id} />
