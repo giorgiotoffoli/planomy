@@ -1,6 +1,5 @@
-import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar'
-import { Circle, MoreHorizontal, Trash } from 'lucide-react'
-import { List } from '../../tasks/types'
+import { SidebarMenuButton } from '@/components/ui/sidebar'
+import { MoreHorizontal, Plus, Trash } from 'lucide-react'
 import Link from 'next/link'
 import {
   DropdownMenu,
@@ -9,21 +8,32 @@ import {
 } from '../../ui/dropdown-menu'
 import { DeleteListButton } from '../../lists/delete-list/DeleteListButton'
 import { RenameListButton } from '../../lists/rename-list/RenameListButton'
+import CreateListDialog from '@/components/lists/create-list/CreateListDialog'
+import { List } from '@/components/tasks/types'
 
-export async function NavLists({ lists }: { lists: List[] }) {
+export function NavLists({ lists }: { lists: List[] }) {
   return (
-    <SidebarMenuItem>
+    <>
+      {/* Create List Button */}
+      <CreateListDialog>
+        <SidebarMenuButton className="text-sm  hover:text-foreground hover:bg-muted transition-colors">
+          <Plus />
+          <span>New List</span>
+        </SidebarMenuButton>
+      </CreateListDialog>
+
       {lists.map((list) => {
         return (
           <DropdownMenu key={list.id}>
             <SidebarMenuButton asChild key={list.id}>
-              <Link href={`/lists/${encodeURIComponent(list.id)}`}>
-                <Circle />
-                <span className="text-base">{list.title}</span>
+              <span>
+                <Link href={`/lists/${encodeURIComponent(list.id)}`}>
+                  <span className="text-base truncate">{list.title}</span>
+                </Link>
                 <DropdownMenuTrigger asChild>
                   <MoreHorizontal className="ml-auto" />
                 </DropdownMenuTrigger>
-              </Link>
+              </span>
             </SidebarMenuButton>
             <DropdownMenuContent>
               <RenameListButton list={list} />
@@ -32,6 +42,6 @@ export async function NavLists({ lists }: { lists: List[] }) {
           </DropdownMenu>
         )
       })}
-    </SidebarMenuItem>
+    </>
   )
 }
