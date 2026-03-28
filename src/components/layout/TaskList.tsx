@@ -1,7 +1,7 @@
-import CreateTaskButton from './create-task/CreateTaskButton'
-import CreateTaskDialog from './create-task/CreateTaskDialog'
-import { TaskItem } from './task-item/TaskItem'
-import { Task } from './types'
+import CreateTaskButton from '../tasks/create-task/CreateTaskButton'
+import CreateTaskDialog from '../tasks/create-task/CreateTaskDialog'
+import { TaskItem } from '../tasks/task-item/TaskItem'
+import { Task } from '../tasks/types'
 
 export function TaskList({ tasks }: { tasks: Task[] }) {
   return (

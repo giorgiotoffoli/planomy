@@ -12,13 +12,13 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { Plus, Pyramid } from 'lucide-react'
-import CreateTaskDialog from '../tasks/create-task/CreateTaskDialog'
+import CreateTaskDialog from '../../tasks/create-task/CreateTaskDialog'
 import NavMain from './NavMain'
 
 import { ProfileButton } from './ProfileButton'
 import { NavLists } from './NavLists'
 import { getUserLists } from '@/components/lists/queries'
-import CreateListDialog from '../lists/create-list/CreateListDialog'
+import CreateListDialog from '../../lists/create-list/CreateListDialog'
 
 export async function AppSidebar() {
   const lists = await getUserLists()
@@ -29,11 +29,9 @@ export async function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton>
               <Pyramid />
-              <a href="/">
-                <span className="text-2xl font-semibold font-stretch-125%">
-                  Planomy
-                </span>
-              </a>
+              <span className="text-2xl font-semibold font-stretch-155%">
+                Planomy
+              </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

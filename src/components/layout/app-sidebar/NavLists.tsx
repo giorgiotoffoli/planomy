@@ -1,14 +1,14 @@
 import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar'
 import { Circle, MoreHorizontal, Trash } from 'lucide-react'
-import { List } from '../tasks/types'
+import { List } from '../../tasks/types'
 import Link from 'next/link'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from '../ui/dropdown-menu'
-import { DeleteListButton } from '../lists/delete-list/DeleteListButton'
-import { RenameListButton } from '../lists/rename-list/RenameListButton'
+} from '../../ui/dropdown-menu'
+import { DeleteListButton } from '../../lists/delete-list/DeleteListButton'
+import { RenameListButton } from '../../lists/rename-list/RenameListButton'
 
 export async function NavLists({ lists }: { lists: List[] }) {
   return (
