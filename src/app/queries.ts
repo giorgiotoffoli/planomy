@@ -25,17 +25,18 @@ export async function getTasks(
 
     case 'today':
       const today = new Date().toISOString().split('T')[0]
-      query = query.eq('due_date', today)
+      query = query.eq('due_date', today).is('completed', false)
       break
 
     case 'scheduled':
-      query = query.not('due_date', 'is', null)
+      query = query.not('due_date', 'is', null).is('completed', false)
       break
 
     case 'completed':
       query = query.is('completed', true)
-
+      break
     case 'all':
+      query = query.is('completed', false)
       break
 
     default:
