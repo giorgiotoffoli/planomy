@@ -1,23 +1,86 @@
 <p align="center">
-<img width="20%" src="public/planomy.png" alt="Planomy logo">
+  <img src="src/app/opengraph-image.jpeg" alt="Planomy header">
 </p>
 
-# Planomy – Plan privately
+<h1 align="center">Planomy</h1>
+<p align="center">
+  The modern task manager for the privacy concious.
+</p>
 
-**Planomy** is _the_ open-source digital planner for the privacy-concious.
+---
 
-> [!CAUTION]
-> Planomy is currently in **very early beta**. Features may change, bugs are expected, and breaking updates can happen. <br/>
-> The current version is intended to be used for testing purposes only.
-> **YOU WILL LOSE DATA!** <br/>
-> Feedback, issues, and contributions are very welcome!
+## 🚀 Overview
+
+**Planomy** is an open-source task manager designed to make planning feel simple, fast, and distraction-free — without compromising your privacy.
+
+Built with a focus on clarity and usability, Planomy helps you organize your tasks, stay on top of your schedule, and actually enjoy the process of getting things done.
 
 ---
 
 ## ✨ Features
 
-- ✏️ Simple and focused planning experience
-- 🗄️ Create custom lists to organize tasks
-- 📅 Schedule events & tasks with ease
-- 🔒 Your privacy always comes first (no trackers or data sharing, ever.)
-- 🧩 Open-source and customizable
+- 🧠 **Focused task management** — no clutter, just what matters  
+- 🗂️ **Multiple lists** — organize tasks your way  
+- 🔁 **Move tasks between lists** — flexible workflows  
+- 🔢 **Live task counters** — beautiful, real-time updates (NumberFlow)  
+- ✅ **Completed view** — review everything you’ve finished  
+- 📅 **Scheduling** — plan ahead with ease  
+- 🔒 **Privacy-first** — no trackers, no data selling, ever  
+- 🧩 **Open-source** — fully transparent and customizable  
+
+---
+
+## ⚠️ Status
+
+> [!WARNING]  
+> Planomy is currently in **beta**.  
+> Features may change, bugs may occur, and breaking updates are possible.  
+>  
+> While stability is improving, you should **avoid storing critical data** for now.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend:** Next.js, React, TypeScript  
+- **UI:** TailwindCSS, shadcn/ui  
+- **Backend & DB:** Supabase (PostgreSQL)  
+- **Deployment:** Vercel  
+
+---
+
+## 💡 Philosophy
+
+Planomy is built on a few simple ideas:
+
+- Software should feel **fast and intuitive**  
+- Productivity tools should reduce stress, not add to it  
+- Your data should belong to **you**, not be tracked or sold  
+
+---
+
+## 🤝 Contributing
+
+Contributions, feedback, and ideas are always welcome.
+
+If you’d like to help:
+- Open an issue  
+- Suggest a feature  
+- Submit a pull request  
+
+---
+
+## 📌 Roadmap
+
+- 😊 Optimistic UI
+- 🎯 Kanban Boards  
+- 🤝 Collaboration features  
+- 📱 Mobile app  
+- ⚡ Performance improvements  
+- 🧠 Smarter task organization  
+
+---
+
+## 🌐 Try it out
+
+👉 https://www.planomy.com
