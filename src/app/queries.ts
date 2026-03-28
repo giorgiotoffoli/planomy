@@ -3,7 +3,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
-export async function getTasks(view: 'inbox' | 'today' | 'scheduled' | 'all') {
+export async function getTasks(
+  view: 'inbox' | 'today' | 'scheduled' | 'all' | 'completed',
+) {
   const supabase = await createClient()
 
   const {
@@ -13,11 +15,12 @@ export async function getTasks(view: 'inbox' | 'today' | 'scheduled' | 'all') {
   if (!user) {
     redirect('/auth')
   }
+
   let query = supabase.from('tasks').select('*').eq('user_id', user!.id)
 
   switch (view) {
     case 'inbox':
-      query = query.is('list_id', null)
+      query = query.is('list_id', null).is('completed', false)
       break
 
     case 'today':
@@ -28,6 +31,9 @@ export async function getTasks(view: 'inbox' | 'today' | 'scheduled' | 'all') {
     case 'scheduled':
       query = query.not('due_date', 'is', null)
       break
+
+    case 'completed':
+      query = query.is('completed', true)
 
     case 'all':
       break
