@@ -46,7 +46,7 @@ export function RenameListDialog({
           <FieldGroup>
             <Field>
               <FieldLabel>New Title</FieldLabel>
-              <Input name="new_title" />
+              <Input name="new_title" defaultValue={list.title} />
             </Field>
             <Field></Field>
             <Field>
