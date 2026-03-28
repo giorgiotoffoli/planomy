@@ -1,11 +1,19 @@
-import { Task } from '../types'
+import { List, Task } from '../types'
 import { TaskEditButton } from './task-edit/TaskEditButton'
 import { TaskEditDropdown } from './task-edit/TaskEditDropdown'
 import { TaskCheckbox } from './TaskCheckbox'
 import { TaskTitle } from './TaskTitle'
-import { format, isBefore, isToday } from 'date-fns'
+import { format, isBefore } from 'date-fns'
 
-export function TaskItem({ task }: { task: Task }) {
+export function TaskItem({
+  task,
+  lists,
+  currentListId,
+}: {
+  task: Task
+  lists: List[]
+  currentListId?: string
+}) {
   const today = format(new Date(), 'yyyy-MM-dd')
 
   return (
@@ -38,7 +46,11 @@ export function TaskItem({ task }: { task: Task }) {
         </span>
       </div>
       <div>
-        <TaskEditDropdown task={task}>
+        <TaskEditDropdown
+          task={task}
+          lists={lists}
+          currentListId={currentListId}
+        >
           <TaskEditButton />
         </TaskEditDropdown>
       </div>
