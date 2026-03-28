@@ -5,6 +5,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { List } from '../../types'
 import { moveTask } from '../../actions'
+import { Inbox } from 'lucide-react'
 
 export function TaskEditMoveList({
   taskId,
@@ -17,12 +18,19 @@ export function TaskEditMoveList({
 }) {
   const visibleLists = lists.filter((list) => list.id !== currentListId)
 
-  async function handleSelect(newListId: string) {
+  async function handleSelect(newListId: string | null) {
     await moveTask(taskId, newListId)
   }
 
   return (
     <DropdownMenuSubContent>
+      {currentListId && (
+        <DropdownMenuItem onSelect={() => void handleSelect(null)}>
+          <Inbox />
+          Inbox
+        </DropdownMenuItem>
+      )}
+
       {visibleLists.map((list) => (
         <DropdownMenuItem
           key={list.id}

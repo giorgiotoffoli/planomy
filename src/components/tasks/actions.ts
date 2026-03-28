@@ -110,7 +110,7 @@ export async function deleteTask(id: string) {
   revalidatePath('/')
 }
 
-export async function moveTask(taskId: string, newListId: string) {
+export async function moveTask(taskId: string, newListId: string | null) {
   const supabase = await createClient()
 
   const { error } = await supabase

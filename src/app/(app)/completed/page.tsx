@@ -2,6 +2,7 @@ import TaskList from '@/components/layout/TaskList'
 import { getTasks } from '../../queries'
 import { Suspense } from 'react'
 import Header from '@/components/layout/header/Header'
+import { getUserLists } from '@/components/lists/queries'
 
 export default async function CompletedPage() {
   const tasks = await getTasks('completed')
