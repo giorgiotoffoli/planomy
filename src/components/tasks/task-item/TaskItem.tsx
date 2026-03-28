@@ -6,7 +6,7 @@ import { TaskTitle } from './TaskTitle'
 import { format, isBefore, isToday } from 'date-fns'
 
 export function TaskItem({ task }: { task: Task }) {
-  const today = new Date()
+  const today = format(new Date(), 'yyyy-MM-dd')
 
   return (
     <li
@@ -21,7 +21,7 @@ export function TaskItem({ task }: { task: Task }) {
         </div>
         <span className="text-xs text-gray-600">
           {/* Date */}
-          {task.due_date && isToday(task.due_date) ? (
+          {task.due_date === today ? (
             <span>Today</span>
           ) : task.due_date && isBefore(task.due_date, today) ? (
             <span className="text-rose-500">
