@@ -4,7 +4,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupAction,
-  SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
@@ -14,14 +13,13 @@ import {
 import { Plus, Pyramid } from 'lucide-react'
 import CreateTaskDialog from '../../tasks/create-task/CreateTaskDialog'
 import NavMain from './NavMain'
-
 import { ProfileButton } from './ProfileButton'
-import { NavLists } from './NavLists'
+import ListGroup from './ListGroup'
 import { getUserLists } from '@/components/lists/queries'
-import CreateListDialog from '../../lists/create-list/CreateListDialog'
 
 export async function AppSidebar() {
   const lists = await getUserLists()
+
   return (
     <Sidebar variant="floating" collapsible="icon">
       <SidebarHeader>
@@ -52,20 +50,7 @@ export async function AppSidebar() {
           <NavMain />
         </SidebarGroup>
         {/* Lists */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sm">Lists</SidebarGroupLabel>
-          <SidebarGroupAction>
-            <CreateListDialog>
-              <Plus />
-            </CreateListDialog>
-            <span className="sr-only">Add List</span>
-          </SidebarGroupAction>
-          <SidebarGroupContent>
-            {/* User Lists */}
-            <NavLists lists={lists} />
-          </SidebarGroupContent>
-        </SidebarGroup>
-
+        <ListGroup lists={lists} />
         <SidebarGroup />
         <SidebarGroup />
       </SidebarContent>

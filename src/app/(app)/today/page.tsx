@@ -8,7 +8,7 @@ export default async function InboxPage() {
 
   return (
     <>
-      <Header taskCount={tasks.length} headerTitle="Inbox" />
+      <Header taskCount={tasks.length} headerTitle="Today" />
       <Suspense fallback={<h1>Loading tasks...</h1>}>
         <TaskList tasks={tasks} />
       </Suspense>
