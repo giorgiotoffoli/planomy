@@ -43,6 +43,7 @@ export async function getListTasks(listId: string) {
     .from('tasks')
     .select('*')
     .eq('list_id', listId)
+    .eq('completed', false)
 
   if (error) {
     throw new Error(error.message)
