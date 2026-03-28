@@ -34,7 +34,7 @@ export async function getTasks(
 
     case 'completed':
       query = query.is('completed', true)
-
+      break
     case 'all':
       query = query.is('completed', false)
       break
