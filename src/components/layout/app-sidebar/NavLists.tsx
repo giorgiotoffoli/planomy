@@ -1,5 +1,5 @@
 import { SidebarMenuButton } from '@/components/ui/sidebar'
-import { MoreHorizontal, Plus, Trash } from 'lucide-react'
+import { MoreHorizontal, Plus } from 'lucide-react'
 import Link from 'next/link'
 import {
   DropdownMenu,
@@ -10,13 +10,13 @@ import { DeleteListButton } from '../../lists/delete-list/DeleteListButton'
 import { RenameListButton } from '../../lists/rename-list/RenameListButton'
 import CreateListDialog from '@/components/lists/create-list/CreateListDialog'
 import { List } from '@/components/tasks/types'
+import { Button } from '@/components/ui/button'
 
 export function NavLists({ lists }: { lists: List[] }) {
   return (
     <>
-      {/* Create List Button */}
       <CreateListDialog>
-        <SidebarMenuButton className="text-sm  hover:text-foreground hover:bg-muted transition-colors">
+        <SidebarMenuButton className="text-sm transition-colors hover:bg-muted hover:text-foreground">
           <Plus />
           <span>New List</span>
         </SidebarMenuButton>
@@ -25,20 +25,30 @@ export function NavLists({ lists }: { lists: List[] }) {
       {lists.map((list) => {
         return (
           <DropdownMenu key={list.id}>
-            <SidebarMenuButton asChild key={list.id}>
-              <span>
+            <div className="flex items-center hover:bg-muted rounded-md group/list">
+              <SidebarMenuButton
+                asChild
+                className="group-hover/list:text-black hover:bg-transparent"
+              >
                 <Link href={`/lists/${encodeURIComponent(list.id)}`}>
                   <span className="text-base truncate">{list.title}</span>
                 </Link>
-                <DropdownMenuTrigger asChild>
-                  <MoreHorizontal className="ml-auto" />
-                </DropdownMenuTrigger>
-              </span>
-            </SidebarMenuButton>
-            <DropdownMenuContent>
-              <RenameListButton list={list} />
-              <DeleteListButton list={list} />
-            </DropdownMenuContent>
+              </SidebarMenuButton>
+
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant={null}
+                  className="hover:cursor-pointer group-hover/list:text-black "
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent align="start">
+                <RenameListButton list={list} />
+                <DeleteListButton list={list} />
+              </DropdownMenuContent>
+            </div>
           </DropdownMenu>
         )
       })}
