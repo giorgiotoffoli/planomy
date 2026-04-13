@@ -3,15 +3,19 @@ import CreateTaskDialog from '../tasks/create-task/CreateTaskDialog'
 import { TaskItem } from '../tasks/task-item/TaskItem'
 import { List, Task } from '../tasks/types'
 
+interface TaskListProps {
+  tasks: Task[]
+  lists: List[]
+  currentListId?: string
+  parentList?: string
+}
+
 export function TaskList({
   tasks,
   lists,
   currentListId,
-}: {
-  tasks: Task[]
-  lists: List[]
-  currentListId?: string
-}) {
+  parentList,
+}: TaskListProps) {
   return (
     <>
       <div className="flex flex-col h-full sm:w-full">
@@ -27,6 +31,7 @@ export function TaskList({
                   task={task}
                   lists={lists}
                   currentListId={currentListId}
+                  parentList={parentList}
                 />
               ))}
             </ul>

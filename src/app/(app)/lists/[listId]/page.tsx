@@ -3,11 +3,11 @@ import TaskList from '@/components/layout/TaskList'
 import { Suspense } from 'react'
 import Header from '@/components/layout/header/Header'
 
-export default async function InboxPage({
-  params,
-}: {
+interface ListPageProps {
   params: Promise<{ listId: string }>
-}) {
+}
+
+export default async function ListPage({ params }: ListPageProps) {
   const { listId } = await params
 
   const tasks = await getListTasks(listId)
@@ -18,7 +18,12 @@ export default async function InboxPage({
     <>
       <Header taskCount={tasks.length} headerTitle={currentList.title} />
       <Suspense fallback={<h1>Loading tasks...</h1>}>
-        <TaskList tasks={tasks} lists={lists} currentListId={listId} />
+        <TaskList
+          tasks={tasks}
+          lists={lists}
+          currentListId={listId}
+          parentList={'something'}
+        />
       </Suspense>
     </>
   )

@@ -5,17 +5,20 @@ import { TaskCheckbox } from './TaskCheckbox'
 import { TaskTitle } from './TaskTitle'
 import { format, isBefore } from 'date-fns'
 
+interface TaskItemProps {
+  task: Task
+  lists: List[]
+  currentListId?: string
+  parentList?: string
+}
+
 export function TaskItem({
   task,
   lists,
   currentListId,
-}: {
-  task: Task
-  lists: List[]
-  currentListId?: string
-}) {
+  parentList,
+}: TaskItemProps) {
   const today = format(new Date(), 'yyyy-MM-dd')
-
   return (
     <li
       className="flex justify-between items-center group 
@@ -43,6 +46,8 @@ export function TaskItem({
           {task.due_date && <br />}
           {/* Notes */}
           <span>{task.notes && `${task.notes}`}</span>
+          {/* Parent List */}
+          <span>{parentList}</span>
         </span>
       </div>
       <div>
