@@ -1,21 +1,15 @@
 import CreateTaskButton from '../tasks/create-task/CreateTaskButton'
 import CreateTaskDialog from '../tasks/create-task/CreateTaskDialog'
 import { TaskItem } from '../tasks/task-item/TaskItem'
-import { List, Task } from '../tasks/types'
+import { List, TaskWithList } from '../tasks/types'
 
 interface TaskListProps {
-  tasks: Task[]
+  tasks: TaskWithList[]
   lists: List[]
   currentListId?: string
-  parentList?: string
 }
 
-export function TaskList({
-  tasks,
-  lists,
-  currentListId,
-  parentList,
-}: TaskListProps) {
+export function TaskList({ tasks, lists, currentListId }: TaskListProps) {
   return (
     <>
       <div className="flex flex-col h-full sm:w-full">
@@ -31,7 +25,6 @@ export function TaskList({
                   task={task}
                   lists={lists}
                   currentListId={currentListId}
-                  parentList={parentList}
                 />
               ))}
             </ul>

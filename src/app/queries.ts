@@ -16,7 +16,10 @@ export async function getTasks(
     redirect('/auth')
   }
 
-  let query = supabase.from('tasks').select('*').eq('user_id', user!.id)
+  let query = supabase
+    .from('tasks')
+    .select('*, list:lists (title, id)')
+    .eq('user_id', user!.id)
 
   switch (view) {
     case 'inbox':

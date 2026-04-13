@@ -18,12 +18,7 @@ export default async function ListPage({ params }: ListPageProps) {
     <>
       <Header taskCount={tasks.length} headerTitle={currentList.title} />
       <Suspense fallback={<h1>Loading tasks...</h1>}>
-        <TaskList
-          tasks={tasks}
-          lists={lists}
-          currentListId={listId}
-          parentList={'something'}
-        />
+        <TaskList tasks={tasks} lists={lists} currentListId={listId} />
       </Suspense>
     </>
   )

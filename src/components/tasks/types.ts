@@ -8,6 +8,13 @@ export interface Task {
   notes?: string
 }
 
+export interface TaskWithList extends Task {
+  list: {
+    id: string
+    title: string
+  } | null
+}
+
 export interface List {
   user_id: string
   id: string
