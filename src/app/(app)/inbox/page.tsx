@@ -12,7 +12,7 @@ export default async function InboxPage() {
     <>
       <Header taskCount={tasks.length} headerTitle="Inbox" />
       <Suspense fallback={<h1>Loading tasks...</h1>}>
-        <TaskList tasks={tasks} lists={lists} />
+        <TaskList tasks={tasks} lists={lists} currentListId="Inbox" />
       </Suspense>
     </>
   )

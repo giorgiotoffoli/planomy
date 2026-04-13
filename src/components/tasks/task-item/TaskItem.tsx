@@ -1,21 +1,19 @@
-import { List, Task } from '../types'
+import Link from 'next/link'
+import { List, Task, TaskWithList } from '../types'
 import { TaskEditButton } from './task-edit/TaskEditButton'
 import { TaskEditDropdown } from './task-edit/TaskEditDropdown'
 import { TaskCheckbox } from './TaskCheckbox'
 import { TaskTitle } from './TaskTitle'
 import { format, isBefore } from 'date-fns'
 
-export function TaskItem({
-  task,
-  lists,
-  currentListId,
-}: {
-  task: Task
+interface TaskItemProps {
+  task: TaskWithList
   lists: List[]
   currentListId?: string
-}) {
-  const today = format(new Date(), 'yyyy-MM-dd')
+}
 
+export function TaskItem({ task, lists, currentListId }: TaskItemProps) {
+  const today = format(new Date(), 'yyyy-MM-dd')
   return (
     <li
       className="flex justify-between items-center group 
@@ -27,7 +25,7 @@ export function TaskItem({
           <TaskCheckbox task={task} />
           <TaskTitle task={task} />
         </div>
-        <span className="text-xs text-gray-600">
+        <span className="text-xs text-gray-600 block">
           {/* Date */}
           {task.due_date === today ? (
             <span>Today</span>
@@ -43,6 +41,19 @@ export function TaskItem({
           {task.due_date && <br />}
           {/* Notes */}
           <span>{task.notes && `${task.notes}`}</span>
+          {task.notes && <br />}
+          {/* Parent List */}
+          <span className="font-bold cursor-pointer hover:text-blue-500">
+            {task.list?.id && currentListId === task.list?.id ? (
+              ''
+            ) : currentListId === 'Inbox' ? (
+              ''
+            ) : task.list?.title ? (
+              <Link href={'/lists/' + task.list.id}>{task.list.title}</Link>
+            ) : (
+              <Link href={'/inbox'}>Inbox</Link>
+            )}
+          </span>
         </span>
       </div>
       <div>
