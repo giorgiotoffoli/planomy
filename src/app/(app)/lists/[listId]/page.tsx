@@ -1,5 +1,5 @@
 import { getList, getListTasks, getUserLists } from '@/components/lists/queries'
-import TaskList from '@/components/layout/TaskList'
+import TaskList from '@/components/lists/TaskList'
 import { Suspense } from 'react'
 import Header from '@/components/layout/header/Header'
 
