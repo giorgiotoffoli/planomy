@@ -1,6 +1,6 @@
 'use client'
 import { renameTask } from '@/components/tasks/actions'
-import { Task } from '../types'
+import { Task } from '../../../types'
 import { useState } from 'react'
 
 export function TaskTitle({ task }: { task: Task }) {

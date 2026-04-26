@@ -1,4 +1,4 @@
-import TaskList from '@/components/layout/TaskList'
+import TaskList from '@/components/lists/TaskList'
 import { getTasks } from '../../queries'
 import { Suspense } from 'react'
 import { getUserLists } from '@/components/lists/queries'

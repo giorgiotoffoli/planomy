@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/field'
 import { ReactNode, useState } from 'react'
 import { deleteList, renameList } from '../actions'
-import { List } from '@/components/tasks/types'
+import { List } from '@/types'
 import { Input } from '@/components/ui/input'
 
 export function RenameListDialog({

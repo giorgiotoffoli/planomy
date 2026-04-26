@@ -2,7 +2,7 @@
 
 import { toggleTaskComplete } from '@/components/tasks/actions'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Task } from '../types'
+import { Task } from '../../../types'
 
 export function TaskCheckbox({ task }: { task: Task }) {
   return (

@@ -1,7 +1,7 @@
 'use client'
 import { Pencil, Trash } from 'lucide-react'
 import { DropdownMenuItem } from '../../ui/dropdown-menu'
-import { List } from '@/components/tasks/types'
+import { List } from '@/types'
 import { RenameListDialog } from './RenameListDialog'
 
 export function RenameListButton({ list }: { list: List }) {

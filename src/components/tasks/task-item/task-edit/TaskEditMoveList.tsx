@@ -3,7 +3,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu'
-import { List } from '../../types'
+import { List } from '../../../../types'
 import { moveTask } from '../../actions'
 import { Inbox } from 'lucide-react'
 

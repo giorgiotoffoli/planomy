@@ -1,7 +1,7 @@
 'use client'
 import { Trash } from 'lucide-react'
 import { DropdownMenuItem } from '../../ui/dropdown-menu'
-import { List } from '@/components/tasks/types'
+import { List } from '@/types'
 import { DeleteListDialog } from './DeleteListDialog'
 
 export function DeleteListButton({ list }: { list: List }) {
