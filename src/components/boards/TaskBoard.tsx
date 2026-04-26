@@ -2,8 +2,6 @@
 import BoardColumn from '@/components/boards/BoardColumn'
 import { List, Status, TaskWithList } from '../../types'
 import { DragDropProvider } from '@dnd-kit/react'
-import { Feedback } from '@dnd-kit/dom'
-import { RestrictToWindow } from '@dnd-kit/dom/modifiers'
 import { useState } from 'react'
 import { changeTaskStatus } from '../tasks/actions'
 import type { DragDropEvents } from '@dnd-kit/react'
@@ -58,9 +56,7 @@ export default function TaskBoard({
 
   return (
     <DragDropProvider onDragEnd={(event) => handleDragEnd(event)}>
-      <div
-        className={`grid grid-rows-${numsOfStatus} lg:grid-cols-${numsOfStatus} gap-3 `}
-      >
+      <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(320px,1fr))]">
         <BoardColumn
           statusId={null}
           title="Unassigned"
