@@ -7,14 +7,14 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Edit, ListEnd } from 'lucide-react'
+import { List, Task } from '@/types'
 import { ReactNode } from 'react'
-import { List, Task } from '../../types'
 import { TaskEditDialog } from './TaskEditDialog'
+import { Edit, ListEnd } from 'lucide-react'
 import { TaskEditMoveList } from './TaskEditMoveList'
 import { TaskDeleteButton } from './TaskDeleteButton'
 
-export async function TaskEditDropdown({
+export function TaskEditDropdown({
   task,
   lists,
   currentListId,
@@ -28,6 +28,7 @@ export async function TaskEditDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+
       <DropdownMenuContent>
         <TaskEditDialog task={task}>
           <DropdownMenuItem>
@@ -35,18 +36,22 @@ export async function TaskEditDropdown({
             Edit
           </DropdownMenuItem>
         </TaskEditDialog>
+
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <ListEnd />
             Move
           </DropdownMenuSubTrigger>
+
           <TaskEditMoveList
             taskId={task.id}
             lists={lists}
             currentListId={currentListId}
           />
         </DropdownMenuSub>
+
         <DropdownMenuSeparator />
+
         <TaskDeleteButton taskId={task.id} />
       </DropdownMenuContent>
     </DropdownMenu>

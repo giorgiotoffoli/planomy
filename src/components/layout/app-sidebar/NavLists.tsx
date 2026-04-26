@@ -9,7 +9,7 @@ import {
 import { DeleteListButton } from '../../lists/delete-list/DeleteListButton'
 import { RenameListButton } from '../../lists/rename-list/RenameListButton'
 import CreateListDialog from '@/components/lists/create-list/CreateListDialog'
-import { List } from '@/components/tasks/types'
+import { List } from '@/types'
 import { Button } from '@/components/ui/button'
 
 export function NavLists({ lists }: { lists: List[] }) {
@@ -30,7 +30,9 @@ export function NavLists({ lists }: { lists: List[] }) {
                 asChild
                 className="group-hover/list:text-black hover:bg-transparent"
               >
-                <Link href={`/lists/${encodeURIComponent(list.id)}`}>
+                <Link
+                  href={`/lists/${list.id}?view=${list.default_view ?? 'list'}`}
+                >
                   <span className="text-base truncate">{list.title}</span>
                 </Link>
               </SidebarMenuButton>

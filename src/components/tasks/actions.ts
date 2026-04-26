@@ -124,3 +124,21 @@ export async function moveTask(taskId: string, newListId: string | null) {
 
   revalidatePath('/')
 }
+
+export async function changeTaskStatus(
+  taskId: string,
+  newStatusId: string | null,
+) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('tasks')
+    .update({ status_id: newStatusId })
+    .eq('id', taskId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  revalidatePath('/')
+}

@@ -6,6 +6,7 @@ export interface Task {
   completed: boolean
   due_date?: string
   notes?: string
+  status_id?: string | null
 }
 
 export interface TaskWithList extends Task {
@@ -19,4 +20,12 @@ export interface List {
   user_id: string
   id: string
   title: string
+  default_view: string
+}
+
+export interface Status {
+  id: string
+  list_id: string
+  title: string
+  position: number
 }

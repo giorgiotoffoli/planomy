@@ -1,7 +1,7 @@
 'use client'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Task } from '../../types'
+import { Task } from '../../../../types'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { TaskDatePicker } from '../../TaskDatePicker'
 import { updateTask } from '@/components/tasks/actions'
@@ -31,9 +31,7 @@ export function TaskEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild onSelect={(e) => e.preventDefault()}>
-        {children}
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-semibold">

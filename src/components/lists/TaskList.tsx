@@ -1,7 +1,7 @@
 import CreateTaskButton from '../tasks/create-task/CreateTaskButton'
 import CreateTaskDialog from '../tasks/create-task/CreateTaskDialog'
 import { TaskItem } from '../tasks/task-item/TaskItem'
-import { List, TaskWithList } from '../tasks/types'
+import { List, TaskWithList } from '../../types'
 
 interface TaskListProps {
   tasks: TaskWithList[]

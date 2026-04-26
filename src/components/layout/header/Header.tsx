@@ -7,6 +7,7 @@ import {
 } from '../../ui/breadcrumb'
 import { Separator } from '../../ui/separator'
 import { SidebarTrigger } from '../../ui/sidebar'
+import ListBoardToggle from '../ListBoardToggle'
 
 export default function Header({
   headerTitle,
@@ -17,7 +18,7 @@ export default function Header({
 }) {
   return (
     <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center border-b bg-background">
-      <div className="flex flex-1 items-center gap-2 px-3">
+      <div className="flex items-center gap-2 px-3">
         <SidebarTrigger />
         <Separator
           orientation="vertical"

@@ -12,7 +12,7 @@ import {
 import { ChevronRight } from 'lucide-react'
 import { NavLists } from './NavLists'
 import { useState } from 'react'
-import { List } from '@/components/tasks/types'
+import { List } from '@/types'
 
 export default function ListGroup({ lists }: { lists: List[] }) {
   const [open, setOpen] = useState(true)

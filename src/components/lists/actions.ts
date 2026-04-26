@@ -71,3 +71,20 @@ export async function renameList(formData: FormData) {
 
   revalidatePath('/')
 }
+
+export async function updateListDefaultView(
+  listId: string,
+  defaultView: string,
+) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('lists')
+    .update({ default_view: defaultView })
+    .eq('id', listId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  revalidatePath('/')
+}

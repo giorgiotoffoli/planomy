@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { List, Task, TaskWithList } from '../types'
+import { List, Task, TaskWithList } from '../../../types'
 import { TaskEditButton } from './task-edit/TaskEditButton'
 import { TaskEditDropdown } from './task-edit/TaskEditDropdown'
 import { TaskCheckbox } from './TaskCheckbox'
