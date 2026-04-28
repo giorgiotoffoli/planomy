@@ -56,7 +56,7 @@ export default function TaskBoard({
 
   return (
     <DragDropProvider onDragEnd={(event) => handleDragEnd(event)}>
-      <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(320px,1fr))]">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-4">
         <BoardColumn
           statusId={null}
           title="Unassigned"
