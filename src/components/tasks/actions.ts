@@ -139,6 +139,4 @@ export async function changeTaskStatus(
   if (error) {
     throw new Error(error.message)
   }
-
-  revalidatePath('/')
 }
