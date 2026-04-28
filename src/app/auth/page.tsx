@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { Mail, Lock, ArrowRight, Pyramid } from 'lucide-react'
 import { signIn, signUp } from './actions'
@@ -82,7 +82,9 @@ export default function AuthPage() {
                   toast(`${isLogin ? 'Logging in...' : 'Signing up...'}`)
                 }
               >
-                <DisplayErrorMessage />
+                <Suspense fallback={<div>Loading error message...</div>}>
+                  <DisplayErrorMessage />
+                </Suspense>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">
                     Email Address
