@@ -5,14 +5,26 @@ import { motion, AnimatePresence } from 'motion/react'
 import { Mail, Lock, ArrowRight, Pyramid } from 'lucide-react'
 import { signIn, signUp } from './actions'
 import { useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 
-export default function App() {
+function DisplayErrorMessage() {
+  const searchParams = useSearchParams()
+  const message = searchParams.get('message')
+  if (message) {
+    return (
+      <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        {message}
+      </div>
+    )
+  } else {
+    return
+  }
+}
+
+export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-
-  const searchParams = useSearchParams()
-  const message = searchParams.get('message')
 
   const passwordsMatch = password.length > 0 && password === confirmPassword
 
@@ -63,12 +75,14 @@ export default function App() {
               exit={{ opacity: 0, x: isLogin ? 20 : -20 }}
               transition={{ duration: 0.3, ease: 'easeInOut' }}
             >
-              <form className="space-y-5" action={isLogin ? signIn : signUp}>
-                {message && (
-                  <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                    {message}
-                  </div>
-                )}
+              <form
+                className="space-y-5"
+                action={isLogin ? signIn : signUp}
+                onSubmit={() =>
+                  toast(`${isLogin ? 'Logging in...' : 'Signing up...'}`)
+                }
+              >
+                <DisplayErrorMessage />
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">
                     Email Address
