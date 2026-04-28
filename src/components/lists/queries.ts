@@ -23,11 +23,20 @@ export async function getUserLists() {
 export async function getList(listId: string) {
   const supabase = await createClient()
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/auth')
+  }
+
   const { data: list, error } = await supabase
     .from('lists')
     .select('*')
+    .eq('user_id', user!.id)
     .eq('id', listId)
-    .single()
+    .single() // .single() returns the object insetad of array
 
   if (error) {
     throw new Error(error.message)
@@ -39,9 +48,18 @@ export async function getList(listId: string) {
 export async function getListTasks(listId: string) {
   const supabase = await createClient()
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/auth')
+  }
+
   const { data: tasks, error } = await supabase
     .from('tasks')
     .select('*, list:lists (title, id)')
+    .eq('user_id', user!.id)
     .eq('list_id', listId)
     .eq('completed', false)
 
