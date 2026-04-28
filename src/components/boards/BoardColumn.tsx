@@ -18,27 +18,29 @@ export default function BoardColumn({
   lists,
   currentListId,
 }: BoardColumnProps) {
-  const { ref } = useDroppable({
+  const { ref, isDropTarget } = useDroppable({
     id: statusId ?? 'unassigned',
   })
 
   const filteredTasks = tasks.filter((tasks) => tasks.status_id === statusId)
 
   return (
-    <Card ref={ref}>
-      <CardHeader className="font-bold">{title}</CardHeader>
-      <CardContent>
-        <ul>
-          {filteredTasks.map((task) => (
-            <BoardTaskCard
-              key={task.id}
-              task={task}
-              lists={lists}
-              currentListId={currentListId}
-            />
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+    <div ref={ref}>
+      <Card className={isDropTarget ? 'ring-2 ring-blue-500' : ''}>
+        <CardHeader className="font-bold">{title}</CardHeader>
+        <CardContent>
+          <ul>
+            {filteredTasks.map((task) => (
+              <BoardTaskCard
+                key={task.id}
+                task={task}
+                lists={lists}
+                currentListId={currentListId}
+              />
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+    </div>
   )
 }

@@ -2,7 +2,7 @@
 import BoardColumn from '@/components/boards/BoardColumn'
 import { List, Status, TaskWithList } from '../../types'
 import { DragDropProvider } from '@dnd-kit/react'
-import { startTransition, useState } from 'react'
+import { useState } from 'react'
 import { changeTaskStatus } from '../tasks/actions'
 import type { DragDropEvents } from '@dnd-kit/react'
 
@@ -27,23 +27,22 @@ export default function TaskBoard({
 
   function handleDragEnd(event: DragEndEvent) {
     if (event.canceled) return
+
     const taskId = event.operation.source?.id as string | undefined
     const targetId = event.operation.target?.id as string | undefined
+
     if (!taskId || !targetId) return
+
     const newStatusId = targetId === 'unassigned' ? null : targetId
     const previousTasks = localTasks
 
-    // optimistic UI
-
-    setLocalTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === taskId
-          ? task.status_id !== newStatusId
-            ? { ...task, status_id: newStatusId }
-            : task
-          : task,
-      ),
-    )
+    requestAnimationFrame(() => {
+      setLocalTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task.id === taskId ? { ...task, status_id: newStatusId } : task,
+        ),
+      )
+    })
 
     void changeTaskStatus(taskId, newStatusId).catch((error) => {
       console.error(error)
@@ -52,7 +51,7 @@ export default function TaskBoard({
   }
 
   return (
-    <DragDropProvider onDragEnd={(event) => handleDragEnd(event)}>
+    <DragDropProvider onDragEnd={handleDragEnd}>
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-4">
         <BoardColumn
           statusId={null}
