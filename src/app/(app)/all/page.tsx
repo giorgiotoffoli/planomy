@@ -11,9 +11,13 @@ export default async function AllPage() {
   return (
     <>
       <Header taskCount={tasks.length} headerTitle="All" />
-      <Suspense fallback={<h1>Loading tasks...</h1>}>
-        <TaskList tasks={tasks} lists={lists} />
-      </Suspense>
+      {tasks.length === 0 ? (
+        <p>All your tasks will be displayed here.</p>
+      ) : (
+        <Suspense fallback={<h1>Loading tasks...</h1>}>
+          <TaskList tasks={tasks} lists={lists} />
+        </Suspense>
+      )}
     </>
   )
 }

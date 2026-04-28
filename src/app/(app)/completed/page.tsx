@@ -10,9 +10,13 @@ export default async function CompletedPage() {
   return (
     <>
       <Header taskCount={tasks.length} headerTitle="Completed" />
-      <Suspense fallback={<h1>Loading tasks...</h1>}>
-        <TaskList tasks={tasks} lists={lists} />
-      </Suspense>
+      {tasks.length === 0 ? (
+        <p>Completed tasks will appear here.</p>
+      ) : (
+        <Suspense fallback={<h1>Loading tasks...</h1>}>
+          <TaskList tasks={tasks} lists={lists} />
+        </Suspense>
+      )}
     </>
   )
 }

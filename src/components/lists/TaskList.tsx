@@ -17,20 +17,16 @@ export function TaskList({ tasks, lists, currentListId }: TaskListProps) {
           <CreateTaskButton />
         </CreateTaskDialog>
         <div className="flex-1 overflow-y-auto scroll-smooth pb-16">
-          {tasks?.length ? (
-            <ul>
-              {tasks?.map((task) => (
-                <TaskItem
-                  key={task.id}
-                  task={task}
-                  lists={lists}
-                  currentListId={currentListId}
-                />
-              ))}
-            </ul>
-          ) : (
-            <p className="py-4">Great job! Everything is done</p>
-          )}
+          <ul>
+            {tasks?.map((task) => (
+              <TaskItem
+                key={task.id}
+                task={task}
+                lists={lists}
+                currentListId={currentListId}
+              />
+            ))}
+          </ul>
         </div>
       </div>
     </>

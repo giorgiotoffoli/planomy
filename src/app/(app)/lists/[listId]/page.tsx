@@ -5,7 +5,6 @@ import Header from '@/components/layout/header/Header'
 import ListBoardToggle from '@/components/layout/ListBoardToggle'
 import TaskBoard from '@/components/boards/TaskBoard'
 import getStatuses from '@/components/boards/queries'
-import { DragDropProvider } from '@dnd-kit/react'
 
 interface ListPageProps {
   params: Promise<{ listId: string }>
@@ -30,18 +29,23 @@ export default async function ListPage({
     <>
       <Header taskCount={tasks.length} headerTitle={currentList.title} />
       <ListBoardToggle listId={listId} currentView={currentView} />
-      <Suspense fallback={<h1>Loading tasks...</h1>}>
-        {currentView === 'list' ? (
-          <TaskList tasks={tasks} lists={lists} currentListId={listId} />
-        ) : (
-          <TaskBoard
-            tasks={tasks}
-            statuses={statuses}
-            lists={lists}
-            currentListId={listId}
-          />
-        )}
-      </Suspense>
+
+      {tasks.length === 0 ? (
+        <p>This list is empty. Click '+' to add your first task.</p>
+      ) : (
+        <Suspense fallback={<h1>Loading tasks...</h1>}>
+          {currentView === 'list' ? (
+            <TaskList tasks={tasks} lists={lists} currentListId={listId} />
+          ) : (
+            <TaskBoard
+              tasks={tasks}
+              statuses={statuses}
+              lists={lists}
+              currentListId={listId}
+            />
+          )}
+        </Suspense>
+      )}
     </>
   )
 }

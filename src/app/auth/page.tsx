@@ -1,16 +1,32 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { Mail, Lock, ArrowRight, Pyramid } from 'lucide-react'
 import { signIn, signUp } from './actions'
+import { useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 
-export default function App() {
+function DisplayErrorMessage() {
+  const searchParams = useSearchParams()
+  const message = searchParams.get('message')
+  if (message) {
+    return (
+      <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        {message}
+      </div>
+    )
+  } else {
+    return
+  }
+}
+
+export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true)
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState<string | null>(null)
+  const [confirmPassword, setConfirmPassword] = useState('')
 
-  const passwordsMatch = password === confirmPassword
+  const passwordsMatch = password.length > 0 && password === confirmPassword
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4  text-slate-900 relative overflow-hidden">
@@ -59,7 +75,16 @@ export default function App() {
               exit={{ opacity: 0, x: isLogin ? 20 : -20 }}
               transition={{ duration: 0.3, ease: 'easeInOut' }}
             >
-              <form className="space-y-5" action={isLogin ? signIn : signUp}>
+              <form
+                className="space-y-5"
+                action={isLogin ? signIn : signUp}
+                onSubmit={() =>
+                  toast(`${isLogin ? 'Logging in...' : 'Signing up...'}`)
+                }
+              >
+                <Suspense fallback={<div>Loading error message...</div>}>
+                  <DisplayErrorMessage />
+                </Suspense>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">
                     Email Address
@@ -73,6 +98,7 @@ export default function App() {
                       name="email"
                       className="block w-full pl-11 pr-3 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors bg-slate-50/50 focus:bg-white sm:text-sm outline-none"
                       placeholder="you@example.com"
+                      required
                     />
                   </div>
                 </div>
@@ -101,6 +127,7 @@ export default function App() {
                       className="block w-full pl-11 pr-3 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors bg-slate-50/50 focus:bg-white sm:text-sm outline-none"
                       placeholder="••••••••"
                       onChange={(e) => setPassword(e.target.value)}
+                      required
                     />
                   </div>
                 </div>
@@ -110,15 +137,17 @@ export default function App() {
                       <label className="block text-sm font-medium text-slate-700">
                         Confirm password
                       </label>
-                      {password && confirmPassword && passwordsMatch ? (
-                        <span className="text-sm font-medium text-green-500 transition-colors">
-                          Passwords match
-                        </span>
-                      ) : (
-                        <span className="text-sm font-medium text-rose-500 transition-colors">
-                          Passwords do not match
-                        </span>
-                      )}
+                      {!isLogin &&
+                        confirmPassword.length > 0 &&
+                        (passwordsMatch ? (
+                          <span className="text-sm font-medium text-green-500">
+                            Passwords match
+                          </span>
+                        ) : (
+                          <span className="text-sm font-medium text-rose-500">
+                            Passwords do not match
+                          </span>
+                        ))}
                     </div>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -130,6 +159,7 @@ export default function App() {
                         className="block w-full pl-11 pr-3 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors bg-slate-50/50 focus:bg-white sm:text-sm outline-none"
                         placeholder="••••••••"
                         onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
                       />
                     </div>
                   </div>
@@ -137,8 +167,8 @@ export default function App() {
 
                 <button
                   type="submit"
-                  disabled={!isLogin && !passwordsMatch}
                   className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-blue-700"
+                  disabled={!isLogin && !passwordsMatch}
                 >
                   {isLogin ? 'Sign in' : 'Create account'}
                   <ArrowRight className="ml-2 h-4 w-4" />
