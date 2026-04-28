@@ -22,7 +22,7 @@ export async function signUp(formData: FormData) {
   if (error) {
     redirect(`/auth?message=${encodeURIComponent(error.message)}`)
   }
-  redirect('/auth/verify-email')
+  redirect('/inbox')
 }
 
 export async function signIn(formData: FormData) {

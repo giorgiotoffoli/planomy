@@ -11,9 +11,13 @@ export default async function InboxPage() {
   return (
     <>
       <Header taskCount={tasks.length} headerTitle="Today" />
-      <Suspense fallback={<h1>Loading tasks...</h1>}>
-        <TaskList tasks={tasks} lists={lists} />
-      </Suspense>
+      {tasks.length === 0 ? (
+        <p>Nothing scheduled for today.</p>
+      ) : (
+        <Suspense fallback={<h1>Loading tasks...</h1>}>
+          <TaskList tasks={tasks} lists={lists} />
+        </Suspense>
+      )}
     </>
   )
 }

@@ -11,9 +11,13 @@ export default async function InboxPage() {
   return (
     <>
       <Header taskCount={tasks.length} headerTitle="Inbox" />
-      <Suspense fallback={<h1>Loading tasks...</h1>}>
-        <TaskList tasks={tasks} lists={lists} currentListId="Inbox" />
-      </Suspense>
+      {tasks.length === 0 ? (
+        <p>Nothing in your inbox. Capture a task or enjoy the silence.</p>
+      ) : (
+        <Suspense fallback={<h1>Loading tasks...</h1>}>
+          <TaskList tasks={tasks} lists={lists} currentListId="Inbox" />
+        </Suspense>
+      )}
     </>
   )
 }
