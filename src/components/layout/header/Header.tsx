@@ -7,7 +7,6 @@ import {
 } from '../../ui/breadcrumb'
 import { Separator } from '../../ui/separator'
 import { SidebarTrigger } from '../../ui/sidebar'
-import ListBoardToggle from '../ListBoardToggle'
 
 export default function Header({
   headerTitle,
