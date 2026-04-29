@@ -79,7 +79,9 @@ export default function AuthPage() {
                 className="space-y-5"
                 action={isLogin ? signIn : signUp}
                 onSubmit={() =>
-                  toast(`${isLogin ? 'Logging in...' : 'Signing up...'}`)
+                  toast(`${isLogin ? 'Logging in...' : 'Signing up...'}`, {
+                    position: 'top-center',
+                  })
                 }
               >
                 <Suspense fallback={<div>Loading error message...</div>}>

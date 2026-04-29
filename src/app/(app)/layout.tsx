@@ -15,10 +15,7 @@ export default function AppLayout({
 
       <SidebarInset>
         <div className="flex min-h-screen flex-col">
-          <main className="flex flex-1 flex-col gap-4 p-4">
-            {children}
-            <CreateTaskButton />
-          </main>
+          <main className="flex flex-1 flex-col gap-4 p-4">{children}</main>
         </div>
       </SidebarInset>
     </SidebarProvider>

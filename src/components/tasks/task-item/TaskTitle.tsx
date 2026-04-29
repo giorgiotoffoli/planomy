@@ -1,17 +1,32 @@
 'use client'
-import { renameTask } from '@/components/tasks/actions'
-import { Task } from '../../../types'
+import { TaskWithList } from '../../../types'
 import { useState } from 'react'
 
-export function TaskTitle({ task }: { task: Task }) {
+interface TaskTitleProps {
+  task: TaskWithList
+  handleOnRename: (taskId: string, newName: string) => void
+}
+
+export function TaskTitle({ task, handleOnRename }: TaskTitleProps) {
   const [isEditingTaskTitle, setIsEditingTaskTitle] = useState(false)
   return (
     <>
       {isEditingTaskTitle ? (
         <form
           className="w-full"
-          action={renameTask}
-          onSubmit={() => setIsEditingTaskTitle(false)}
+          onSubmit={(e) => {
+            e.preventDefault()
+            const formData = new FormData(e.currentTarget)
+
+            const taskId = formData.get('id') as string
+            const newTitle = formData.get('newTitle') as string
+
+            const trimmedTitle = newTitle.trim()
+
+            handleOnRename(taskId, trimmedTitle)
+
+            setIsEditingTaskTitle(false)
+          }}
         >
           <input type="hidden" name="id" value={task.id} />
 
