@@ -16,20 +16,30 @@ import { TaskEditMoveList } from './TaskEditMoveList'
 import { TaskDeleteButton } from './TaskDeleteButton'
 import { DialogTrigger } from '@radix-ui/react-dialog'
 
+interface TaskEditDropdownProps {
+  task: Task
+  lists: List[]
+  currentListId?: string
+  children: ReactNode
+  handleOnDueDateChange: (taskId: string, newDueDate: string) => void
+  handleOnNotesChange: (taskId: string, notes: string) => void
+}
+
 export function TaskEditDropdown({
   task,
   lists,
   currentListId,
   children,
-}: {
-  task: Task
-  lists: List[]
-  currentListId?: string
-  children: ReactNode
-}) {
+  handleOnDueDateChange,
+  handleOnNotesChange,
+}: TaskEditDropdownProps) {
   return (
     <>
-      <TaskEditDialog task={task}>
+      <TaskEditDialog
+        task={task}
+        handleOnDueDateChange={handleOnDueDateChange}
+        handleOnNotesChange={handleOnNotesChange}
+      >
         <DropdownMenu>
           <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
           <DropdownMenuContent>

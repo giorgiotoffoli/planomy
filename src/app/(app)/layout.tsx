@@ -1,8 +1,5 @@
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar/AppSidebar'
-import Header from '@/components/layout/header/Header'
-import CreateTaskDialog from '@/components/tasks/create-task/CreateTaskDialog'
-import CreateTaskButton from '@/components/tasks/create-task/CreateTaskButton'
 
 export default function AppLayout({
   children,

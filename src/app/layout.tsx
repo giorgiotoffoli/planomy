@@ -1,10 +1,15 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Inter, Geist_Mono, DM_Sans } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'sonner'
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const interSans = Inter({
+  variable: '--font-inter-sans',
+  subsets: ['latin'],
+})
+
+const dmSans = DM_Sans({
+  variable: '--font-dm-sans',
   subsets: ['latin'],
 })
 
@@ -26,7 +31,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${interSans.variable} ${geistMono.variable} ${dmSans.variable} antialiased`}
       >
         <main>{children}</main>
         <Toaster />

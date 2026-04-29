@@ -27,7 +27,7 @@ export default function Header({
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbPage className="line-clamp-1 text-lg font-bold">
+              <BreadcrumbPage className="line-clamp-1 text-lg font-bold font-heading">
                 {headerTitle}
               </BreadcrumbPage>
             </BreadcrumbItem>

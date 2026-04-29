@@ -2,7 +2,6 @@ import { getTasks } from '../../../components/tasks/queries'
 import Header from '@/components/layout/header/Header'
 import { getUserLists } from '@/components/lists/queries'
 import TaskClient from '@/components/layout/TaskClient'
-import CreateTaskButton from '@/components/tasks/create-task/CreateTaskButton'
 
 export default async function InboxPage() {
   const tasks = await getTasks('inbox')
@@ -11,12 +10,10 @@ export default async function InboxPage() {
   return (
     <>
       <Header taskCount={tasks.length} headerTitle="Inbox" />
-      {tasks.length === 0 ? (
+      {tasks.length === 0 && (
         <p>Nothing in your inbox. Capture a task or enjoy the silence.</p>
-      ) : (
-        <TaskClient tasks={tasks} lists={lists} listId="" currentView="list" />
       )}
-      <CreateTaskButton />
+      <TaskClient tasks={tasks} lists={lists} listId="" currentView="list" />
     </>
   )
 }

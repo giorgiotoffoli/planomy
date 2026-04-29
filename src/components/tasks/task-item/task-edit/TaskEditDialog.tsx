@@ -1,37 +1,33 @@
 'use client'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { List, Task } from '../../../../types'
+import { Task } from '../../../../types'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { TaskDatePicker } from '../../TaskDatePicker'
-import { updateTask } from '@/components/tasks/actions'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
-import { ReactNode, useState } from 'react'
-import { TaskEditDropdown } from './TaskEditDropdown'
+import { ReactNode } from 'react'
+
+interface TaskEditDialogProps {
+  task: Task
+  children: ReactNode
+  handleOnDueDateChange: (taskId: string, newDueDate: string) => void
+  handleOnNotesChange: (taskId: string, notes: string) => void
+}
 
 export function TaskEditDialog({
   task,
   children,
-}: {
-  task: Task
-  children: ReactNode
-}) {
-  const [open, setOpen] = useState(false)
-
-  async function handleSubmit(formData: FormData) {
-    await updateTask(formData)
-    setOpen(false)
-  }
-
+  handleOnDueDateChange,
+  handleOnNotesChange,
+}: TaskEditDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog>
       {children}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -42,7 +38,24 @@ export function TaskEditDialog({
             {task.notes}
           </DialogDescription>
         </DialogHeader>
-        <form action={handleSubmit}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+
+            const formData = new FormData(e.currentTarget)
+
+            const taskId = formData.get('id') as string
+            const newDueDate = formData.get('due_date') as string
+            const notes = formData.get('notes') as string
+
+            if (newDueDate) {
+              handleOnDueDateChange(taskId, newDueDate)
+            }
+            if (notes) {
+              handleOnNotesChange(taskId, notes)
+            }
+          }}
+        >
           <input type="hidden" name="id" value={task.id} />
           <FieldGroup className="gap-4">
             <Field orientation="horizontal">

@@ -1,5 +1,4 @@
 import { List, TaskWithList } from '../../../types'
-import { TaskEditButton } from './task-edit/TaskEditButton'
 import { TaskEditDropdown } from './task-edit/TaskEditDropdown'
 import { TaskCheckbox } from './TaskCheckbox'
 import { TaskTitle } from './TaskTitle'
@@ -13,6 +12,8 @@ interface TaskItemProps {
   currentListId?: string
   handleOnComplete: (taskId: string, isCompleted: boolean) => void
   handleOnRename: (taskId: string, newName: string) => void
+  handleOnDueDateChange: (taskId: string, newDueDate: string) => void
+  handleOnNotesChange: (taskId: string, notes: string) => void
 }
 
 export function TaskItem({
@@ -21,6 +22,8 @@ export function TaskItem({
   currentListId,
   handleOnComplete,
   handleOnRename,
+  handleOnDueDateChange,
+  handleOnNotesChange,
 }: TaskItemProps) {
   return (
     <li
@@ -41,6 +44,8 @@ export function TaskItem({
           task={task}
           lists={lists}
           currentListId={currentListId}
+          handleOnDueDateChange={handleOnDueDateChange}
+          handleOnNotesChange={handleOnNotesChange}
         >
           <Button variant="ghost" className="cursor-pointer">
             ⋯

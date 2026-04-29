@@ -7,6 +7,8 @@ interface TaskListProps {
   currentListId?: string
   handleOnComplete: (taskId: string, isCompleted: boolean) => void
   handleOnRename: (taskId: string, newName: string) => void
+  handleOnDueDateChange: (taskId: string, newDueDate: string) => void
+  handleOnNotesChange: (taskId: string, notes: string) => void
 }
 
 export default function TaskList({
@@ -15,6 +17,8 @@ export default function TaskList({
   currentListId,
   handleOnComplete,
   handleOnRename,
+  handleOnDueDateChange,
+  handleOnNotesChange,
 }: TaskListProps) {
   return (
     <>
@@ -29,6 +33,8 @@ export default function TaskList({
                 currentListId={currentListId}
                 handleOnComplete={handleOnComplete}
                 handleOnRename={handleOnRename}
+                handleOnDueDateChange={handleOnDueDateChange}
+                handleOnNotesChange={handleOnNotesChange}
               />
             ))}
           </ul>

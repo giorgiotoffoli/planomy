@@ -5,7 +5,15 @@ import ListBoardToggle from '../lists/ListBoardToggle'
 import { Suspense, useState } from 'react'
 import TaskList from '../lists/TaskList'
 import TaskBoard from '../boards/TaskBoard'
-import { renameTask, updateTaskCompleted } from '../tasks/actions'
+import {
+  createTask,
+  renameTask,
+  updateTaskCompleted,
+  updateTaskDueDate,
+  updateTaskNotes,
+} from '../tasks/actions'
+import CreateTaskButton from '../tasks/create-task/CreateTaskButton'
+import { Skeleton } from '../ui/skeleton'
 
 interface TaskClientProps {
   tasks: TaskWithList[]
@@ -24,6 +32,46 @@ export default function TaskClient({
 }: TaskClientProps) {
   const [localView, setLocalView] = useState(currentView)
   const [localTasks, setLocalTasks] = useState(tasks)
+
+  async function handleOnCreate(
+    title: string,
+    dueDate: string,
+    notes: string,
+    listId: string,
+  ) {
+    const tempId = `temp-${crypto.randomUUID()}`
+    const selectedList = lists.find((list) => list.id === listId)
+
+    if (!selectedList) return
+
+    const tempTask: TaskWithList = {
+      id: tempId,
+      title,
+      due_date: dueDate,
+      notes,
+      list_id: listId,
+      user_id: 'temp',
+      completed: false,
+      list: selectedList,
+    }
+
+    setLocalTasks((prevTasks) => [...prevTasks, tempTask])
+
+    try {
+      const savedTask = await createTask(title, dueDate, notes, listId)
+
+      if (!savedTask) {
+        throw new Error('Task was not created')
+      }
+
+      setLocalTasks((prev) =>
+        prev.map((task) => (task.id === tempId ? savedTask : task)),
+      )
+    } catch (error) {
+      setLocalTasks((prev) => prev.filter((task) => task.id !== tempId))
+      console.error(error)
+    }
+  }
 
   function handleOnComplete(taskId: string, isCompleted: boolean) {
     const previousTasks = localTasks
@@ -64,11 +112,37 @@ export default function TaskClient({
     })
   }
 
+  function handleOnDueDateChange(taskId: string, newDueDate: string) {
+    const previousTasks = localTasks
+
+    setLocalTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId ? { ...task, due_date: newDueDate } : task,
+      ),
+    )
+
+    updateTaskDueDate(taskId, newDueDate).catch((error) => {
+      setLocalTasks(previousTasks)
+      console.error(error)
+    })
+  }
+
+  function handleOnNotesChange(taskId: string, notes: string) {
+    const previousTasks = localTasks
+
+    setLocalTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId ? { ...task, notes: notes } : task,
+      ),
+    )
+
+    updateTaskNotes(taskId, notes).catch((error) => {
+      setLocalTasks(previousTasks)
+      console.error(error)
+    })
+  }
+
   function handleOnDelete() {}
-
-  function handleOnDateChange() {}
-
-  function handleOnNoteChange() {}
 
   return (
     <>
@@ -80,7 +154,21 @@ export default function TaskClient({
           localView={localView!}
         />
       )}
-      <Suspense fallback={<h1>Loading tasks...</h1>}>
+      <Suspense
+        fallback={
+          <div className="flex w-full max-w-xs flex-col gap-7">
+            <div className="flex flex-col gap-3">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+            <div className="flex flex-col gap-3">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+            <Skeleton className="h-8 w-24" />
+          </div>
+        }
+      >
         {localView === 'list' ? (
           <TaskList
             localTasks={localTasks}
@@ -88,6 +176,8 @@ export default function TaskClient({
             currentListId={listId}
             handleOnComplete={handleOnComplete}
             handleOnRename={handleOnRename}
+            handleOnDueDateChange={handleOnDueDateChange}
+            handleOnNotesChange={handleOnNotesChange}
           />
         ) : (
           <TaskBoard
@@ -98,6 +188,7 @@ export default function TaskClient({
           />
         )}
       </Suspense>
+      <CreateTaskButton handleOnCreate={handleOnCreate} />
     </>
   )
 }

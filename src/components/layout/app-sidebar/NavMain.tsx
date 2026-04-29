@@ -53,7 +53,7 @@ export default function NavMain() {
           <SidebarMenuButton asChild isActive={pathname === tab.link}>
             <Link href={tab.link}>
               {tab.icon}
-              <span className="text-base">{tab.title}</span>
+              <span>{tab.title}</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
