@@ -5,6 +5,7 @@ import { TaskCheckbox } from './TaskCheckbox'
 import { TaskTitle } from './TaskTitle'
 import TaskDetail from './TaskDetails'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 interface TaskItemProps {
   task: TaskWithList
@@ -41,7 +42,9 @@ export function TaskItem({
           lists={lists}
           currentListId={currentListId}
         >
-          <TaskEditButton />
+          <Button variant="ghost" className="cursor-pointer">
+            ⋯
+          </Button>
         </TaskEditDropdown>
       </div>
     </li>

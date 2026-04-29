@@ -1,3 +1,4 @@
+'use client'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,11 +9,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { List, Task } from '@/types'
-import { ReactNode } from 'react'
+import { ReactNode, useState } from 'react'
 import { TaskEditDialog } from './TaskEditDialog'
 import { Edit, ListEnd } from 'lucide-react'
 import { TaskEditMoveList } from './TaskEditMoveList'
 import { TaskDeleteButton } from './TaskDeleteButton'
+import { DialogTrigger } from '@radix-ui/react-dialog'
 
 export function TaskEditDropdown({
   task,
@@ -26,34 +28,37 @@ export function TaskEditDropdown({
   children: ReactNode
 }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+    <>
+      <TaskEditDialog task={task}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DialogTrigger asChild>
+              <DropdownMenuItem>
+                <Edit />
+                Edit
+              </DropdownMenuItem>
+            </DialogTrigger>
 
-      <DropdownMenuContent>
-        <TaskEditDialog task={task}>
-          <DropdownMenuItem>
-            <Edit />
-            Edit
-          </DropdownMenuItem>
-        </TaskEditDialog>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <ListEnd />
+                Move
+              </DropdownMenuSubTrigger>
 
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            <ListEnd />
-            Move
-          </DropdownMenuSubTrigger>
+              <TaskEditMoveList
+                taskId={task.id}
+                lists={lists}
+                currentListId={currentListId}
+              />
+            </DropdownMenuSub>
 
-          <TaskEditMoveList
-            taskId={task.id}
-            lists={lists}
-            currentListId={currentListId}
-          />
-        </DropdownMenuSub>
+            <DropdownMenuSeparator />
 
-        <DropdownMenuSeparator />
-
-        <TaskDeleteButton taskId={task.id} />
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <TaskDeleteButton taskId={task.id} />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TaskEditDialog>
+    </>
   )
 }

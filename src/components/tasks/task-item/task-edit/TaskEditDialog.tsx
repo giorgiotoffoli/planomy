@@ -1,7 +1,7 @@
 'use client'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Task } from '../../../../types'
+import { List, Task } from '../../../../types'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { TaskDatePicker } from '../../TaskDatePicker'
 import { updateTask } from '@/components/tasks/actions'
@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { ReactNode, useState } from 'react'
+import { TaskEditDropdown } from './TaskEditDropdown'
 
 export function TaskEditDialog({
   task,
@@ -31,7 +32,7 @@ export function TaskEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+      {children}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-semibold">
