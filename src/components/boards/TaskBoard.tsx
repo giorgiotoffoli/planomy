@@ -22,7 +22,6 @@ export default function TaskBoard({
   currentListId,
 }: TaskBoardProps) {
   const [localTasks, setLocalTasks] = useState(tasks)
-  const numsOfStatus = statuses.length + 1
   const sortedStatuses = [...statuses].sort((a, b) => a.position - b.position)
 
   function handleDragEnd(event: DragEndEvent) {

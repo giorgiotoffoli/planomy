@@ -8,15 +8,15 @@ import { Dispatch, SetStateAction } from 'react'
 interface ListBoardToggleProps {
   listId: string
   currentView: 'list' | 'board'
-  view: 'list' | 'board'
-  setView: Dispatch<SetStateAction<'list' | 'board'>>
+  localView: 'list' | 'board'
+  setLocalView: Dispatch<SetStateAction<'list' | 'board'>>
 }
 
 export default function ListBoardToggle({
   listId,
   currentView,
-  view,
-  setView,
+  localView,
+  setLocalView,
 }: ListBoardToggleProps) {
   const router = useRouter()
 
@@ -26,11 +26,11 @@ export default function ListBoardToggle({
         value="list"
         aria-label="Toggle List View"
         onClick={() => {
-          setView('list')
+          setLocalView('list')
           router.push(`/lists/${listId}?view=list`)
           updateListDefaultView(listId, 'list')
         }}
-        disabled={view === 'list'}
+        disabled={localView === 'list'}
       >
         <ListTodo />
       </ToggleGroupItem>
@@ -38,11 +38,11 @@ export default function ListBoardToggle({
         value="board"
         aria-label="Toggle Board View"
         onClick={() => {
-          setView('board')
+          setLocalView('board')
           router.push(`/lists/${listId}?view=board`)
           updateListDefaultView(listId, 'board')
         }}
-        disabled={view === 'board'}
+        disabled={localView === 'board'}
       >
         <AlignStartHorizontal />
       </ToggleGroupItem>

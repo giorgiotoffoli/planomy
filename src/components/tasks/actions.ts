@@ -47,7 +47,7 @@ export async function createTask(formData: FormData, pathName?: string) {
 }
 
 // Toggles tasks as complete or incomplete in the database
-export async function toggleTaskComplete(id: string, completed: boolean) {
+export async function updateTaskCompleted(id: string, completed: boolean) {
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -58,8 +58,6 @@ export async function toggleTaskComplete(id: string, completed: boolean) {
   if (error) {
     throw new Error(error.message)
   }
-
-  revalidatePath('/')
 }
 
 export async function renameTask(formData: FormData) {
