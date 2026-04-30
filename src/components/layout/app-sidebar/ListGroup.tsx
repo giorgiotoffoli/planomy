@@ -25,7 +25,7 @@ export default function ListGroup({ lists }: { lists: List[] }) {
           onOpenChange={setOpen}
         >
           <CollapsibleTrigger>
-            <SidebarGroupLabel className="text-xs font-medium uppercase tracking-wide">
+            <SidebarGroupLabel className="text-xs tracking-wide">
               Lists
               <ChevronRight className="ml-2 mt-0.5 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
             </SidebarGroupLabel>

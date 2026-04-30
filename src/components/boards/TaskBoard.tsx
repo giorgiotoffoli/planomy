@@ -22,45 +22,40 @@ export default function TaskBoard({
   currentListId,
 }: TaskBoardProps) {
   const [localTasks, setLocalTasks] = useState(tasks)
-  const numsOfStatus = statuses.length + 1
   const sortedStatuses = [...statuses].sort((a, b) => a.position - b.position)
 
-  async function handleDragEnd(event: DragEndEvent) {
+  function handleDragEnd(event: DragEndEvent) {
     if (event.canceled) return
+
     const taskId = event.operation.source?.id as string | undefined
     const targetId = event.operation.target?.id as string | undefined
+
     if (!taskId || !targetId) return
+
     const newStatusId = targetId === 'unassigned' ? null : targetId
     const previousTasks = localTasks
 
-    // optimistic UI
-    setLocalTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === taskId
-          ? task.status_id !== newStatusId
-            ? { ...task, status_id: newStatusId }
-            : task
-          : task,
-      ),
-    )
+    requestAnimationFrame(() => {
+      setLocalTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task.id === taskId ? { ...task, status_id: newStatusId } : task,
+        ),
+      )
+    })
 
-    try {
-      console.log({ taskId, newStatusId })
-      await changeTaskStatus(taskId, newStatusId)
-    } catch (error) {
-      // Rollback if database update fails
+    void changeTaskStatus(taskId, newStatusId).catch((error) => {
+      console.error(error)
       setLocalTasks(previousTasks)
-      console.log(error)
-    }
+    })
   }
 
   return (
-    <DragDropProvider onDragEnd={(event) => handleDragEnd(event)}>
+    <DragDropProvider onDragEnd={handleDragEnd}>
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-4">
         <BoardColumn
           statusId={null}
           title="Unassigned"
-          tasks={tasks}
+          tasks={localTasks}
           lists={lists}
           currentListId={currentListId}
         />
@@ -69,7 +64,7 @@ export default function TaskBoard({
             statusId={status.id}
             key={status.id}
             title={status.title}
-            tasks={tasks}
+            tasks={localTasks}
             lists={lists}
             currentListId={currentListId}
           />

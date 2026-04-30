@@ -1,5 +1,5 @@
 import { SidebarMenuButton } from '@/components/ui/sidebar'
-import { MoreHorizontal, Plus } from 'lucide-react'
+import { Circle, Icon, MoreHorizontal, Plus } from 'lucide-react'
 import Link from 'next/link'
 import {
   DropdownMenu,
@@ -32,8 +32,10 @@ export function NavLists({ lists }: { lists: List[] }) {
               >
                 <Link
                   href={`/lists/${list.id}?view=${list.default_view ?? 'list'}`}
+                  prefetch
                 >
-                  <span className="text-base truncate">{list.title}</span>
+                  <Circle />
+                  <span className="truncate">{list.title}</span>
                 </Link>
               </SidebarMenuButton>
 

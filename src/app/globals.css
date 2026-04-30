@@ -6,8 +6,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sm-dans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-dm-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -90,11 +91,11 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --kanban-board-circle-blue: oklch(0.6232 0.1879 259.80);
+  --kanban-board-circle-blue: oklch(0.6232 0.1879 259.8);
   --kanban-board-circle-cyan: oklch(0.7146 0.1256 215.13);
   --kanban-board-circle-gray: oklch(0.5513 0.0233 264.36);
   --kanban-board-circle-green: oklch(0.7229 0.1921 149.58);
-  --kanban-board-circle-indigo: oklch(0.5860 0.2037 277.12);
+  --kanban-board-circle-indigo: oklch(0.586 0.2037 277.12);
   --kanban-board-circle-pink: oklch(0.6559 0.2117 354.34);
   --kanban-board-circle-purple: oklch(0.6267 0.2325 303.86);
   --kanban-board-circle-red: oklch(0.6368 0.2078 25.33);
@@ -137,13 +138,13 @@
   --kanban-board-circle-blue: oklch(0.7135 0.1435 254.61);
   --kanban-board-circle-cyan: oklch(0.7973 0.1339 211.45);
   --kanban-board-circle-gray: oklch(0.7137 0.0192 261.33);
-  --kanban-board-circle-green: oklch(0.8003 0.1823 151.70);
+  --kanban-board-circle-green: oklch(0.8003 0.1823 151.7);
   --kanban-board-circle-indigo: oklch(0.6797 0.1586 276.96);
   --kanban-board-circle-pink: oklch(0.7253 0.1752 349.74);
   --kanban-board-circle-purple: oklch(0.7218 0.1766 305.51);
-  --kanban-board-circle-red: oklch(0.7108 0.1660 22.21);
+  --kanban-board-circle-red: oklch(0.7108 0.166 22.21);
   --kanban-board-circle-violet: oklch(0.7093 0.1589 293.52);
-  --kanban-board-circle-yellow: oklch(0.8601 0.1730 91.84);
+  --kanban-board-circle-yellow: oklch(0.8601 0.173 91.84);
 }
 
 @layer base {

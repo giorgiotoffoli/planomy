@@ -1,29 +1,47 @@
-import CreateTaskButton from '../tasks/create-task/CreateTaskButton'
-import CreateTaskDialog from '../tasks/create-task/CreateTaskDialog'
 import { TaskItem } from '../tasks/task-item/TaskItem'
 import { List, TaskWithList } from '../../types'
 
 interface TaskListProps {
-  tasks: TaskWithList[]
+  localTasks: TaskWithList[]
   lists: List[]
   currentListId?: string
+  handleOnComplete: (taskId: string, isCompleted: boolean) => void
+  handleOnRename: (taskId: string, newName: string) => void
+  handleOnNotesChange: (taskId: string, notes: string) => void
+  handleOnDueDateChange: (taskId: string, newDueDate: string) => void
+  handleOnDelete: (taskId: string) => void
+  pathName: string
 }
 
-export function TaskList({ tasks, lists, currentListId }: TaskListProps) {
+export default function TaskList({
+  localTasks,
+  lists,
+  currentListId,
+  handleOnComplete,
+  handleOnRename,
+  handleOnDueDateChange,
+  handleOnNotesChange,
+  handleOnDelete,
+  pathName,
+}: TaskListProps) {
+  const shouldHideCompleted = pathName !== '/completed'
   return (
     <>
       <div className="flex flex-col h-full sm:w-full">
-        <CreateTaskDialog>
-          <CreateTaskButton />
-        </CreateTaskDialog>
         <div className="flex-1 overflow-y-auto scroll-smooth pb-16">
           <ul>
-            {tasks?.map((task) => (
+            {localTasks.map((task) => (
               <TaskItem
                 key={task.id}
                 task={task}
                 lists={lists}
                 currentListId={currentListId}
+                handleOnComplete={handleOnComplete}
+                handleOnRename={handleOnRename}
+                handleOnDueDateChange={handleOnDueDateChange}
+                handleOnNotesChange={handleOnNotesChange}
+                handleOnDelete={handleOnDelete}
+                shouldHideCompleted={shouldHideCompleted}
               />
             ))}
           </ul>
@@ -32,5 +50,3 @@ export function TaskList({ tasks, lists, currentListId }: TaskListProps) {
     </>
   )
 }
-
-export default TaskList

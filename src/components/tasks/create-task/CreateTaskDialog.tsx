@@ -10,27 +10,44 @@ import {
 import { Button } from '@/components/ui/button'
 import { ReactNode, useState } from 'react'
 import CreateTaskForm from './CreateTaskForm'
-import { createTask } from '@/components/tasks/actions'
 import { usePathname } from 'next/navigation'
+
+interface CreateTaskDialogProps {
+  children: ReactNode
+  handleOnCreate: (
+    title: string,
+    dueDate: string,
+    notes: string,
+    listId: string,
+  ) => void
+}
 
 export default function CreateTaskDialog({
   children,
-}: {
-  children: ReactNode
-}) {
+  handleOnCreate,
+}: CreateTaskDialogProps) {
   const [open, setOpen] = useState(false)
   const pathName = usePathname()
-
-  async function handleSubmit(formData: FormData) {
-    await createTask(formData, pathName)
-    setOpen(false)
-  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-sm">
-        <form action={handleSubmit}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+
+            const formData = new FormData(e.currentTarget)
+
+            const title = formData.get('title') as string
+            const dueDate = formData.get('due_date') as string
+            const notes = formData.get('notes') as string
+            const listId = formData.get('listId') as string
+
+            handleOnCreate(title, dueDate, notes, listId)
+            setOpen(false)
+          }}
+        >
           {/* Task form */}
           <CreateTaskForm />
           <br />

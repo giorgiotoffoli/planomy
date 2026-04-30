@@ -1,10 +1,10 @@
 export interface Task {
   user_id: string
   id: string
-  list_id?: string
+  list_id?: string | null
   title: string
   completed: boolean
-  due_date?: string
+  due_date: string | null
   notes?: string
   status_id?: string | null
 }

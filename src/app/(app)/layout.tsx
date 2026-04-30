@@ -1,6 +1,5 @@
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar/AppSidebar'
-import Header from '@/components/layout/header/Header'
 
 export default function AppLayout({
   children,

@@ -51,9 +51,9 @@ export default function NavMain() {
       {tabs.map((tab) => (
         <SidebarMenuItem key={tab.title}>
           <SidebarMenuButton asChild isActive={pathname === tab.link}>
-            <Link href={tab.link}>
+            <Link href={tab.link} prefetch>
               {tab.icon}
-              <span className="text-base">{tab.title}</span>
+              <span>{tab.title}</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>

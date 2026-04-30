@@ -1,11 +1,23 @@
 'use client'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
-import { deleteTask } from '../../actions'
 import { Trash } from 'lucide-react'
 
-export function TaskDeleteButton({ taskId }: { taskId: string }) {
+interface TaskDeleteButtonProps {
+  taskId: string
+  handleOnDelete: (taskId: string) => void
+}
+
+export function TaskDeleteButton({
+  taskId,
+  handleOnDelete,
+}: TaskDeleteButtonProps) {
   return (
-    <DropdownMenuItem variant="destructive" onSelect={() => deleteTask(taskId)}>
+    <DropdownMenuItem
+      variant="destructive"
+      onSelect={() => {
+        handleOnDelete(taskId)
+      }}
+    >
       <Trash />
       Delete
     </DropdownMenuItem>

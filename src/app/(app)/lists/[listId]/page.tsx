@@ -1,10 +1,7 @@
 import { getList, getListTasks, getUserLists } from '@/components/lists/queries'
-import TaskList from '@/components/lists/TaskList'
-import { Suspense } from 'react'
 import Header from '@/components/layout/header/Header'
-import ListBoardToggle from '@/components/layout/ListBoardToggle'
-import TaskBoard from '@/components/boards/TaskBoard'
 import getStatuses from '@/components/boards/queries'
+import TaskViewSwitcher from '@/components/layout/TaskClient'
 
 interface ListPageProps {
   params: Promise<{ listId: string }>
@@ -28,23 +25,16 @@ export default async function ListPage({
   return (
     <>
       <Header taskCount={tasks.length} headerTitle={currentList.title} />
-      <ListBoardToggle listId={listId} currentView={currentView} />
-
       {tasks.length === 0 ? (
         <p>This list is empty. Click '+' to add your first task.</p>
       ) : (
-        <Suspense fallback={<h1>Loading tasks...</h1>}>
-          {currentView === 'list' ? (
-            <TaskList tasks={tasks} lists={lists} currentListId={listId} />
-          ) : (
-            <TaskBoard
-              tasks={tasks}
-              statuses={statuses}
-              lists={lists}
-              currentListId={listId}
-            />
-          )}
-        </Suspense>
+        <TaskViewSwitcher
+          tasks={tasks}
+          currentView={currentView}
+          listId={listId}
+          lists={lists}
+          statuses={statuses}
+        />
       )}
     </>
   )

@@ -1,3 +1,4 @@
+'use client'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,53 +8,72 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { List, Task } from '@/types'
-import { ReactNode } from 'react'
+import { List, Task, TaskWithList } from '@/types'
+import { ReactNode, useState } from 'react'
 import { TaskEditDialog } from './TaskEditDialog'
 import { Edit, ListEnd } from 'lucide-react'
 import { TaskEditMoveList } from './TaskEditMoveList'
 import { TaskDeleteButton } from './TaskDeleteButton'
+import { DialogTrigger } from '@radix-ui/react-dialog'
+
+interface TaskEditDropdownProps {
+  task: TaskWithList
+  lists: List[]
+  currentListId?: string
+  children: ReactNode
+  handleOnDueDateChange: (taskId: string, newDueDate: string) => void
+  handleOnNotesChange: (taskId: string, notes: string) => void
+  handleOnDelete: (taskId: string) => void
+}
 
 export function TaskEditDropdown({
   task,
   lists,
   currentListId,
   children,
-}: {
-  task: Task
-  lists: List[]
-  currentListId?: string
-  children: ReactNode
-}) {
+  handleOnDueDateChange,
+  handleOnNotesChange,
+  handleOnDelete,
+}: TaskEditDropdownProps) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+    <>
+      <TaskEditDialog
+        task={task}
+        handleOnDueDateChange={handleOnDueDateChange}
+        handleOnNotesChange={handleOnNotesChange}
+      >
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DialogTrigger asChild>
+              <DropdownMenuItem>
+                <Edit />
+                Edit
+              </DropdownMenuItem>
+            </DialogTrigger>
 
-      <DropdownMenuContent>
-        <TaskEditDialog task={task}>
-          <DropdownMenuItem>
-            <Edit />
-            Edit
-          </DropdownMenuItem>
-        </TaskEditDialog>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <ListEnd />
+                Move
+              </DropdownMenuSubTrigger>
 
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            <ListEnd />
-            Move
-          </DropdownMenuSubTrigger>
+              <TaskEditMoveList
+                taskId={task.id}
+                lists={lists}
+                currentListId={currentListId}
+              />
+            </DropdownMenuSub>
 
-          <TaskEditMoveList
-            taskId={task.id}
-            lists={lists}
-            currentListId={currentListId}
-          />
-        </DropdownMenuSub>
+            <DropdownMenuSeparator />
 
-        <DropdownMenuSeparator />
-
-        <TaskDeleteButton taskId={task.id} />
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <TaskDeleteButton
+              taskId={task.id}
+              handleOnDelete={handleOnDelete}
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TaskEditDialog>
+    </>
   )
 }

@@ -10,8 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
-import { Plus, Pyramid } from 'lucide-react'
-import CreateTaskDialog from '../../tasks/create-task/CreateTaskDialog'
+import { Layers2 } from 'lucide-react'
 import NavMain from './NavMain'
 import { ProfileButton } from './ProfileButton'
 import ListGroup from './ListGroup'
@@ -21,15 +20,15 @@ export async function AppSidebar() {
   const lists = await getUserLists()
 
   return (
-    <Sidebar variant="floating" collapsible="icon">
+    <Sidebar variant="floating" collapsible="icon" className="font-medium">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton>
-              <Pyramid />
-              <span className="text-2xl font-semibold font-stretch-155%">
-                Planomy
-              </span>
+            <SidebarMenuButton className="[&>svg]:size-5 ">
+              <Layers2 className="rotate-240" />
+              <h2 className="font-heading text-2xl font-semibold tracking-tight">
+                planomy
+              </h2>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -38,14 +37,11 @@ export async function AppSidebar() {
       <SidebarContent>
         {/* Tasks */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sm">Tasks</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-xs tracking-wide">
+            Tasks
+          </SidebarGroupLabel>
           <SidebarGroupAction>
-            <CreateTaskDialog>
-              <Plus />
-            </CreateTaskDialog>
-            <span className="sr-only">
-              <CreateTaskDialog>Add Task</CreateTaskDialog>
-            </span>
+            <span className="sr-only"></span>
           </SidebarGroupAction>
           <NavMain />
         </SidebarGroup>

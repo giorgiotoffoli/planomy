@@ -1,8 +1,7 @@
-import TaskList from '@/components/lists/TaskList'
 import { getTasks } from '../../../components/tasks/queries'
-import { Suspense } from 'react'
 import Header from '@/components/layout/header/Header'
 import { getUserLists } from '@/components/lists/queries'
+import TaskClient from '@/components/layout/TaskClient'
 
 export default async function InboxPage() {
   const tasks = await getTasks('scheduled')
@@ -11,13 +10,7 @@ export default async function InboxPage() {
   return (
     <>
       <Header taskCount={tasks.length} headerTitle="Scheduled" />
-      {tasks.length === 0 ? (
-        <p>There are no upcoming tasks.</p>
-      ) : (
-        <Suspense fallback={<h1>Loading tasks...</h1>}>
-          <TaskList tasks={tasks} lists={lists} />
-        </Suspense>
-      )}
+      <TaskClient tasks={tasks} lists={lists} listId="" currentView="list" />
     </>
   )
 }

@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { format } from 'date-fns'
 import { FieldLabel } from '../ui/field'
 
-export function TaskDatePicker({ taskDate }: { taskDate: string | undefined }) {
+export function TaskDatePicker({ taskDate }: { taskDate: string | null }) {
   const taskDueDate = taskDate ? new Date(taskDate + 'T00:00:00') : undefined
   const [date, setDate] = useState<Date | undefined>(taskDueDate)
   return (

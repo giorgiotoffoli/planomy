@@ -1,8 +1,7 @@
-import TaskList from '@/components/lists/TaskList'
 import { getTasks } from '../../../components/tasks/queries'
-import { Suspense } from 'react'
 import { getUserLists } from '@/components/lists/queries'
 import Header from '@/components/layout/header/Header'
+import TaskClient from '@/components/layout/TaskClient'
 
 export default async function AllPage() {
   const tasks = await getTasks('all')
@@ -11,13 +10,7 @@ export default async function AllPage() {
   return (
     <>
       <Header taskCount={tasks.length} headerTitle="All" />
-      {tasks.length === 0 ? (
-        <p>All your tasks will be displayed here.</p>
-      ) : (
-        <Suspense fallback={<h1>Loading tasks...</h1>}>
-          <TaskList tasks={tasks} lists={lists} />
-        </Suspense>
-      )}
+      <TaskClient tasks={tasks} lists={lists} currentView="list" />
     </>
   )
 }

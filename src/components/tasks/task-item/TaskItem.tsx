@@ -1,68 +1,65 @@
-import Link from 'next/link'
-import { List, Task, TaskWithList } from '../../../types'
-import { TaskEditButton } from './task-edit/TaskEditButton'
+'use client'
+import { List, TaskWithList } from '../../../types'
 import { TaskEditDropdown } from './task-edit/TaskEditDropdown'
 import { TaskCheckbox } from './TaskCheckbox'
 import { TaskTitle } from './TaskTitle'
-import { format, isBefore } from 'date-fns'
+import TaskDetail from './TaskDetails'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { useParams } from 'next/navigation'
 
 interface TaskItemProps {
   task: TaskWithList
   lists: List[]
   currentListId?: string
+  handleOnComplete: (taskId: string, isCompleted: boolean) => void
+  handleOnRename: (taskId: string, newName: string) => void
+  handleOnDueDateChange: (taskId: string, newDueDate: string) => void
+  handleOnNotesChange: (taskId: string, notes: string) => void
+  handleOnDelete: (taskId: string) => void
+  shouldHideCompleted: boolean
 }
 
-export function TaskItem({ task, lists, currentListId }: TaskItemProps) {
-  const today = format(new Date(), 'yyyy-MM-dd')
+export function TaskItem({
+  task,
+  lists,
+  currentListId,
+  handleOnComplete,
+  handleOnRename,
+  handleOnDueDateChange,
+  handleOnNotesChange,
+  handleOnDelete,
+  shouldHideCompleted,
+}: TaskItemProps) {
+  const isCompletedPage = useParams()
   return (
     <li
-      className="flex justify-between items-center group 
-               transition-all duration-200 
-               rounded-md p-2 hover:bg-gray-300"
+      className={cn(
+        'flex justify-between items-center group transition-all duration-200 rounded-md p-2 hover:bg-gray-300',
+        task.completed &&
+          shouldHideCompleted &&
+          'opacity-0 scale-95 line-through',
+      )}
     >
       <div className="flex flex-col w-full">
         <div className="flex items-center ">
-          <TaskCheckbox task={task} />
-          <TaskTitle task={task} />
+          <TaskCheckbox task={task} handleOnComplete={handleOnComplete} />
+          <TaskTitle task={task} handleOnRename={handleOnRename} />
         </div>
-        <span className="text-xs text-gray-600 block">
-          {/* Date */}
-          {task.due_date === today ? (
-            <span>Today</span>
-          ) : task.due_date && isBefore(task.due_date, today) ? (
-            <span className="text-rose-500">
-              {task.due_date && `${format(task.due_date, 'M/dd/yyyy')}`}
-            </span>
-          ) : (
-            <span>
-              {task.due_date && `${format(task.due_date, 'M/dd/yyyy')}`}
-            </span>
-          )}
-          {task.due_date && <br />}
-          {/* Notes */}
-          <span>{task.notes && `${task.notes}`}</span>
-          {task.notes && <br />}
-          {/* Parent List */}
-          <span className="font-bold cursor-pointer hover:text-blue-500">
-            {task.list?.id && currentListId === task.list?.id ? (
-              ''
-            ) : currentListId === 'Inbox' ? (
-              ''
-            ) : task.list?.title ? (
-              <Link href={'/lists/' + task.list.id}>{task.list.title}</Link>
-            ) : (
-              <Link href={'/inbox'}>Inbox</Link>
-            )}
-          </span>
-        </span>
+        <TaskDetail task={task} currentListId={currentListId} lists={lists} />
       </div>
       <div>
         <TaskEditDropdown
           task={task}
           lists={lists}
           currentListId={currentListId}
+          handleOnDueDateChange={handleOnDueDateChange}
+          handleOnNotesChange={handleOnNotesChange}
+          handleOnDelete={handleOnDelete}
         >
-          <TaskEditButton />
+          <Button variant="ghost" className="cursor-pointer">
+            ⋯
+          </Button>
         </TaskEditDropdown>
       </div>
     </li>

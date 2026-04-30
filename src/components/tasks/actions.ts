@@ -4,24 +4,26 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 
 // Creates new task to the database
-export async function createTask(formData: FormData, pathName?: string) {
+export async function createTask(
+  title: string,
+  dueDate: string,
+  notes: string,
+  listId: string,
+  pathName?: string,
+) {
   const supabase = await createClient()
 
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const title = formData.get('title') as string
-  const dueDate = formData.get('due_date') as string
-  // Checks if '/today' is current path, so when you make a task there it automatically is due today
+  // Checks if '/today' is current patseh, so when you make a task there it automatically is due today
   let due_date
   if (pathName === '/today') {
     due_date = dueDate ? new Date(dueDate) : new Date()
   } else {
     due_date = new Date(dueDate)
   }
-  const notes = formData.get('notes') as string
-  const list_id = formData.get('list_id') as string
 
   if (!title) return
 
@@ -33,69 +35,78 @@ export async function createTask(formData: FormData, pathName?: string) {
     notes,
   }
 
-  if (list_id) {
-    task.list_id = list_id
+  if (listId) {
+    task.list_id = listId
   }
 
-  const { error } = await supabase.from('tasks').insert([task])
+  const { data, error } = await supabase
+    .from('tasks')
+    .insert([task])
+    .select('*, list:lists(id, title)')
+    .single()
 
   if (error) {
     throw new Error(error.message)
   }
 
   revalidatePath('/')
+
+  return data
 }
 
 // Toggles tasks as complete or incomplete in the database
-export async function toggleTaskComplete(id: string, completed: boolean) {
+export async function updateTaskCompleted(id: string, isCompleted: boolean) {
   const supabase = await createClient()
 
   const { error } = await supabase
     .from('tasks')
-    .update({ completed: !completed })
+    .update({ completed: isCompleted })
     .eq('id', id)
 
   if (error) {
     throw new Error(error.message)
   }
-
-  revalidatePath('/')
 }
 
-export async function renameTask(formData: FormData) {
+export async function renameTask(taskId: string, title: string) {
   const supabase = await createClient()
-
-  const newTitle = formData.get('newTitle') as string
-  const title = newTitle.trim()
-  const id = formData.get('id') as string
-
-  const { error } = await supabase.from('tasks').update({ title }).eq('id', id)
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  revalidatePath('/')
-}
-
-export async function updateTask(formData: FormData) {
-  const supabase = await createClient()
-
-  const id = formData.get('id') as string
-  const notes = formData.get('notes') as string
-  const dueDate = formData.get('due_date') as string
-  const due_date = new Date(dueDate)
 
   const { error } = await supabase
     .from('tasks')
-    .update({ due_date, notes })
-    .eq('id', id)
+    .update({ title })
+    .eq('id', taskId)
 
   if (error) {
     throw new Error(error.message)
   }
+}
 
-  revalidatePath('/')
+export async function updateTaskDueDate(taskId: string, newDueDate: string) {
+  const supabase = await createClient()
+
+  const due_date = new Date(newDueDate)
+
+  const { error } = await supabase
+    .from('tasks')
+    .update({ due_date })
+    .eq('id', taskId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+export async function updateTaskNotes(taskId: string, notes: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('tasks')
+    .update({ notes })
+    .eq('id', taskId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
 }
 
 export async function deleteTask(id: string) {
@@ -139,6 +150,4 @@ export async function changeTaskStatus(
   if (error) {
     throw new Error(error.message)
   }
-
-  revalidatePath('/')
 }
