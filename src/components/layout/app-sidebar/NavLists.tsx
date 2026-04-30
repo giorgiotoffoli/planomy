@@ -1,5 +1,5 @@
 import { SidebarMenuButton } from '@/components/ui/sidebar'
-import { Circle, Icon, MoreHorizontal, Plus } from 'lucide-react'
+import { Circle, CirclePlus, MoreHorizontal } from 'lucide-react'
 import Link from 'next/link'
 import {
   DropdownMenu,
@@ -16,44 +16,46 @@ export function NavLists({ lists }: { lists: List[] }) {
   return (
     <>
       <CreateListDialog>
-        <SidebarMenuButton className="text-sm transition-colors hover:bg-muted hover:text-foreground">
-          <Plus />
-          <span>New List</span>
+        <SidebarMenuButton
+          asChild
+          className="group-hover/list:text-black hover:bg-muted cursor-pointer hover:text-sidebar-accent-foreground"
+        >
+          <button>
+            <CirclePlus />
+            <span>New list</span>
+          </button>
         </SidebarMenuButton>
       </CreateListDialog>
 
       {lists.map((list) => {
         return (
-          <DropdownMenu key={list.id}>
-            <div className="flex items-center hover:bg-muted rounded-md group/list">
-              <SidebarMenuButton
-                asChild
-                className="group-hover/list:text-black hover:bg-transparent"
+          <div
+            className="flex items-center hover:bg-muted rounded-md group/list"
+            key={list.id}
+          >
+            <SidebarMenuButton asChild className="group-hover/list:text-black ">
+              <Link
+                href={`/lists/${list.id}?view=${list.default_view ?? 'list'}`}
+                prefetch
               >
-                <Link
-                  href={`/lists/${list.id}?view=${list.default_view ?? 'list'}`}
-                  prefetch
-                >
-                  <Circle />
-                  <span className="truncate">{list.title}</span>
-                </Link>
-              </SidebarMenuButton>
+                <Circle />
+                <span className="truncate">{list.title}</span>
+              </Link>
+            </SidebarMenuButton>
 
+            <DropdownMenu key={list.id}>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant={null}
-                  className="hover:cursor-pointer group-hover/list:text-black "
-                >
+                <button className="hover:cursor-pointer group-hover/list:text-black pr-2">
                   <MoreHorizontal className="h-4 w-4" />
-                </Button>
+                </button>
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="start">
                 <RenameListButton list={list} />
                 <DeleteListButton list={list} />
               </DropdownMenuContent>
-            </div>
-          </DropdownMenu>
+            </DropdownMenu>
+          </div>
         )
       })}
     </>

@@ -174,6 +174,9 @@ export default function TaskClient({
       {localTasks.length === 0 && pathName === '/completed' && (
         <p>No completed tasks yet. Go plan something awesome.</p>
       )}
+      {localTasks.length === 0 && pathName.includes('/lists/') && (
+        <p>This list is empty. Add a task to stay organized.</p>
+      )}
 
       {listId && (
         <ListBoardToggle

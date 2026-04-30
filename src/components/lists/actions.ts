@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 
 export async function createList(formData: FormData) {
   const supabase = await createClient()
@@ -33,15 +34,6 @@ export async function deleteList(formData: FormData) {
 
   const list_id = formData.get('list_id')
 
-  const { error: taskError } = await supabase
-    .from('tasks')
-    .delete()
-    .eq('list_id', list_id)
-
-  if (taskError) {
-    throw new Error(taskError.message)
-  }
-
   const { error: listError } = await supabase
     .from('lists')
     .delete()
@@ -52,6 +44,7 @@ export async function deleteList(formData: FormData) {
   }
 
   revalidatePath('/')
+  redirect('/inbox')
 }
 
 export async function renameList(formData: FormData) {

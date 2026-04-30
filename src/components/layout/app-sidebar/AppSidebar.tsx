@@ -10,7 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
-import { Layers2 } from 'lucide-react'
+import { Layers2, Plus } from 'lucide-react'
 import NavMain from './NavMain'
 import { ProfileButton } from './ProfileButton'
 import ListGroup from './ListGroup'
@@ -40,9 +40,6 @@ export async function AppSidebar() {
           <SidebarGroupLabel className="text-xs tracking-wide">
             Tasks
           </SidebarGroupLabel>
-          <SidebarGroupAction>
-            <span className="sr-only"></span>
-          </SidebarGroupAction>
           <NavMain />
         </SidebarGroup>
         {/* Lists */}
