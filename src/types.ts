@@ -4,7 +4,7 @@ export interface Task {
   list_id?: string | null
   title: string
   completed: boolean
-  due_date?: string | null
+  due_date: string | null
   notes?: string
   status_id?: string | null
 }

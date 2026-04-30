@@ -9,7 +9,6 @@ export default async function CompletedPage() {
   return (
     <>
       <Header taskCount={tasks.length} headerTitle="Completed" />
-      {tasks.length === 0 && <p>Completed tasks will appear here.</p>}
       <TaskClient tasks={tasks} lists={lists} currentView="list" />
     </>
   )

@@ -15,6 +15,7 @@ import {
 } from '../tasks/actions'
 import CreateTaskButton from '../tasks/create-task/CreateTaskButton'
 import { Skeleton } from '../ui/skeleton'
+import { usePathname } from 'next/navigation'
 
 interface TaskClientProps {
   tasks: TaskWithList[]
@@ -152,11 +153,28 @@ export default function TaskClient({
     })
   }
 
+  const pathName = usePathname()
+
   return (
     <>
-      {localTasks.length === 0 && (
+      {localTasks.length === 0 && pathName === '/inbox' && (
         <p>Nothing in your inbox. Capture a task or enjoy the silence.</p>
       )}
+
+      {localTasks.length === 0 && pathName === '/today' && (
+        <p>Nothing due today. Take it easy.</p>
+      )}
+
+      {localTasks.length === 0 && pathName === '/scheduled' && (
+        <p>No upcoming tasks. Future you is chilling. .</p>
+      )}
+      {localTasks.length === 0 && pathName === '/all' && (
+        <p>No tasks yet. Every good plan starts with one.</p>
+      )}
+      {localTasks.length === 0 && pathName === '/completed' && (
+        <p>No completed tasks yet. Go plan something awesome.</p>
+      )}
+
       {listId && (
         <ListBoardToggle
           listId={listId!}
@@ -190,6 +208,7 @@ export default function TaskClient({
             handleOnDueDateChange={handleOnDueDateChange}
             handleOnNotesChange={handleOnNotesChange}
             handleOnDelete={handleOnDelete}
+            pathName={pathName}
           />
         ) : (
           <TaskBoard

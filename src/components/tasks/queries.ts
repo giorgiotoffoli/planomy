@@ -6,6 +6,16 @@ import { redirect } from 'next/navigation'
 export async function getTasks(
   view: 'inbox' | 'today' | 'scheduled' | 'all' | 'completed',
 ) {
+  function getTodayDateString() {
+    const today = new Date()
+
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+
+    return `${year}-${month}-${day}`
+  }
+
   const supabase = await createClient()
 
   const {
@@ -27,8 +37,8 @@ export async function getTasks(
       break
 
     case 'today':
-      const today = new Date().toISOString().split('T')[0]
-      query = query.eq('due_date', today).is('completed', false)
+      const today = getTodayDateString()
+      query = query.eq('due_date', today).eq('completed', false)
       break
 
     case 'scheduled':

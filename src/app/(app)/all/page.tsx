@@ -10,7 +10,6 @@ export default async function AllPage() {
   return (
     <>
       <Header taskCount={tasks.length} headerTitle="All" />
-      {tasks.length === 0 && <p>All your tasks will be displayed here.</p>}
       <TaskClient tasks={tasks} lists={lists} currentView="list" />
     </>
   )

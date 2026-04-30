@@ -8,43 +8,101 @@ interface TaskDetailProps {
   lists: List[]
 }
 
+function dateStringToLocalDate(dateString: string) {
+  const [year, month, day] = dateString.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function getDateString(offset = 0) {
+  const date = new Date()
+  date.setDate(date.getDate() + offset)
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+function getDueDateLabel(dueDate: string | null) {
+  if (!dueDate) return null
+
+  const today = getDateString(0)
+  const tomorrow = getDateString(1)
+  const yesterday = getDateString(-1)
+
+  if (dueDate === today) {
+    return {
+      label: 'Today',
+      isOverdue: false,
+    }
+  }
+
+  if (dueDate === tomorrow) {
+    return {
+      label: 'Tomorrow',
+      isOverdue: false,
+    }
+  }
+
+  if (dueDate === yesterday) {
+    return {
+      label: 'Yesterday',
+      isOverdue: true,
+    }
+  }
+
+  const dueDateObject = dateStringToLocalDate(dueDate)
+  const todayObject = dateStringToLocalDate(today)
+
+  return {
+    label: format(dueDateObject, 'M/dd/yyyy'),
+    isOverdue: isBefore(dueDateObject, todayObject),
+  }
+}
+
 export default function TaskDetail({
   task,
   currentListId,
   lists,
 }: TaskDetailProps) {
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const dueDateInfo = getDueDateLabel(task.due_date)
+
   const parentList = lists.find((list) => list.id === task.list_id)
   const listDefaultView = parentList?.default_view ?? 'list'
+
+  const shouldShowParentList =
+    currentListId !== task.list_id && currentListId !== 'Inbox'
+
   return (
     <span className="text-xs text-gray-600 block">
       {/* Date */}
-      {task.due_date === today ? (
-        <span>Today</span>
-      ) : task.due_date && isBefore(task.due_date, today) ? (
-        <span className="text-rose-500">
-          {task.due_date && `${format(task.due_date, 'M/dd/yyyy')}`}
-        </span>
-      ) : (
-        <span>{task.due_date && `${format(task.due_date, 'M/dd/yyyy')}`}</span>
+      {dueDateInfo && (
+        <>
+          <span className={dueDateInfo.isOverdue ? 'text-rose-500' : ''}>
+            {dueDateInfo.label}
+          </span>
+          <br />
+        </>
       )}
-      {task.due_date && <br />}
+
       {/* Notes */}
-      <span>{task.notes && `${task.notes}`}</span>
-      {task.notes && <br />}
+      {task.notes && (
+        <>
+          <span>{task.notes}</span>
+          <br />
+        </>
+      )}
+
       {/* Parent List */}
       <span className="font-bold cursor-pointer hover:text-blue-500">
-        {task.list?.id && currentListId === task.list?.id ? (
-          ''
-        ) : currentListId === 'Inbox' ? (
-          ''
-        ) : task.list?.title ? (
-          <Link href={`/lists/${task.list.id}?view=${listDefaultView}`}>
-            {task.list.title}
+        {shouldShowParentList && task.list_id && parentList ? (
+          <Link href={`/lists/${task.list_id}?view=${listDefaultView}`}>
+            {parentList.title}
           </Link>
-        ) : (
-          <Link href={'/inbox'}>Inbox</Link>
-        )}
+        ) : shouldShowParentList && !task.list_id ? (
+          <Link href="/inbox">Inbox</Link>
+        ) : null}
       </span>
     </span>
   )
