@@ -32,6 +32,7 @@ export function NavLists({ lists }: { lists: List[] }) {
               >
                 <Link
                   href={`/lists/${list.id}?view=${list.default_view ?? 'list'}`}
+                  prefetch
                 >
                   <Circle />
                   <span className="truncate">{list.title}</span>
