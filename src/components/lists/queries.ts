@@ -36,7 +36,7 @@ export async function getList(listId: string) {
     .select('*')
     .eq('user_id', user!.id)
     .eq('id', listId)
-    .single() // .single() returns the object insetad of array
+    .single()
 
   if (error) {
     throw new Error(error.message)
