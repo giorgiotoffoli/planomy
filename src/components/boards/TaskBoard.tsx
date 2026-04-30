@@ -51,25 +51,37 @@ export default function TaskBoard({
 
   return (
     <DragDropProvider onDragEnd={handleDragEnd}>
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-4">
-        <BoardColumn
-          statusId={null}
-          title="Unassigned"
-          tasks={localTasks}
-          lists={lists}
-          currentListId={currentListId}
-        />
-        {sortedStatuses.map((status) => (
-          <BoardColumn
-            statusId={status.id}
-            key={status.id}
-            title={status.title}
-            tasks={localTasks}
-            lists={lists}
-            currentListId={currentListId}
-          />
-        ))}
-      </div>
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background">
+        <div className="border-b px-4 py-3">
+          <h2 className="text-sm font-medium text-muted-foreground">Board</h2>
+        </div>
+
+        <div className="min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
+          <div className="flex h-full w-max gap-4 p-4">
+            <div className="h-full w-80 shrink-0">
+              <BoardColumn
+                statusId={null}
+                title="Unassigned"
+                tasks={localTasks}
+                lists={lists}
+                currentListId={currentListId}
+              />
+            </div>
+
+            {sortedStatuses.map((status) => (
+              <div key={status.id} className="h-full w-80 shrink-0">
+                <BoardColumn
+                  statusId={status.id}
+                  title={status.title}
+                  tasks={localTasks}
+                  lists={lists}
+                  currentListId={currentListId}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
     </DragDropProvider>
   )
 }
