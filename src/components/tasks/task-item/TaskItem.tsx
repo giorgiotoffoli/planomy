@@ -46,7 +46,7 @@ export function TaskItem({
           <TaskCheckbox task={task} handleOnComplete={handleOnComplete} />
           <TaskTitle task={task} handleOnRename={handleOnRename} />
         </div>
-        <TaskDetail task={task} currentListId={currentListId} />
+        <TaskDetail task={task} currentListId={currentListId} lists={lists} />
       </div>
       <div>
         <TaskEditDropdown

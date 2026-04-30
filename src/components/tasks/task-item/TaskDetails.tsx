@@ -1,15 +1,21 @@
-import { TaskWithList } from '@/types'
+import { List, TaskWithList } from '@/types'
 import { format, isBefore } from 'date-fns'
 import Link from 'next/link'
 
 interface TaskDetailProps {
   task: TaskWithList
   currentListId: string | undefined
+  lists: List[]
 }
 
-export default function TaskDetail({ task, currentListId }: TaskDetailProps) {
+export default function TaskDetail({
+  task,
+  currentListId,
+  lists,
+}: TaskDetailProps) {
   const today = format(new Date(), 'yyyy-MM-dd')
-
+  const parentList = lists.find((list) => list.id === task.list_id)
+  const listDefaultView = parentList?.default_view ?? 'list'
   return (
     <span className="text-xs text-gray-600 block">
       {/* Date */}
@@ -33,7 +39,7 @@ export default function TaskDetail({ task, currentListId }: TaskDetailProps) {
         ) : currentListId === 'Inbox' ? (
           ''
         ) : task.list?.title ? (
-          <Link href={`'/lists/'${task.list.id}/view?=list`}>
+          <Link href={`/lists/${task.list.id}?view=${listDefaultView}`}>
             {task.list.title}
           </Link>
         ) : (
