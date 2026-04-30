@@ -19,7 +19,7 @@ import { DialogTrigger } from '@radix-ui/react-dialog'
 interface TaskEditDropdownProps {
   task: TaskWithList
   lists: List[]
-  currentListId?: string
+  currentListId: string | null
   children: ReactNode
   handleOnDueDateChange: (taskId: string, newDueDate: string) => void
   handleOnNotesChange: (taskId: string, notes: string) => void

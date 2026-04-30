@@ -4,8 +4,9 @@ import Link from 'next/link'
 
 interface TaskDetailProps {
   task: TaskWithList
-  currentListId: string | undefined
+  currentListId: string | null
   lists: List[]
+  isInbox: boolean
 }
 
 function dateStringToLocalDate(dateString: string) {
@@ -65,14 +66,14 @@ export default function TaskDetail({
   task,
   currentListId,
   lists,
+  isInbox,
 }: TaskDetailProps) {
   const dueDateInfo = getDueDateLabel(task.due_date)
 
   const parentList = lists.find((list) => list.id === task.list_id)
   const listDefaultView = parentList?.default_view ?? 'list'
 
-  const shouldShowParentList =
-    currentListId !== task.list_id && currentListId !== 'Inbox'
+  const shouldShowParentList = currentListId !== task.list_id
 
   return (
     <span className="text-xs text-gray-600 block">
@@ -96,13 +97,23 @@ export default function TaskDetail({
 
       {/* Parent List */}
       <span className="font-bold cursor-pointer hover:text-blue-500">
-        {shouldShowParentList && task.list_id && parentList ? (
-          <Link href={`/lists/${task.list_id}?view=${listDefaultView}`}>
-            {parentList.title}
-          </Link>
-        ) : shouldShowParentList && !task.list_id ? (
+        {isInbox ? (
+          ''
+        ) : task.list_id === null ? (
           <Link href="/inbox">Inbox</Link>
-        ) : null}
+        ) : shouldShowParentList ? (
+          task.list_id ? (
+            parentList && (
+              <Link href={`/lists/${task.list_id}?view=${listDefaultView}`}>
+                {parentList.title}{' '}
+              </Link>
+            )
+          ) : (
+            <Link href="/inbox">Inbox</Link>
+          )
+        ) : (
+          ''
+        )}
       </span>
     </span>
   )

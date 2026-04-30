@@ -9,7 +9,12 @@ export default async function CompletedPage() {
   return (
     <>
       <Header taskCount={tasks.length} headerTitle="Completed" />
-      <TaskClient tasks={tasks} lists={lists} currentView="list" />
+      <TaskClient
+        tasks={tasks}
+        lists={lists}
+        currentView="list"
+        listId={null}
+      />
     </>
   )
 }

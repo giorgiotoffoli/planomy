@@ -14,7 +14,7 @@ export function TaskEditMoveList({
 }: {
   taskId: string
   lists: List[]
-  currentListId?: string
+  currentListId: string | null
 }) {
   const visibleLists = lists.filter((list) => list.id !== currentListId)
 

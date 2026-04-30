@@ -12,7 +12,7 @@ export default function AppLayout({
 
       <SidebarInset className="min-w-0">
         <div className="flex min-h-screen min-w-0 flex-col">
-          <main className="flex min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4">
+          <main className="flex min-w-0 flex-1 flex-col gap-4 p-4">
             {children}
           </main>
         </div>

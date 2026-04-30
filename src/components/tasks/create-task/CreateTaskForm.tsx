@@ -8,13 +8,9 @@ import {
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { TaskDatePicker } from '../TaskDatePicker'
-import { useParams } from 'next/navigation'
 import { Textarea } from '@/components/ui/textarea'
 
 export default function CreateTaskForm() {
-  const params = useParams()
-  const listId = params.listId as string
-
   return (
     <FieldGroup>
       <FieldSet>
@@ -31,8 +27,6 @@ export default function CreateTaskForm() {
           <FieldLabel htmlFor="title">Notes</FieldLabel>
           <Textarea placeholder="Task notes..." name="notes" />
         </Field>
-        {/* Sees List ID we are currently in*/}
-        <Input hidden name="list_id" value={listId} />
       </FieldSet>
     </FieldGroup>
   )

@@ -8,7 +8,7 @@ export async function createTask(
   title: string,
   dueDate: string,
   notes: string,
-  listId: string,
+  listId: string | null,
   pathName?: string,
 ) {
   const supabase = await createClient()
