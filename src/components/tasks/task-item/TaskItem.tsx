@@ -6,18 +6,18 @@ import { TaskTitle } from './TaskTitle'
 import TaskDetail from './TaskDetails'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { useParams } from 'next/navigation'
 
 interface TaskItemProps {
   task: TaskWithList
   lists: List[]
-  currentListId?: string
+  currentListId: string | null
   handleOnComplete: (taskId: string, isCompleted: boolean) => void
   handleOnRename: (taskId: string, newName: string) => void
   handleOnDueDateChange: (taskId: string, newDueDate: string) => void
   handleOnNotesChange: (taskId: string, notes: string) => void
   handleOnDelete: (taskId: string) => void
   shouldHideCompleted: boolean
+  shouldHideParentList: boolean
 }
 
 export function TaskItem({
@@ -30,8 +30,8 @@ export function TaskItem({
   handleOnNotesChange,
   handleOnDelete,
   shouldHideCompleted,
+  shouldHideParentList,
 }: TaskItemProps) {
-  const isCompletedPage = useParams()
   return (
     <li
       className={cn(
@@ -46,7 +46,12 @@ export function TaskItem({
           <TaskCheckbox task={task} handleOnComplete={handleOnComplete} />
           <TaskTitle task={task} handleOnRename={handleOnRename} />
         </div>
-        <TaskDetail task={task} currentListId={currentListId} lists={lists} />
+        <TaskDetail
+          task={task}
+          currentListId={currentListId}
+          lists={lists}
+          shouldHideParentList={shouldHideParentList}
+        />
       </div>
       <div>
         <TaskEditDropdown

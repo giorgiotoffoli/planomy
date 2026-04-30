@@ -7,15 +7,17 @@ interface CreateTaskButtonProps {
     title: string,
     dueDate: string,
     notes: string,
-    listId: string,
+    listId: string | null,
   ) => void
+  listId: string | null
 }
 
 export default function CreateTaskButton({
   handleOnCreate,
+  listId,
 }: CreateTaskButtonProps) {
   return (
-    <CreateTaskDialog handleOnCreate={handleOnCreate}>
+    <CreateTaskDialog handleOnCreate={handleOnCreate} listId={listId}>
       <Button
         type="button"
         variant="default"

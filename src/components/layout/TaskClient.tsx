@@ -20,7 +20,7 @@ import { usePathname } from 'next/navigation'
 interface TaskClientProps {
   tasks: TaskWithList[]
   lists: List[]
-  listId?: string
+  listId: string | null
   statuses?: Status[]
   currentView: 'list' | 'board'
 }
@@ -39,10 +39,10 @@ export default function TaskClient({
     title: string,
     dueDate: string,
     notes: string,
-    listId: string,
+    listId: string | null,
   ) {
     const tempId = `temp-${crypto.randomUUID()}`
-
+    console.log(listId)
     const tempTask: TaskWithList = {
       id: tempId,
       title,
@@ -221,7 +221,7 @@ export default function TaskClient({
           )}
         </Suspense>
       </div>
-      <CreateTaskButton handleOnCreate={handleOnCreate} />
+      <CreateTaskButton handleOnCreate={handleOnCreate} listId={listId} />
     </>
   )
 }

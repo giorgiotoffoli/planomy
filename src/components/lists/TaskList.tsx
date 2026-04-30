@@ -4,7 +4,7 @@ import { List, TaskWithList } from '../../types'
 interface TaskListProps {
   localTasks: TaskWithList[]
   lists: List[]
-  currentListId?: string
+  currentListId: string | null
   handleOnComplete: (taskId: string, isCompleted: boolean) => void
   handleOnRename: (taskId: string, newName: string) => void
   handleOnNotesChange: (taskId: string, notes: string) => void
@@ -25,6 +25,7 @@ export default function TaskList({
   pathName,
 }: TaskListProps) {
   const shouldHideCompleted = pathName !== '/completed'
+  const shouldHideParentList = pathName === '/inbox'
   return (
     <>
       <div className="flex flex-col h-full sm:w-full">
@@ -42,6 +43,7 @@ export default function TaskList({
                 handleOnNotesChange={handleOnNotesChange}
                 handleOnDelete={handleOnDelete}
                 shouldHideCompleted={shouldHideCompleted}
+                shouldHideParentList={shouldHideParentList}
               />
             ))}
           </ul>

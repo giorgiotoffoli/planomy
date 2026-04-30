@@ -18,13 +18,15 @@ interface CreateTaskDialogProps {
     title: string,
     dueDate: string,
     notes: string,
-    listId: string,
+    listId: string | null,
   ) => void
+  listId: string | null
 }
 
 export default function CreateTaskDialog({
   children,
   handleOnCreate,
+  listId,
 }: CreateTaskDialogProps) {
   const [open, setOpen] = useState(false)
   const pathName = usePathname()
@@ -42,7 +44,6 @@ export default function CreateTaskDialog({
             const title = formData.get('title') as string
             const dueDate = formData.get('due_date') as string
             const notes = formData.get('notes') as string
-            const listId = formData.get('listId') as string
 
             handleOnCreate(title, dueDate, notes, listId)
             setOpen(false)

@@ -4,8 +4,9 @@ import Link from 'next/link'
 
 interface TaskDetailProps {
   task: TaskWithList
-  currentListId: string | undefined
+  currentListId: string | null
   lists: List[]
+  shouldHideParentList: boolean
 }
 
 function dateStringToLocalDate(dateString: string) {
@@ -65,14 +66,14 @@ export default function TaskDetail({
   task,
   currentListId,
   lists,
+  shouldHideParentList,
 }: TaskDetailProps) {
   const dueDateInfo = getDueDateLabel(task.due_date)
 
   const parentList = lists.find((list) => list.id === task.list_id)
   const listDefaultView = parentList?.default_view ?? 'list'
 
-  const shouldShowParentList =
-    currentListId !== task.list_id && currentListId !== 'Inbox'
+  const shouldShowParentList = currentListId !== task.list_id
 
   return (
     <span className="text-xs text-gray-600 block">
@@ -100,9 +101,11 @@ export default function TaskDetail({
           <Link href={`/lists/${task.list_id}?view=${listDefaultView}`}>
             {parentList.title}
           </Link>
-        ) : shouldShowParentList && !task.list_id ? (
+        ) : shouldHideParentList ? (
+          ''
+        ) : (
           <Link href="/inbox">Inbox</Link>
-        ) : null}
+        )}
       </span>
     </span>
   )
