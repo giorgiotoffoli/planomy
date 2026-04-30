@@ -10,7 +10,12 @@ export default async function InboxPage() {
   return (
     <>
       <Header taskCount={tasks.length} headerTitle="Scheduled" />
-      <TaskClient tasks={tasks} lists={lists} listId="" currentView="list" />
+      <TaskClient
+        tasks={tasks}
+        lists={lists}
+        listId={null}
+        currentView="list"
+      />
     </>
   )
 }

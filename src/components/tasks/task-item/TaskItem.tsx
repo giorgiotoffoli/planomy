@@ -17,7 +17,7 @@ interface TaskItemProps {
   handleOnNotesChange: (taskId: string, notes: string) => void
   handleOnDelete: (taskId: string) => void
   shouldHideCompleted: boolean
-  shouldHideParentList: boolean
+  isInbox: boolean
 }
 
 export function TaskItem({
@@ -30,7 +30,7 @@ export function TaskItem({
   handleOnNotesChange,
   handleOnDelete,
   shouldHideCompleted,
-  shouldHideParentList,
+  isInbox,
 }: TaskItemProps) {
   return (
     <li
@@ -50,7 +50,7 @@ export function TaskItem({
           task={task}
           currentListId={currentListId}
           lists={lists}
-          shouldHideParentList={shouldHideParentList}
+          isInbox={isInbox}
         />
       </div>
       <div>

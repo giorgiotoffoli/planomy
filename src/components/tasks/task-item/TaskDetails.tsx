@@ -6,7 +6,7 @@ interface TaskDetailProps {
   task: TaskWithList
   currentListId: string | null
   lists: List[]
-  shouldHideParentList: boolean
+  isInbox: boolean
 }
 
 function dateStringToLocalDate(dateString: string) {
@@ -66,7 +66,7 @@ export default function TaskDetail({
   task,
   currentListId,
   lists,
-  shouldHideParentList,
+  isInbox,
 }: TaskDetailProps) {
   const dueDateInfo = getDueDateLabel(task.due_date)
 
@@ -97,14 +97,22 @@ export default function TaskDetail({
 
       {/* Parent List */}
       <span className="font-bold cursor-pointer hover:text-blue-500">
-        {shouldShowParentList && task.list_id && parentList ? (
-          <Link href={`/lists/${task.list_id}?view=${listDefaultView}`}>
-            {parentList.title}
-          </Link>
-        ) : shouldHideParentList ? (
+        {isInbox ? (
           ''
-        ) : (
+        ) : task.list_id === null ? (
           <Link href="/inbox">Inbox</Link>
+        ) : shouldShowParentList ? (
+          task.list_id ? (
+            parentList && (
+              <Link href={`/lists/${task.list_id}?view=${listDefaultView}`}>
+                {parentList.title}{' '}
+              </Link>
+            )
+          ) : (
+            <Link href="/inbox">Inbox</Link>
+          )
+        ) : (
+          ''
         )}
       </span>
     </span>

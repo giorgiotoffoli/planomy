@@ -25,7 +25,7 @@ export default function TaskList({
   pathName,
 }: TaskListProps) {
   const shouldHideCompleted = pathName !== '/completed'
-  const shouldHideParentList = pathName === '/inbox'
+  const isInbox = pathName === '/inbox'
   return (
     <>
       <div className="flex flex-col h-full sm:w-full">
@@ -43,7 +43,7 @@ export default function TaskList({
                 handleOnNotesChange={handleOnNotesChange}
                 handleOnDelete={handleOnDelete}
                 shouldHideCompleted={shouldHideCompleted}
-                shouldHideParentList={shouldHideParentList}
+                isInbox={isInbox}
               />
             ))}
           </ul>
