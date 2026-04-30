@@ -20,11 +20,11 @@ export async function AppSidebar() {
   const lists = await getUserLists()
 
   return (
-    <Sidebar variant="floating" collapsible="icon">
+    <Sidebar variant="floating" collapsible="icon" className="font-medium">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton className="[&>svg]:size-5">
+            <SidebarMenuButton className="[&>svg]:size-5 ">
               <Layers2 className="rotate-240" />
               <h2 className="font-heading text-2xl font-semibold tracking-tight">
                 planomy
@@ -37,7 +37,7 @@ export async function AppSidebar() {
       <SidebarContent>
         {/* Tasks */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs uppercase tracking-wide">
+          <SidebarGroupLabel className="text-xs tracking-wide">
             Tasks
           </SidebarGroupLabel>
           <SidebarGroupAction>

@@ -8,7 +8,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { List, Task } from '@/types'
+import { List, Task, TaskWithList } from '@/types'
 import { ReactNode, useState } from 'react'
 import { TaskEditDialog } from './TaskEditDialog'
 import { Edit, ListEnd } from 'lucide-react'
@@ -17,12 +17,13 @@ import { TaskDeleteButton } from './TaskDeleteButton'
 import { DialogTrigger } from '@radix-ui/react-dialog'
 
 interface TaskEditDropdownProps {
-  task: Task
+  task: TaskWithList
   lists: List[]
   currentListId?: string
   children: ReactNode
   handleOnDueDateChange: (taskId: string, newDueDate: string) => void
   handleOnNotesChange: (taskId: string, notes: string) => void
+  handleOnDelete: (taskId: string) => void
 }
 
 export function TaskEditDropdown({
@@ -32,6 +33,7 @@ export function TaskEditDropdown({
   children,
   handleOnDueDateChange,
   handleOnNotesChange,
+  handleOnDelete,
 }: TaskEditDropdownProps) {
   return (
     <>
@@ -65,7 +67,10 @@ export function TaskEditDropdown({
 
             <DropdownMenuSeparator />
 
-            <TaskDeleteButton taskId={task.id} />
+            <TaskDeleteButton
+              taskId={task.id}
+              handleOnDelete={handleOnDelete}
+            />
           </DropdownMenuContent>
         </DropdownMenu>
       </TaskEditDialog>

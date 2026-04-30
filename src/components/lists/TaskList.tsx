@@ -1,5 +1,7 @@
+'use client'
 import { TaskItem } from '../tasks/task-item/TaskItem'
 import { List, TaskWithList } from '../../types'
+import { usePathname } from 'next/navigation'
 
 interface TaskListProps {
   localTasks: TaskWithList[]
@@ -7,8 +9,9 @@ interface TaskListProps {
   currentListId?: string
   handleOnComplete: (taskId: string, isCompleted: boolean) => void
   handleOnRename: (taskId: string, newName: string) => void
-  handleOnDueDateChange: (taskId: string, newDueDate: string) => void
   handleOnNotesChange: (taskId: string, notes: string) => void
+  handleOnDueDateChange: (taskId: string, newDueDate: string) => void
+  handleOnDelete: (taskId: string) => void
 }
 
 export default function TaskList({
@@ -19,7 +22,10 @@ export default function TaskList({
   handleOnRename,
   handleOnDueDateChange,
   handleOnNotesChange,
+  handleOnDelete,
 }: TaskListProps) {
+  const pathName = usePathname()
+  const shouldHideCompleted = pathName !== '/completed'
   return (
     <>
       <div className="flex flex-col h-full sm:w-full">
@@ -35,6 +41,8 @@ export default function TaskList({
                 handleOnRename={handleOnRename}
                 handleOnDueDateChange={handleOnDueDateChange}
                 handleOnNotesChange={handleOnNotesChange}
+                handleOnDelete={handleOnDelete}
+                shouldHideCompleted={shouldHideCompleted}
               />
             ))}
           </ul>

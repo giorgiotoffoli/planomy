@@ -10,9 +10,6 @@ export default async function InboxPage() {
   return (
     <>
       <Header taskCount={tasks.length} headerTitle="Inbox" />
-      {tasks.length === 0 && (
-        <p>Nothing in your inbox. Capture a task or enjoy the silence.</p>
-      )}
       <TaskClient tasks={tasks} lists={lists} listId="" currentView="list" />
     </>
   )

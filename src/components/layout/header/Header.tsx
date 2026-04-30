@@ -16,7 +16,7 @@ export default function Header({
   taskCount: number
 }) {
   return (
-    <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center border-b bg-background">
+    <header className="sticky w-full top-0 z-50 flex h-14 shrink-0 items-center border-b bg-background">
       <div className="flex items-center gap-2 px-3">
         <SidebarTrigger />
         <Separator

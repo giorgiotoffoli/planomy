@@ -25,7 +25,7 @@ export default function CreateTaskButton({
       
       shadow-lg hover:scale-105 transition 
      
-      bg-blue-500 hover:bg-blue-800 hover:cursor-pointer"
+      bg-blue-500 hover:bg-sky-400 hover:cursor-pointer"
       >
         <PlusIcon className="size-6 sm:size-4" />
       </Button>

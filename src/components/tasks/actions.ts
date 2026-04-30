@@ -2,7 +2,6 @@
 'use server'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { TaskWithList } from '@/types'
 
 // Creates new task to the database
 export async function createTask(
@@ -18,7 +17,7 @@ export async function createTask(
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Checks if '/today' is current path, so when you make a task there it automatically is due today
+  // Checks if '/today' is current patseh, so when you make a task there it automatically is due today
   let due_date
   if (pathName === '/today') {
     due_date = dueDate ? new Date(dueDate) : new Date()
@@ -40,19 +39,19 @@ export async function createTask(
     task.list_id = listId
   }
 
-  const { data, error } = await supabase.from('tasks').insert([task])
+  const { data, error } = await supabase
+    .from('tasks')
+    .insert([task])
+    .select('*, list:lists(id, title)')
+    .single()
 
   if (error) {
     throw new Error(error.message)
   }
 
-  if (!data) {
-    throw new Error('Task was not created')
-  }
-
   revalidatePath('/')
 
-  return data as TaskWithList
+  return data
 }
 
 // Toggles tasks as complete or incomplete in the database

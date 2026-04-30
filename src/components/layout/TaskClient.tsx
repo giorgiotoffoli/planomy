@@ -7,6 +7,7 @@ import TaskList from '../lists/TaskList'
 import TaskBoard from '../boards/TaskBoard'
 import {
   createTask,
+  deleteTask,
   renameTask,
   updateTaskCompleted,
   updateTaskDueDate,
@@ -40,9 +41,6 @@ export default function TaskClient({
     listId: string,
   ) {
     const tempId = `temp-${crypto.randomUUID()}`
-    const selectedList = lists.find((list) => list.id === listId)
-
-    if (!selectedList) return
 
     const tempTask: TaskWithList = {
       id: tempId,
@@ -52,10 +50,12 @@ export default function TaskClient({
       list_id: listId,
       user_id: 'temp',
       completed: false,
-      list: selectedList,
+      list: null,
     }
 
-    setLocalTasks((prevTasks) => [...prevTasks, tempTask])
+    setTimeout(() => {
+      setLocalTasks((prevTasks) => [...prevTasks, tempTask])
+    }, 300)
 
     try {
       const savedTask = await createTask(title, dueDate, notes, listId)
@@ -63,7 +63,6 @@ export default function TaskClient({
       if (!savedTask) {
         throw new Error('Task was not created')
       }
-
       setLocalTasks((prev) =>
         prev.map((task) => (task.id === tempId ? savedTask : task)),
       )
@@ -142,10 +141,22 @@ export default function TaskClient({
     })
   }
 
-  function handleOnDelete() {}
+  function handleOnDelete(taskId: string) {
+    const previousTasks = localTasks
+
+    setLocalTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId))
+
+    deleteTask(taskId).catch((error) => {
+      setLocalTasks(previousTasks)
+      console.error(error, 'Something went wrong')
+    })
+  }
 
   return (
     <>
+      {localTasks.length === 0 && (
+        <p>Nothing in your inbox. Capture a task or enjoy the silence.</p>
+      )}
       {listId && (
         <ListBoardToggle
           listId={listId!}
@@ -178,6 +189,7 @@ export default function TaskClient({
             handleOnRename={handleOnRename}
             handleOnDueDateChange={handleOnDueDateChange}
             handleOnNotesChange={handleOnNotesChange}
+            handleOnDelete={handleOnDelete}
           />
         ) : (
           <TaskBoard
