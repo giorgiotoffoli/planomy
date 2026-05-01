@@ -8,6 +8,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -29,35 +30,33 @@ export function TaskEditDialog({
   return (
     <Dialog>
       {children}
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="font-semibold">
-            Editing: {task.title}
-          </DialogTitle>
-          <DialogDescription className="opacity-75 text-sm">
-            {task.notes}
-          </DialogDescription>
-        </DialogHeader>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
 
-            const formData = new FormData(e.currentTarget)
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          const formData = new FormData(e.currentTarget)
 
-            const taskId = formData.get('id') as string
-            const newDueDate = formData.get('due_date') as string
-            const notes = formData.get('notes') as string
+          const taskId = formData.get('id') as string
+          const newDueDate = formData.get('due_date') as string
+          const notes = formData.get('notes') as string
 
-            if (newDueDate) {
-              handleOnDueDateChange(taskId, newDueDate)
-            }
-            if (notes) {
-              handleOnNotesChange(taskId, notes)
-            }
-          }}
-        >
-          <input type="hidden" name="id" value={task.id} />
+          if (newDueDate) {
+            handleOnDueDateChange(taskId, newDueDate)
+          }
+          if (notes) {
+            handleOnNotesChange(taskId, notes)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editing {task.title}</DialogTitle>
+            <DialogDescription className="opacity-75 text-sm">
+              {task.notes}
+            </DialogDescription>
+          </DialogHeader>
           <FieldGroup className="gap-4">
+            <input type="hidden" name="id" value={task.id} />
             <Field orientation="horizontal">
               <TaskDatePicker taskDate={task.due_date} />
             </Field>
@@ -72,12 +71,18 @@ export function TaskEditDialog({
                 defaultValue={task.notes}
               />
             </Field>
-            <Button variant="default" type="submit">
+          </FieldGroup>
+          <DialogFooter>
+            <Button
+              variant="default"
+              type="submit"
+              className="bg-blue-500 hover:bg-sky-500"
+            >
               Save Changes
             </Button>
-          </FieldGroup>
-        </form>
-      </DialogContent>
+          </DialogFooter>
+        </DialogContent>
+      </form>
     </Dialog>
   )
 }
