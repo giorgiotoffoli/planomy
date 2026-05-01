@@ -66,6 +66,7 @@ export async function updateTaskCompleted(id: string, isCompleted: boolean) {
   if (error) {
     throw new Error(error.message)
   }
+  revalidatePath('/')
 }
 
 export async function renameTask(taskId: string, title: string) {
