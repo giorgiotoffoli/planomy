@@ -207,7 +207,7 @@ function Sidebar({
 
   return (
     <div
-      className="group peer hidden text-sidebar-foreground md:block"
+      className="group peer hidden text-sidebar-foreground md:block bg-transparent"
       data-state={state}
       data-collapsible={state === 'collapsed' ? collapsible : ''}
       data-variant={variant}
@@ -248,7 +248,7 @@ function Sidebar({
 flex h-full w-full flex-col
 rounded-3xl
 border border-white/15
-bg-blue-600/80
+bg-blue-600/75
 backdrop-blur-2xl
 shadow-[0_10px_20px_rgba(37,99,235,0.35)]
 overflow-hidden

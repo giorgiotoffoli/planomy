@@ -35,6 +35,8 @@ export default function TaskClient({
   const [localView, setLocalView] = useState(currentView)
   const [localTasks, setLocalTasks] = useState(tasks)
 
+  const pathName = usePathname()
+
   async function handleOnCreate(
     title: string,
     dueDate: string,
@@ -88,6 +90,10 @@ export default function TaskClient({
       setTimeout(() => {
         setLocalTasks((prev) => prev.filter((task) => task.id !== taskId))
       }, 200)
+    }
+
+    if (!isCompleted && pathName === '/completed') {
+      setLocalTasks((prev) => prev.filter((task) => task.completed))
     }
 
     // update database, revert if error
@@ -152,8 +158,6 @@ export default function TaskClient({
       console.error(error, 'Something went wrong')
     })
   }
-
-  const pathName = usePathname()
 
   return (
     <>

@@ -29,10 +29,8 @@ export async function createList(formData: FormData) {
   revalidatePath('/')
 }
 
-export async function deleteList(formData: FormData) {
+export async function deleteList(list_id: string) {
   const supabase = await createClient()
-
-  const list_id = formData.get('list_id')
 
   const { error: listError } = await supabase
     .from('lists')

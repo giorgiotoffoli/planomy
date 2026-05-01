@@ -18,9 +18,10 @@ import {
   FieldLegend,
 } from '@/components/ui/field'
 import { ReactNode, useState } from 'react'
-import { deleteList, renameList } from '../actions'
+import { renameList } from '../actions'
 import { List } from '@/types'
 import { Input } from '@/components/ui/input'
+import { DialogDescription } from '@radix-ui/react-dialog'
 
 export function RenameListDialog({
   children,
@@ -38,17 +39,24 @@ export function RenameListDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogTitle hidden>Delete List</DialogTitle>
-      <DialogContent className="sm:max-w-sm">
-        <form action={handleSubmit}>
-          <FieldLegend>Rename {list.title}?</FieldLegend>
+      <form action={handleSubmit}>
+        <DialogTrigger asChild>{children}</DialogTrigger>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Rename {list.title}</DialogTitle>
+            <DialogDescription>
+              This will rename this list in the sidebar.
+            </DialogDescription>
+          </DialogHeader>
           <FieldGroup>
             <Field>
               <FieldLabel>New Title</FieldLabel>
-              <Input name="new_title" defaultValue={list.title} />
+              <Input
+                name="new_title"
+                id="new_title"
+                defaultValue={list.title}
+              />
             </Field>
-            <Field></Field>
             <Field>
               <Input hidden defaultValue={list.id} name="list_id" />
             </Field>
@@ -57,10 +65,12 @@ export function RenameListDialog({
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button type="submit">Rename</Button>
+            <Button type="submit" className="bg-blue-500 hover:bg-sky-500">
+              Rename
+            </Button>
           </DialogFooter>
-        </form>
-      </DialogContent>
+        </DialogContent>
+      </form>
     </Dialog>
   )
 }
