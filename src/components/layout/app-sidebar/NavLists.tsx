@@ -18,7 +18,7 @@ export function NavLists({ lists }: { lists: List[] }) {
       <CreateListDialog>
         <SidebarMenuButton
           asChild
-          className="group-hover/list:text-black hover:bg-muted cursor-pointer hover:text-sidebar-accent-foreground"
+          className="group-hover/list:text-black hover:bg-muted cursor-pointer hover:text-sidebar-accent-foreground font-medium"
         >
           <button>
             <CirclePlus />
