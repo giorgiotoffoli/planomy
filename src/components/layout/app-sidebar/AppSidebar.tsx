@@ -15,6 +15,7 @@ import NavMain from './NavMain'
 import { ProfileButton } from './ProfileButton'
 import ListGroup from './ListGroup'
 import { getUserLists } from '@/components/lists/queries'
+import { PlanomyIcon } from '@/icons/PlanomyIcon'
 
 export async function AppSidebar() {
   const lists = await getUserLists()
@@ -24,12 +25,13 @@ export async function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton className="[&>svg]:size-5">
-              <Layers2 className="rotate-240" />
-              <h2 className="font-heading text-2xl font-semibold tracking-tight">
+            <div className="flex h-8 items-center gap-2 rounded-md px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:pl-1">
+              <PlanomyIcon className="size-6 shrink-0" />
+
+              <h2 className="font-heading text-2xl font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
                 planomy
               </h2>
-            </SidebarMenuButton>
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

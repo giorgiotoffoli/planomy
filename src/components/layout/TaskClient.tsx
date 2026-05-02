@@ -1,7 +1,6 @@
 'use client'
 
 import { List, Status, TaskWithList } from '@/types'
-import ListBoardToggle from '../lists/ListBoardToggle'
 import { Suspense, useState } from 'react'
 import TaskList from '../lists/TaskList'
 import TaskBoard from '../boards/TaskBoard'
@@ -16,6 +15,8 @@ import {
 import CreateTaskButton from '../tasks/create-task/CreateTaskButton'
 import { Skeleton } from '../ui/skeleton'
 import { usePathname } from 'next/navigation'
+import Header from './header/Header'
+import HeaderViewToggle from './header/HeaderViewToggle'
 
 interface TaskClientProps {
   tasks: TaskWithList[]
@@ -23,6 +24,7 @@ interface TaskClientProps {
   listId: string | null
   statuses?: Status[]
   currentView: 'list' | 'board'
+  headerTitle: string
 }
 
 export default function TaskClient({
@@ -31,6 +33,7 @@ export default function TaskClient({
   listId,
   statuses,
   currentView,
+  headerTitle,
 }: TaskClientProps) {
   const [localView, setLocalView] = useState(currentView)
   const [localTasks, setLocalTasks] = useState(tasks)
@@ -161,6 +164,20 @@ export default function TaskClient({
 
   return (
     <>
+      <Header
+        taskCount={localTasks.length}
+        headerTitle={headerTitle}
+        rightSlot={
+          listId && (
+            <HeaderViewToggle
+              listId={listId}
+              currentView={currentView}
+              localView={localView}
+              setLocalView={setLocalView}
+            />
+          )
+        }
+      />
       {localTasks.length === 0 && pathName === '/inbox' && (
         <p>Nothing in your inbox. Capture a task or enjoy the silence.</p>
       )}
@@ -181,55 +198,46 @@ export default function TaskClient({
       {localTasks.length === 0 && pathName.includes('/lists/') && (
         <p>This list is empty. Add a task to stay organized.</p>
       )}
-      <div className="mt-16">
-        {listId && (
-          <ListBoardToggle
-            listId={listId!}
-            currentView={currentView!}
-            setLocalView={setLocalView}
-            localView={localView!}
-          />
-        )}
-        <div className="min-h-0 min-w-0 flex-1 overflow-hidden mt-2">
-          <Suspense
-            fallback={
-              <div className="flex w-full max-w-xs flex-col gap-7">
-                <div className="flex flex-col gap-3">
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-8 w-full" />
-                </div>
-                <div className="flex flex-col gap-3">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-full" />
-                </div>
-                <Skeleton className="h-8 w-24" />
+
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+        <Suspense
+          fallback={
+            <div className="flex w-full max-w-xs flex-col gap-7">
+              <div className="flex flex-col gap-3">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-8 w-full" />
               </div>
-            }
-          >
-            {localView === 'list' ? (
-              <TaskList
-                localTasks={localTasks}
-                lists={lists}
-                currentListId={listId}
-                handleOnComplete={handleOnComplete}
-                handleOnRename={handleOnRename}
-                handleOnDueDateChange={handleOnDueDateChange}
-                handleOnNotesChange={handleOnNotesChange}
-                handleOnDelete={handleOnDelete}
-                pathName={pathName}
-              />
-            ) : (
-              <TaskBoard
-                tasks={localTasks}
-                statuses={statuses!}
-                lists={lists}
-                currentListId={listId!}
-              />
-            )}
-          </Suspense>
-        </div>
-        <CreateTaskButton handleOnCreate={handleOnCreate} listId={listId} />
+              <div className="flex flex-col gap-3">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-full" />
+              </div>
+              <Skeleton className="h-8 w-24" />
+            </div>
+          }
+        >
+          {localView === 'list' ? (
+            <TaskList
+              localTasks={localTasks}
+              lists={lists}
+              currentListId={listId}
+              handleOnComplete={handleOnComplete}
+              handleOnRename={handleOnRename}
+              handleOnDueDateChange={handleOnDueDateChange}
+              handleOnNotesChange={handleOnNotesChange}
+              handleOnDelete={handleOnDelete}
+              pathName={pathName}
+            />
+          ) : (
+            <TaskBoard
+              tasks={localTasks}
+              statuses={statuses!}
+              lists={lists}
+              currentListId={listId!}
+            />
+          )}
+        </Suspense>
       </div>
+      <CreateTaskButton handleOnCreate={handleOnCreate} listId={listId} />
     </>
   )
 }

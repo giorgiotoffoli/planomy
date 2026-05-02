@@ -64,7 +64,7 @@ export async function renameList(formData: FormData) {
 }
 
 export async function updateListDefaultView(
-  listId: string,
+  listId: string | null,
   defaultView: string,
 ) {
   const supabase = await createClient()

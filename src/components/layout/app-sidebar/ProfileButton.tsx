@@ -15,7 +15,7 @@ export function ProfileButton() {
     <SidebarMenuItem>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <SidebarMenuButton>
+          <SidebarMenuButton tooltip="Profile">
             <User />
             Profile
           </SidebarMenuButton>

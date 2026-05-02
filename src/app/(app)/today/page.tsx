@@ -1,5 +1,4 @@
 import { getTasks } from '../../../components/tasks/queries'
-import Header from '@/components/layout/header/Header'
 import { getUserLists } from '@/components/lists/queries'
 import TaskClient from '@/components/layout/TaskClient'
 
@@ -8,14 +7,12 @@ export default async function InboxPage() {
   const lists = await getUserLists()
 
   return (
-    <>
-      <Header taskCount={tasks.length} headerTitle="Today" />
-      <TaskClient
-        tasks={tasks}
-        lists={lists}
-        listId={null}
-        currentView="list"
-      />
-    </>
+    <TaskClient
+      tasks={tasks}
+      lists={lists}
+      listId={null}
+      currentView="list"
+      headerTitle="Today"
+    />
   )
 }
