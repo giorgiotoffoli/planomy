@@ -7,12 +7,10 @@
 > Features may change, bugs may occur, and breaking updates are possible.  
 >  
 > While stability is improving, you should **avoid storing critical data** for now.
----
+
 **Planomy** is an open-source task manager designed to make planning feel simple, fast, and distraction-free—without compromising your privacy.
 
 Built with a focus on clarity and usability, Planomy helps you organize your tasks, stay on top of your schedule, and actually enjoy the process of getting things done.
-
----
 
 ## ✨ Features
 
@@ -25,7 +23,6 @@ Built with a focus on clarity and usability, Planomy helps you organize your tas
 - 🔒 **Privacy-first** — no trackers, no data selling, ever  
 - 🧩 **Open-source** — fully transparent and customizable  
 
----
 
 ## 🛠️ Tech Stack
 
@@ -34,7 +31,6 @@ Built with a focus on clarity and usability, Planomy helps you organize your tas
 - **Backend & DB:** Supabase (PostgreSQL)  
 - **Deployment:** Vercel  
 
----
 
 ## 💡 Philosophy
 
@@ -44,7 +40,6 @@ Planomy is built on a few simple ideas:
 - Productivity tools should reduce stress, not add to it  
 - Your data should belong to **you**, not be tracked or sold  
 
----
 
 ## 🤝 Contributing
 
@@ -55,19 +50,17 @@ If you’d like to help:
 - Suggest a feature  
 - Submit a pull request  
 
----
 
 ## 📌 Roadmap
 
-[] 🔒 E2EE
-[x] 😊 Optimistic UI
-[X] 🎯 Kanban Boards  
-[] 🤝 Collaboration features  
-[] 📱 Mobile app  
-[] ⚡ Performance improvements  
-[] 🧠 Smarter task organization  
+- [ ] 🔒 E2EE
+- [x] 😊 Optimistic UI
+- [X] 🎯 Kanban Boards  
+- [ ] 🤝 Collaboration features  
+- [ ] 📱 Mobile app  
+- [ ] ⚡ Performance improvements  
+- [ ] 🧠 Smarter task organization  
 
----
 
 ## 🌐 Try it out
 
