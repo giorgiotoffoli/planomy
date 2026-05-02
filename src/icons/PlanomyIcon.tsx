@@ -13,7 +13,7 @@ export function PlanomyIcon({
     <svg
       width={size}
       height={size}
-      viewBox="0 0 27.102375 32.047543"
+      viewBox="-5 -2 37 36"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
