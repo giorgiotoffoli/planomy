@@ -8,14 +8,12 @@ export default async function AllPage() {
   const lists = await getUserLists()
 
   return (
-    <>
-      <Header taskCount={tasks.length} headerTitle="All" />
-      <TaskClient
-        tasks={tasks}
-        lists={lists}
-        currentView="list"
-        listId={null}
-      />
-    </>
+    <TaskClient
+      tasks={tasks}
+      lists={lists}
+      currentView="list"
+      listId={null}
+      headerTitle="All"
+    />
   )
 }

@@ -7,14 +7,12 @@ export default async function CompletedPage() {
   const tasks = await getTasks('completed')
   const lists = await getUserLists()
   return (
-    <>
-      <Header taskCount={tasks.length} headerTitle="Completed" />
-      <TaskClient
-        tasks={tasks}
-        lists={lists}
-        currentView="list"
-        listId={null}
-      />
-    </>
+    <TaskClient
+      tasks={tasks}
+      lists={lists}
+      currentView="list"
+      listId={null}
+      headerTitle="Completed"
+    />
   )
 }

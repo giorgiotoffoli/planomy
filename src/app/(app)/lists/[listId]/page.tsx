@@ -2,6 +2,7 @@ import { getList, getListTasks, getUserLists } from '@/components/lists/queries'
 import Header from '@/components/layout/header/Header'
 import getStatuses from '@/components/boards/queries'
 import TaskClient from '@/components/layout/TaskClient'
+import HeaderViewToggle from '@/components/layout/header/HeaderViewToggle'
 
 interface ListPageProps {
   params: Promise<{ listId: string }>
@@ -23,15 +24,13 @@ export default async function ListPage({
   const currentView = view === 'board' ? 'board' : 'list'
 
   return (
-    <>
-      <Header taskCount={tasks.length} headerTitle={currentList.title} />
-      <TaskClient
-        tasks={tasks}
-        currentView={currentView}
-        listId={listId}
-        lists={lists}
-        statuses={statuses}
-      />
-    </>
+    <TaskClient
+      tasks={tasks}
+      currentView={currentView}
+      listId={listId}
+      lists={lists}
+      statuses={statuses}
+      headerTitle={currentList.title}
+    />
   )
 }

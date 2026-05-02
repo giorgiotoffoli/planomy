@@ -8,14 +8,12 @@ export default async function InboxPage() {
   const lists = await getUserLists()
 
   return (
-    <>
-      <Header taskCount={tasks.length} headerTitle="Inbox" />
-      <TaskClient
-        tasks={tasks}
-        lists={lists}
-        listId={null}
-        currentView="list"
-      />
-    </>
+    <TaskClient
+      tasks={tasks}
+      lists={lists}
+      listId={null}
+      currentView="list"
+      headerTitle="Inbox"
+    />
   )
 }
