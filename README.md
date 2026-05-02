@@ -2,9 +2,13 @@
   <img src="src/app/opengraph-image.png" alt="Planomy header">
 </p>
 
-## 🚀 Overview
-
-**Planomy** is an open-source task manager designed to make planning feel simple, fast, and distraction-free — without compromising your privacy.
+> [!WARNING]  
+> Planomy is currently in **beta**.  
+> Features may change, bugs may occur, and breaking updates are possible.  
+>  
+> While stability is improving, you should **avoid storing critical data** for now.
+---
+**Planomy** is an open-source task manager designed to make planning feel simple, fast, and distraction-free—without compromising your privacy.
 
 Built with a focus on clarity and usability, Planomy helps you organize your tasks, stay on top of your schedule, and actually enjoy the process of getting things done.
 
@@ -20,16 +24,6 @@ Built with a focus on clarity and usability, Planomy helps you organize your tas
 - 📅 **Scheduling** — plan ahead with ease  
 - 🔒 **Privacy-first** — no trackers, no data selling, ever  
 - 🧩 **Open-source** — fully transparent and customizable  
-
----
-
-## ⚠️ Status
-
-> [!WARNING]  
-> Planomy is currently in **beta**.  
-> Features may change, bugs may occur, and breaking updates are possible.  
->  
-> While stability is improving, you should **avoid storing critical data** for now.
 
 ---
 
@@ -65,12 +59,13 @@ If you’d like to help:
 
 ## 📌 Roadmap
 
-- 😊 Optimistic UI
-- 🎯 Kanban Boards  
-- 🤝 Collaboration features  
-- 📱 Mobile app  
-- ⚡ Performance improvements  
-- 🧠 Smarter task organization  
+[] 🔒 E2EE
+[x] 😊 Optimistic UI
+[X] 🎯 Kanban Boards  
+[] 🤝 Collaboration features  
+[] 📱 Mobile app  
+[] ⚡ Performance improvements  
+[] 🧠 Smarter task organization  
 
 ---
 
