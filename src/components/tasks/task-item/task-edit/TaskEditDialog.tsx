@@ -30,27 +30,27 @@ export function TaskEditDialog({
   return (
     <Dialog>
       {children}
+      <DialogContent className="sm:max-w-md">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            console.log('clicked')
+            const formData = new FormData(e.currentTarget)
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          const formData = new FormData(e.currentTarget)
+            const taskId = formData.get('id') as string
+            const newDueDate = formData.get('due_date') as string
+            const notes = formData.get('notes') as string
 
-          const taskId = formData.get('id') as string
-          const newDueDate = formData.get('due_date') as string
-          const notes = formData.get('notes') as string
-
-          if (newDueDate) {
-            handleOnDueDateChange(taskId, newDueDate)
-          }
-          if (notes) {
-            handleOnNotesChange(taskId, notes)
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
+            if (newDueDate) {
+              handleOnDueDateChange(taskId, newDueDate)
+            }
+            if (notes) {
+              handleOnNotesChange(taskId, notes)
+            }
+          }}
+        >
           <DialogHeader>
-            <DialogTitle>Editing {task.title}</DialogTitle>
+            <DialogTitle className="mb-3">Editing {task.title}</DialogTitle>
             <DialogDescription className="opacity-75 text-sm">
               {task.notes}
             </DialogDescription>
@@ -76,13 +76,13 @@ export function TaskEditDialog({
             <Button
               variant="default"
               type="submit"
-              className="bg-blue-500 hover:bg-sky-500"
+              className="bg-blue-500 hover:bg-sky-500 mt-3"
             >
               Save Changes
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </form>
+        </form>
+      </DialogContent>
     </Dialog>
   )
 }
