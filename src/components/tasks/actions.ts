@@ -85,11 +85,9 @@ export async function renameTask(taskId: string, title: string) {
 export async function updateTaskDueDate(taskId: string, newDueDate: string) {
   const supabase = await createClient()
 
-  const due_date = new Date(newDueDate)
-
   const { error } = await supabase
     .from('tasks')
-    .update({ due_date })
+    .update({ due_date: newDueDate })
     .eq('id', taskId)
 
   if (error) {
