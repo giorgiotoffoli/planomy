@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src/app/opengraph-image.png" alt="Planomy header">
+  <img src="src/app/readme-banner" alt="Planomy header">
 </p>
 
 > [!WARNING]  
