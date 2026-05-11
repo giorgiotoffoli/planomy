@@ -45,11 +45,8 @@ export async function deleteList(list_id: string) {
   redirect('/inbox')
 }
 
-export async function renameList(formData: FormData) {
+export async function renameList(list_id: string, title: string) {
   const supabase = await createClient()
-
-  const title = formData.get('new_title') as string
-  const list_id = formData.get('list_id') as string
 
   const { error } = await supabase
     .from('lists')

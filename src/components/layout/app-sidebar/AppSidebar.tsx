@@ -3,19 +3,16 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupAction,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
-import { Layers2, Plus, PyramidIcon } from 'lucide-react'
+import { PyramidIcon } from 'lucide-react'
 import NavMain from './NavMain'
 import { ProfileButton } from './ProfileButton'
 import ListGroup from './ListGroup'
 import { getUserLists } from '@/components/lists/queries'
-import { PlanomyIcon } from '@/icons/PlanomyIcon'
 
 export async function AppSidebar() {
   const lists = await getUserLists()
