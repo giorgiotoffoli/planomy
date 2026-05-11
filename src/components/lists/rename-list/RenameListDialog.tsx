@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dialog'
 import {
   Field,
-  FieldDescription,
   FieldGroup,
   FieldLabel,
   FieldLegend,
@@ -32,22 +31,27 @@ export function RenameListDialog({
 }) {
   const [open, setOpen] = useState(false)
 
-  async function handleSubmit(formData: FormData) {
-    await renameList(formData)
-    setOpen(false)
-  }
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <form action={handleSubmit}>
-        <DialogTrigger asChild>{children}</DialogTrigger>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Rename {list.title}</DialogTitle>
-            <DialogDescription>
-              This will rename this list in the sidebar.
-            </DialogDescription>
-          </DialogHeader>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Rename {list.title}</DialogTitle>
+          <DialogDescription>
+            This will rename this list in the sidebar.
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault()
+
+            const formData = new FormData(e.target)
+            const newListTitle = formData.get('new_title') as string
+
+            await renameList(list.id, newListTitle)
+            setOpen(false)
+          }}
+        >
           <FieldGroup>
             <Field>
               <FieldLabel>New Title</FieldLabel>
@@ -69,8 +73,8 @@ export function RenameListDialog({
               Rename
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </form>
+        </form>
+      </DialogContent>
     </Dialog>
   )
 }

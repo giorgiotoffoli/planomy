@@ -1,7 +1,6 @@
 'use client'
 
-import { buttonVariants } from '@/components/ui/button'
-import { ReactNode, useState } from 'react'
+import { ReactNode } from 'react'
 import { deleteList } from '../actions'
 import { List } from '@/types'
 
@@ -26,8 +25,6 @@ export function DeleteListDialog({
   children: ReactNode
   list: List
 }) {
-  const [open, setOpen] = useState(false)
-
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
@@ -38,7 +35,7 @@ export function DeleteListDialog({
           </AlertDialogMedia>
           <AlertDialogTitle>Delete List?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete list{' '}
+            This will permanently delete{' '}
             <span className="font-semibold">{list.title}</span> and all tasks
             inside of it.
           </AlertDialogDescription>

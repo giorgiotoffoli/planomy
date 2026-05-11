@@ -1,5 +1,5 @@
 'use client'
-import { Pencil, Trash } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import { DropdownMenuItem } from '../../ui/dropdown-menu'
 import { List } from '@/types'
 import { RenameListDialog } from './RenameListDialog'
