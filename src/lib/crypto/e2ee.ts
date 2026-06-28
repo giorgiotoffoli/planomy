@@ -90,3 +90,67 @@ async function deriveWrappingKey(
     ['encrypt', 'decrypt'],
   )
 }
+
+export async function createWrappedMasterKey(masterPassword: string): Promise<{
+  masterKey: Uint8Array
+  payload: WrappedMasterKeyPayload
+}> {
+  if (masterPassword.length < 12) {
+    throw new Error('Master password must be at least 12 characters.')
+  }
+
+  const masterKey = randomBytes(MASTER_KEY_BYTES)
+  const salt = randomBytes(SALT_BYTES)
+  const iv = randomBytes(AES_GCM_IV_BYTES)
+
+  const wrappingKey = await deriveWrappingKey(masterPassword, salt)
+
+  const wrappedMasterKey = await crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv: toArrayBuffer(iv),
+    },
+    wrappingKey,
+    toArrayBuffer(masterKey),
+  )
+
+  return {
+    masterKey,
+    payload: {
+      wrappedMasterKey: bytesToBase64(new Uint8Array(wrappedMasterKey)),
+      wrappingKeySalt: bytesToBase64(salt),
+      wrappingKeyIv: bytesToBase64(iv),
+      kdf: 'PBKDF2-SHA-256',
+      kdfIterations: DEFAULT_KDF_ITERATIONS,
+      wrappingAlgorithm: 'AES-GCM',
+      version: KEYCHAIN_VERSION,
+    },
+  }
+}
+
+export async function unwrapMasterKey(
+  masterPassword: string,
+  payload: WrappedMasterKeyPayload,
+) {
+  const salt = base64ToBytes(payload.wrappingKeySalt)
+  const iv = base64ToBytes(payload.wrappingKeyIv)
+  const wrappedMasterKey = base64ToBytes(payload.wrappedMasterKey)
+
+  const wrappingKey = await deriveWrappingKey(
+    masterPassword,
+    salt,
+    payload.kdfIterations,
+  )
+
+  try {
+    const masterKey = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: toArrayBuffer(iv) },
+      wrappingKey,
+      toArrayBuffer(wrappedMasterKey),
+    )
+
+    return new Uint8Array(masterKey)
+  } catch {
+    throw new Error('Could not unlock master key. Check the master password.')
+  }
+}
