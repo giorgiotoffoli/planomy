@@ -1,12 +1,13 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import type { StoredKeychain } from './actions'
 import { saveUserKeychain } from './actions'
 import { createWrappedMasterKey, unwrapMasterKey } from '@/lib/crypto/e2ee'
+import { useE2EE } from './e2ee-provider'
 
 type E2EEGateProps = {
   children: ReactNode
@@ -21,7 +22,7 @@ export default function E2EEGate({ children, initialKeychain }: E2EEGateProps) {
   const [isBusy, setIsBusy] = useState(false)
   const [isUnlocked, setIsUnlocked] = useState(false)
 
-  const masterKeyRef = useRef<Uint8Array | null>(null)
+  const { setMasterKey } = useE2EE()
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -35,20 +36,22 @@ export default function E2EEGate({ children, initialKeychain }: E2EEGateProps) {
 
     try {
       if (hasKeychain) {
+        // Unlock mode
         if (!initialKeychain) {
           throw new Error('No keychain found for this account')
         }
         const masterKey = await unwrapMasterKey(masterPassword, initialKeychain)
 
-        masterKeyRef.current = masterKey
+        setMasterKey(masterKey)
         setIsUnlocked(true)
         toast.success('Encyrption unlocked!')
       } else {
+        // Setup mode
         const { masterKey, payload } =
           await createWrappedMasterKey(masterPassword)
         await saveUserKeychain(payload)
 
-        masterKeyRef.current = masterKey
+        setMasterKey(masterKey)
         setIsUnlocked(true)
         toast.success('Encryption set up successfuly.')
       }
