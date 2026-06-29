@@ -5,10 +5,9 @@
 > [!WARNING]  
 > Planomy is currently in **beta**.  
 > Features may change, bugs may occur, and breaking updates are possible.
->
-> While stability is improving, you should **avoid storing critical data** for now.
+> You have been warned!
 
-**Planomy** is an open-source task manager designed to make planning feel simple, fast, and distraction-free—without compromising your privacy.
+**Planomy** is an open-source, end-to-end encrypted task manager designed to make planning feel simple, fast, and distraction-free without compromising your privacy.
 
 Built with a focus on clarity and usability, Planomy helps you organize your tasks, stay on top of your schedule, and actually enjoy the process of getting things done.
 
@@ -68,18 +67,10 @@ If you’d like to help:
 
 ## 📌 Roadmap
 
-- [ ] 🔒 E2EE
-- [x] 😊 Optimistic UI
+- [X] 🔒 E2EE
+- [X] 😊 Optimistic UI
 - [x] 🎯 Kanban Boards
 - [ ] 🤝 Collaboration features
 - [ ] 📱 Mobile app
 - [ ] ⚡ Performance improvements
 - [ ] 🧠 Smarter task organization
-
-## 🌐 Try it out
-
-👉 https://www.planomy.com
-
-```
-
-```
