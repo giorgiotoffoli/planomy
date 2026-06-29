@@ -21,6 +21,9 @@ import { renameList } from '../actions'
 import { List } from '@/types'
 import { Input } from '@/components/ui/input'
 import { DialogDescription } from '@radix-ui/react-dialog'
+import { useE2EE } from '@/components/e2ee/e2ee-provider'
+import { encryptString } from '@/lib/crypto/e2ee'
+import { toast } from 'sonner'
 
 export function RenameListDialog({
   children,
@@ -30,6 +33,7 @@ export function RenameListDialog({
   list: List
 }) {
   const [open, setOpen] = useState(false)
+  const { masterKey } = useE2EE()
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -48,7 +52,19 @@ export function RenameListDialog({
             const formData = new FormData(e.target)
             const newListTitle = formData.get('new_title') as string
 
-            await renameList(list.id, newListTitle)
+            if (!masterKey) {
+              toast.error('Encryption key is locked.')
+              return
+            }
+
+            if (!newListTitle.trim()) {
+              toast.error('Enter a list name.')
+              return
+            }
+
+            const encryptedTitle = await encryptString(newListTitle, masterKey)
+
+            await renameList(list.id, encryptedTitle)
             setOpen(false)
           }}
         >

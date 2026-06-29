@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-export async function createList(formData: FormData) {
+export async function createList(title: string) {
   const supabase = await createClient()
 
   const {
@@ -12,8 +12,6 @@ export async function createList(formData: FormData) {
   } = await supabase.auth.getUser()
 
   if (!user) return
-
-  const title = formData.get('title') as string
 
   const { error } = await supabase.from('lists').insert([
     {

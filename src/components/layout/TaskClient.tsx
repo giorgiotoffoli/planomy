@@ -1,7 +1,7 @@
 'use client'
 
 import { List, Status, TaskWithList } from '@/types'
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import TaskList from '../lists/TaskList'
 import TaskBoard from '../boards/TaskBoard'
 import {
@@ -17,6 +17,8 @@ import { Skeleton } from '../ui/skeleton'
 import { usePathname } from 'next/navigation'
 import Header from './header/Header'
 import HeaderViewToggle from './header/HeaderViewToggle'
+import { useE2EE } from '@/components/e2ee/e2ee-provider'
+import { decryptString, encryptString } from '@/lib/crypto/e2ee'
 
 interface TaskClientProps {
   tasks: TaskWithList[]
@@ -37,8 +39,62 @@ export default function TaskClient({
 }: TaskClientProps) {
   const [localView, setLocalView] = useState(currentView)
   const [localTasks, setLocalTasks] = useState(tasks)
+  const [localLists, setLocalLists] = useState(lists)
+  const [localHeaderTitle, setLocalHeaderTitle] = useState(headerTitle)
 
+  const { masterKey } = useE2EE()
   const pathName = usePathname()
+
+  useEffect(() => {
+    if (!masterKey) return
+
+    const unlockedMasterKey = masterKey
+    let isCancelled = false
+
+    async function decryptLoadedData() {
+      const decryptedTasks = await Promise.all(
+        tasks.map(async (task) => ({
+          ...task,
+          title: await decryptString(task.title, unlockedMasterKey),
+          notes: task.notes
+            ? await decryptString(task.notes, unlockedMasterKey)
+            : task.notes,
+          list: task.list
+            ? {
+                ...task.list,
+                title: await decryptString(task.list.title, unlockedMasterKey),
+              }
+            : task.list,
+        })),
+      )
+
+      const decryptedLists = await Promise.all(
+        lists.map(async (list) => ({
+          ...list,
+          title: await decryptString(list.title, unlockedMasterKey),
+        })),
+      )
+
+      const decryptedHeaderTitle = await decryptString(
+        headerTitle,
+        unlockedMasterKey,
+      )
+
+      if (!isCancelled) {
+        setLocalTasks(decryptedTasks)
+        setLocalLists(decryptedLists)
+        setLocalHeaderTitle(decryptedHeaderTitle)
+      }
+    }
+
+    decryptLoadedData().catch((error) => {
+      console.error('Failed to decrypt loaded data', error)
+    })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [masterKey, tasks])
 
   async function handleOnCreate(
     title: string,
@@ -64,13 +120,34 @@ export default function TaskClient({
     }, 300)
 
     try {
-      const savedTask = await createTask(title, dueDate, notes, listId)
+      if (!masterKey) {
+        throw new Error('Encryption key is locked.')
+      }
+
+      const encryptedTitle = await encryptString(title, masterKey)
+      const encryptedNotes = await encryptString(notes, masterKey)
+
+      const savedTask = await createTask(
+        encryptedTitle,
+        dueDate,
+        encryptedNotes,
+        listId,
+      )
 
       if (!savedTask) {
         throw new Error('Task was not created')
       }
+
       setLocalTasks((prev) =>
-        prev.map((task) => (task.id === tempId ? savedTask : task)),
+        prev.map((task) =>
+          task.id === tempId
+            ? {
+                ...savedTask,
+                title,
+                notes,
+              }
+            : task,
+        ),
       )
     } catch (error) {
       setLocalTasks((prev) => prev.filter((task) => task.id !== tempId))
@@ -115,10 +192,20 @@ export default function TaskClient({
       ),
     )
 
-    renameTask(taskId, newTitle).catch((error) => {
+    if (!masterKey) {
       setLocalTasks(previousTasks)
-      console.error(error)
-    })
+      console.error('Encryption key is locked.')
+      return
+    }
+
+    const unlockedMasterKey = masterKey
+
+    encryptString(newTitle, unlockedMasterKey)
+      .then((encryptedTitle) => renameTask(taskId, encryptedTitle))
+      .catch((error) => {
+        setLocalTasks(previousTasks)
+        console.error(error)
+      })
   }
 
   function handleOnDueDateChange(taskId: string, newDueDate: string) {
@@ -145,10 +232,20 @@ export default function TaskClient({
       ),
     )
 
-    updateTaskNotes(taskId, notes).catch((error) => {
+    if (!masterKey) {
       setLocalTasks(previousTasks)
-      console.error(error)
-    })
+      console.error('Encryption key is locked.')
+      return
+    }
+
+    const unlockedMasterKey = masterKey
+
+    encryptString(notes, unlockedMasterKey)
+      .then((encryptedNotes) => updateTaskNotes(taskId, encryptedNotes))
+      .catch((error) => {
+        setLocalTasks(previousTasks)
+        console.error(error)
+      })
   }
 
   function handleOnDelete(taskId: string) {
@@ -166,7 +263,7 @@ export default function TaskClient({
     <>
       <Header
         taskCount={localTasks.length}
-        headerTitle={headerTitle}
+        headerTitle={localHeaderTitle}
         rightSlot={
           listId && (
             <HeaderViewToggle
@@ -218,7 +315,7 @@ export default function TaskClient({
           {localView === 'list' ? (
             <TaskList
               localTasks={localTasks}
-              lists={lists}
+              localLists={localLists}
               currentListId={listId}
               handleOnComplete={handleOnComplete}
               handleOnRename={handleOnRename}

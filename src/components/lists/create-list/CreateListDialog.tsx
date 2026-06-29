@@ -9,7 +9,9 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { FieldGroup } from '@/components/ui/field'
+import { useE2EE } from '@/components/e2ee/e2ee-provider'
+import { encryptString } from '@/lib/crypto/e2ee'
+import { toast } from 'sonner'
 import { ReactNode, useState } from 'react'
 import CreateTaskForm from './CreateListForm'
 import { createList } from '../actions'
@@ -21,9 +23,24 @@ export default function CreateTaskDialog({
   children: ReactNode
 }) {
   const [open, setOpen] = useState(false)
+  const { masterKey } = useE2EE()
 
   async function handleSubmit(formData: FormData) {
-    await createList(formData)
+    if (!masterKey) {
+      toast.error('Encryption is locked.')
+      return
+    }
+
+    const title = formData.get('title') as string
+
+    if (!title.trim()) {
+      toast.error('Enter a list name.')
+      return
+    }
+
+    const encryptedTitle = await encryptString(title, masterKey)
+
+    await createList(encryptedTitle)
     setOpen(false)
   }
 
