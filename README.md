@@ -17,7 +17,7 @@ Built with a focus on clarity and usability, Planomy helps you organize your tas
 
 Planomy will encrypt private planner data before it leaves the user's device.
 
-The server may store and sync encrypted data, but it should not be able to read task titles, notes, list names, project names, or planning details.
+The server may store and sync encrypted data, but it should not be able to read task titles, notes, or list names.
 
 Plaintext should only exist in the user's browser while the vault is unlocked.
 
