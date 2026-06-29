@@ -284,7 +284,7 @@ export default function TaskClient({
       )}
 
       {localTasks.length === 0 && pathName === '/scheduled' && (
-        <p>No upcoming tasks. Future you is chilling. .</p>
+        <p>No upcoming tasks. Future you is chilling.</p>
       )}
       {localTasks.length === 0 && pathName === '/all' && (
         <p>No tasks yet. Every good plan starts with one.</p>
