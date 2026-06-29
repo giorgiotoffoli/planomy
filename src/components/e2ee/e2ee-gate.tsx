@@ -136,6 +136,7 @@ export default function E2EEGate({ children, initialKeychain }: E2EEGateProps) {
             </label>
 
             <input
+              autoFocus
               type="password"
               value={masterPassword}
               onChange={(e) => setMasterPassword(e.target.value)}
