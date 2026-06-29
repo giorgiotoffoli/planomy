@@ -1,3 +1,5 @@
+'use client'
+
 import {
   SidebarMenu,
   SidebarMenuAction,
@@ -15,8 +17,41 @@ import { DeleteListButton } from '../../lists/delete-list/DeleteListButton'
 import { RenameListButton } from '../../lists/rename-list/RenameListButton'
 import CreateListDialog from '@/components/lists/create-list/CreateListDialog'
 import { List } from '@/types'
+import { useEffect, useState } from 'react'
+import { useE2EE } from '@/components/e2ee/e2ee-provider'
+import { decryptString } from '@/lib/crypto/e2ee'
 
 export function NavLists({ lists }: { lists: List[] }) {
+  const { masterKey } = useE2EE()
+  const [localLists, setLocalLists] = useState(lists)
+
+  useEffect(() => {
+    if (!masterKey) return
+
+    const unlockedMasterKey = masterKey
+    let isCancelled = false
+
+    async function decryptLists() {
+      const decryptedLists = await Promise.all(
+        lists.map(async (list) => ({
+          ...list,
+          title: await decryptString(list.title, unlockedMasterKey),
+        })),
+      )
+      if (!isCancelled) {
+        setLocalLists(decryptedLists)
+      }
+    }
+
+    decryptLists().catch((error) => {
+      console.error('Failed to decrypt lists', error)
+    })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [lists, masterKey])
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -34,7 +69,7 @@ export function NavLists({ lists }: { lists: List[] }) {
         </CreateListDialog>
       </SidebarMenuItem>
 
-      {lists.map((list) => {
+      {localLists.map((list) => {
         return (
           <SidebarMenuItem key={list.id}>
             <SidebarMenuButton asChild tooltip={list.title}>

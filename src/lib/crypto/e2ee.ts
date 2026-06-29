@@ -154,3 +154,87 @@ export async function unwrapMasterKey(
     throw new Error('Could not unlock master key. Check the master password.')
   }
 }
+
+const ENCRYPTED_STRING_PREFIX = 'e2ee:v1'
+
+async function importMasterKey(masterKey: Uint8Array) {
+  assertBrowserCrypto()
+
+  return crypto.subtle.importKey(
+    'raw',
+    toArrayBuffer(masterKey),
+    {
+      name: 'AES-GCM',
+      length: 256,
+    },
+    false,
+    ['encrypt', 'decrypt'],
+  )
+}
+
+export function isEncryptedString(value: string) {
+  return value.startsWith(`${ENCRYPTED_STRING_PREFIX}`)
+}
+
+export async function encryptString(plaintext: string, masterKey: Uint8Array) {
+  if (!plaintext) {
+    return plaintext
+  }
+
+  const key = await importMasterKey(masterKey)
+  const iv = randomBytes(AES_GCM_IV_BYTES)
+  const plaintextBytes = new TextEncoder().encode(plaintext)
+
+  const ciphertext = await crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv: toArrayBuffer(iv),
+    },
+    key,
+    toArrayBuffer(plaintextBytes),
+  )
+
+  return [
+    ENCRYPTED_STRING_PREFIX,
+    bytesToBase64(iv),
+    bytesToBase64(new Uint8Array(ciphertext)),
+  ].join(':')
+}
+
+export async function decryptString(
+  encyrptedValue: string,
+  masterKey: Uint8Array,
+) {
+  if (!encyrptedValue) {
+    return encyrptedValue
+  }
+
+  if (!isEncryptedString(encyrptedValue)) {
+    return encyrptedValue
+  }
+
+  const [, , encodeIv, encodedCiphertext] = encyrptedValue.split(':')
+
+  if (!encodeIv || !encodedCiphertext) {
+    throw new Error('Invalid encrypted string format.')
+  }
+
+  const key = await importMasterKey(masterKey)
+  const iv = base64ToBytes(encodeIv)
+  const ciphertext = base64ToBytes(encodedCiphertext)
+
+  try {
+    const plaintext = await crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: toArrayBuffer(iv),
+      },
+      key,
+      toArrayBuffer(ciphertext),
+    )
+
+    return new TextDecoder().decode(plaintext)
+  } catch {
+    throw new Error('Could not decrypt encrypted value.')
+  }
+}

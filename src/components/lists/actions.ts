@@ -13,8 +13,6 @@ export async function createList(formData: FormData) {
 
   if (!user) return
 
-  const title = formData.get('title') as string
-
   const { error } = await supabase.from('lists').insert([
     {
       title,

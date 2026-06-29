@@ -20,9 +20,8 @@ export default function E2EEGate({ children, initialKeychain }: E2EEGateProps) {
   const [masterPassword, setMasterPassword] = useState('')
   const [confirmMasterPassword, setConfirmMasterPassword] = useState('')
   const [isBusy, setIsBusy] = useState(false)
-  const [isUnlocked, setIsUnlocked] = useState(false)
 
-  const { setMasterKey } = useE2EE()
+  const { setMasterKey, isUnlocked, isRestoring } = useE2EE()
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -43,7 +42,6 @@ export default function E2EEGate({ children, initialKeychain }: E2EEGateProps) {
         const masterKey = await unwrapMasterKey(masterPassword, initialKeychain)
 
         setMasterKey(masterKey)
-        setIsUnlocked(true)
         toast.success('Encyrption unlocked!')
       } else {
         // Setup mode
@@ -52,7 +50,6 @@ export default function E2EEGate({ children, initialKeychain }: E2EEGateProps) {
         await saveUserKeychain(payload)
 
         setMasterKey(masterKey)
-        setIsUnlocked(true)
         toast.success('Encryption set up successfuly.')
       }
     } catch (error) {
@@ -64,6 +61,14 @@ export default function E2EEGate({ children, initialKeychain }: E2EEGateProps) {
     } finally {
       setIsBusy(false)
     }
+  }
+
+  if (isRestoring) {
+    return <>{children}</>
+  }
+
+  if (isUnlocked) {
+    return <>{children}</>
   }
 
   if (isUnlocked) {

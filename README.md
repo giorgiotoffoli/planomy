@@ -28,43 +28,7 @@ Encrypted in v1:
 
 - Task title
 - Task notes/description
-- Task due date
-- Task scheduled date
-- Task priority
-- Task completed status
 - List name
-- Project name
-- Board/column names
-
-Not encrypted in v1:
-
-- User ID
-- Item ID
-- Item type
-- Created timestamp
-- Updated timestamp
-- Deleted timestamp
-- Encryption version
-- Key version
-
-## 3. Data Model Direction
-
-Instead of storing task fields directly in Supabase, Planomy will store encrypted blobs.
-
-Example encrypted row:
-
-```txt
-encrypted_items
-- id
-- user_id
-- item_type
-- ciphertext
-- iv
-- encryption_version
-- key_version
-- created_at
-- updated_at
-- deleted_at
 
 ## ✨ Features
 
@@ -77,14 +41,12 @@ encrypted_items
 - 🔒 **Privacy-first** — no trackers, no data selling, ever
 - 🧩 **Open-source** — fully transparent and customizable
 
-
 ## 🛠️ Tech Stack
 
 - **Frontend:** Next.js, React, TypeScript
 - **UI:** TailwindCSS, shadcn/ui
 - **Backend & DB:** Supabase (PostgreSQL)
 - **Deployment:** Vercel
-
 
 ## 💡 Philosophy
 
@@ -94,29 +56,30 @@ Planomy is built on a few simple ideas:
 - Productivity tools should reduce stress, not add to it
 - Your data should belong to **you**, not be tracked or sold
 
-
 ## 🤝 Contributing
 
 Contributions, feedback, and ideas are always welcome.
 
 If you’d like to help:
+
 - Open an issue
 - Suggest a feature
 - Submit a pull request
-
 
 ## 📌 Roadmap
 
 - [ ] 🔒 E2EE
 - [x] 😊 Optimistic UI
-- [X] 🎯 Kanban Boards
+- [x] 🎯 Kanban Boards
 - [ ] 🤝 Collaboration features
 - [ ] 📱 Mobile app
 - [ ] ⚡ Performance improvements
 - [ ] 🧠 Smarter task organization
 
-
 ## 🌐 Try it out
 
 👉 https://www.planomy.com
+
+```
+
 ```
