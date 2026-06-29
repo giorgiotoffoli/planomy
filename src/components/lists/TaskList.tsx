@@ -3,7 +3,7 @@ import { List, TaskWithList } from '../../types'
 
 interface TaskListProps {
   localTasks: TaskWithList[]
-  lists: List[]
+  localLists: List[]
   currentListId: string | null
   handleOnComplete: (taskId: string, isCompleted: boolean) => void
   handleOnRename: (taskId: string, newName: string) => void
@@ -15,7 +15,7 @@ interface TaskListProps {
 
 export default function TaskList({
   localTasks,
-  lists,
+  localLists,
   currentListId,
   handleOnComplete,
   handleOnRename,
@@ -35,7 +35,7 @@ export default function TaskList({
               <TaskItem
                 key={task.id}
                 task={task}
-                lists={lists}
+                lists={localLists}
                 currentListId={currentListId}
                 handleOnComplete={handleOnComplete}
                 handleOnRename={handleOnRename}

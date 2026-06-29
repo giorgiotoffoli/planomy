@@ -39,6 +39,8 @@ export default function TaskClient({
 }: TaskClientProps) {
   const [localView, setLocalView] = useState(currentView)
   const [localTasks, setLocalTasks] = useState(tasks)
+  const [localLists, setLocalLists] = useState(lists)
+  const [localHeaderTitle, setLocalHeaderTitle] = useState(headerTitle)
 
   const { masterKey } = useE2EE()
   const pathName = usePathname()
@@ -49,7 +51,7 @@ export default function TaskClient({
     const unlockedMasterKey = masterKey
     let isCancelled = false
 
-    async function decryptLoadedTasks() {
+    async function decryptLoadedData() {
       const decryptedTasks = await Promise.all(
         tasks.map(async (task) => ({
           ...task,
@@ -57,16 +59,36 @@ export default function TaskClient({
           notes: task.notes
             ? await decryptString(task.notes, unlockedMasterKey)
             : task.notes,
+          list: task.list
+            ? {
+                ...task.list,
+                title: await decryptString(task.list.title, unlockedMasterKey),
+              }
+            : task.list,
         })),
+      )
+
+      const decryptedLists = await Promise.all(
+        lists.map(async (list) => ({
+          ...list,
+          title: await decryptString(list.title, unlockedMasterKey),
+        })),
+      )
+
+      const decryptedHeaderTitle = await decryptString(
+        headerTitle,
+        unlockedMasterKey,
       )
 
       if (!isCancelled) {
         setLocalTasks(decryptedTasks)
+        setLocalLists(decryptedLists)
+        setLocalHeaderTitle(decryptedHeaderTitle)
       }
     }
 
-    decryptLoadedTasks().catch((error) => {
-      console.error('Failed to decrypt tasks', error)
+    decryptLoadedData().catch((error) => {
+      console.error('Failed to decrypt loaded data', error)
     })
 
     return () => {
@@ -241,7 +263,7 @@ export default function TaskClient({
     <>
       <Header
         taskCount={localTasks.length}
-        headerTitle={headerTitle}
+        headerTitle={localHeaderTitle}
         rightSlot={
           listId && (
             <HeaderViewToggle
@@ -293,7 +315,7 @@ export default function TaskClient({
           {localView === 'list' ? (
             <TaskList
               localTasks={localTasks}
-              lists={lists}
+              localLists={localLists}
               currentListId={listId}
               handleOnComplete={handleOnComplete}
               handleOnRename={handleOnRename}
