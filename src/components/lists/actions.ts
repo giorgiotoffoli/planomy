@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-export async function createList(formData: FormData) {
+export async function createList(title: string) {
   const supabase = await createClient()
 
   const {
