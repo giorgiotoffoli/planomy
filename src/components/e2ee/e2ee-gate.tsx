@@ -27,7 +27,12 @@ export default function E2EEGate({ children, initialKeychain }: E2EEGateProps) {
     event.preventDefault()
 
     if (!masterPassword) {
-      toast.error('Master password do not match.')
+      toast.error('Enter your master password.')
+      return
+    }
+
+    if (!hasKeychain && masterPassword !== confirmMasterPassword) {
+      toast.error('Master passwords do not match.')
       return
     }
 
@@ -45,6 +50,7 @@ export default function E2EEGate({ children, initialKeychain }: E2EEGateProps) {
         toast.success('Encyrption unlocked!')
       } else {
         // Setup mode
+
         const { masterKey, payload } =
           await createWrappedMasterKey(masterPassword)
         await saveUserKeychain(payload)

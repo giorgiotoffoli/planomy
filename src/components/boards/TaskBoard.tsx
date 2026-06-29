@@ -2,7 +2,7 @@
 import BoardColumn from '@/components/boards/BoardColumn'
 import { List, Status, TaskWithList } from '../../types'
 import { DragDropProvider } from '@dnd-kit/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { changeTaskStatus } from '../tasks/actions'
 import type { DragDropEvents } from '@dnd-kit/react'
 
@@ -22,6 +22,11 @@ export default function TaskBoard({
   currentListId,
 }: TaskBoardProps) {
   const [localTasks, setLocalTasks] = useState(tasks)
+
+  useEffect(() => {
+    setLocalTasks(tasks)
+  }, [tasks])
+
   const sortedStatuses = [...statuses].sort((a, b) => a.position - b.position)
 
   function handleDragEnd(event: DragEndEvent) {
