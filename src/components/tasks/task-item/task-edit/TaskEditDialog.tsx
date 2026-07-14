@@ -1,7 +1,7 @@
 'use client'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Task } from '../../../../types'
+import { Task, TaskWithList } from '../../../../types'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { TaskDatePicker } from '../../TaskDatePicker'
 import {
@@ -13,12 +13,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ReactNode } from 'react'
+import { TaskTitle } from '../TaskTitle'
 
 interface TaskEditDialogProps {
-  task: Task
+  task: TaskWithList
   children: ReactNode
   handleOnDueDateChange: (taskId: string, newDueDate: string) => void
   handleOnNotesChange: (taskId: string, notes: string) => void
+  handleOnRename: (taskId: string, newName: string) => void
 }
 
 export function TaskEditDialog({
@@ -26,6 +28,7 @@ export function TaskEditDialog({
   children,
   handleOnDueDateChange,
   handleOnNotesChange,
+  handleOnRename,
 }: TaskEditDialogProps) {
   return (
     <Dialog>
@@ -50,7 +53,10 @@ export function TaskEditDialog({
           }}
         >
           <DialogHeader>
-            <DialogTitle className="mb-3">Editing {task.title}</DialogTitle>
+            <DialogTitle className="mb-3">
+              Editing
+              <TaskTitle task={task} handleOnRename={handleOnRename} />
+            </DialogTitle>
             <DialogDescription className="opacity-75 text-sm">
               {task.notes}
             </DialogDescription>
