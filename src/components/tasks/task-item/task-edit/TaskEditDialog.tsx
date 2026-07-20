@@ -56,18 +56,18 @@ export function TaskEditDialog({
             const taskId = formData.get('id') as string
             const newDueDate = formData.get('due_date') as string
             const notes = formData.get('notes') as string
-            const selectedList = formData.get('list_id') as string
-            const newListId = selectedList === 'inbox' ? null : selectedList
+            const selectedValue = formData.get('list_id') as string
+            const newListId = selectedValue === 'inbox' ? null : selectedValue
+
+            if (newListId !== task.list_id) {
+              await moveTask(task.id, newListId)
+            }
 
             if (newDueDate) {
               handleOnDueDateChange(taskId, newDueDate)
             }
             if (notes) {
               handleOnNotesChange(taskId, notes)
-            }
-
-            if (newListId !== currentListId) {
-              await moveTask(taskId, newListId)
             }
           }}
         >
@@ -100,7 +100,11 @@ export function TaskEditDialog({
           <FieldGroup>
             <Field>
               <FieldLabel>List</FieldLabel>
-              <TaskListDropdown lists={lists} currentListId={currentListId} />
+              <TaskListDropdown
+                lists={lists}
+                currentListId={currentListId}
+                task={task}
+              />
             </Field>
           </FieldGroup>
           <DialogFooter>

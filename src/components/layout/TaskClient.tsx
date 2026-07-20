@@ -96,6 +96,14 @@ export default function TaskClient({
     }
   }, [masterKey, tasks])
 
+  function getLocalDateString(date = new Date()) {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+
+    return `${year}-${month}-${day}`
+  }
+
   async function handleOnCreate(
     title: string,
     dueDate: string,
@@ -104,14 +112,18 @@ export default function TaskClient({
   ) {
     const tempId = `temp-${crypto.randomUUID()}`
 
-    const selectedList =
-      localLists.find((list) => list.id === selectedListId) ?? null
+    const normalizedDueDate = dueDate?.slice(0, 10)
+    const today = getLocalDateString()
 
-    // Only show the optimistic task if it belongs on the current page.
     const shouldShowOnCurrentPage =
       pathName === '/all' ||
       (pathName === '/inbox' && selectedListId === null) ||
-      (pathName.includes('/lists/') && selectedListId === listId)
+      (pathName.includes('/lists/') && selectedListId === listId) ||
+      (pathName === '/today' && normalizedDueDate === today) ||
+      (pathName === '/scheduled' && Boolean(normalizedDueDate))
+
+    const selectedList =
+      localLists.find((list) => list.id === selectedListId) ?? null
 
     const tempTask: TaskWithList = {
       id: tempId,
