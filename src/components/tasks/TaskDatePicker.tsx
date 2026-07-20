@@ -12,7 +12,9 @@ export function TaskDatePicker({ taskDate }: { taskDate: string | null }) {
   const [date, setDate] = useState<Date | undefined>(taskDueDate)
   return (
     <>
-      <FieldLabel htmlFor="due_date">Due Date</FieldLabel>
+      <FieldLabel htmlFor="due_date" className="mt-2">
+        Due Date
+      </FieldLabel>
       <Popover>
         <PopoverTrigger asChild>
           <Button

@@ -1,8 +1,10 @@
 import { Button } from '@/components/ui/button'
 import { PlusIcon } from 'lucide-react'
 import CreateTaskDialog from './CreateTaskDialog'
+import { List } from '@/types'
 
 interface CreateTaskButtonProps {
+  lists: List[]
   handleOnCreate: (
     title: string,
     dueDate: string,
@@ -14,10 +16,15 @@ interface CreateTaskButtonProps {
 
 export default function CreateTaskButton({
   handleOnCreate,
+  lists,
   listId,
 }: CreateTaskButtonProps) {
   return (
-    <CreateTaskDialog handleOnCreate={handleOnCreate} listId={listId}>
+    <CreateTaskDialog
+      handleOnCreate={handleOnCreate}
+      listId={listId}
+      lists={lists}
+    >
       <Button
         type="button"
         variant="default"

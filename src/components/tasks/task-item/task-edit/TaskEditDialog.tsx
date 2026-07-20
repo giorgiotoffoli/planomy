@@ -15,23 +15,13 @@ import {
 import { ReactNode } from 'react'
 import { TaskTitle } from '../TaskTitle'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-} from '@/components/ui/dropdown-menu'
-import { TaskEditMoveList } from './TaskEditMoveList'
-import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu'
-import {
   Select,
   SelectContent,
   SelectGroup,
-  SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import TaskListDropdown from './TaskListDropdown'
+import TaskListDropdown from '../../TaskListDropdown'
 import { moveTask } from '../../actions'
 
 interface TaskEditDialogProps {
@@ -110,16 +100,7 @@ export function TaskEditDialog({
           <FieldGroup>
             <Field>
               <FieldLabel>List</FieldLabel>
-              <Select name="list_id" defaultValue={currentListId ?? 'inbox'}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Choose List" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <TaskListDropdown lists={lists} />
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+              <TaskListDropdown lists={lists} currentListId={currentListId} />
             </Field>
           </FieldGroup>
           <DialogFooter>
