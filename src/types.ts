@@ -13,6 +13,7 @@ export interface TaskWithList extends Task {
   list: {
     id: string
     title: string
+    default_view: 'list' | 'board'
   } | null
 }
 
@@ -20,7 +21,7 @@ export interface List {
   user_id: string
   id: string
   title: string
-  default_view: string
+  default_view: 'list' | 'board'
 }
 
 export interface Status {

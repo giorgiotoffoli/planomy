@@ -7,7 +7,17 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
-import { Calendar, CheckCircle, Clock, Inbox, Layers } from 'lucide-react'
+import {
+  Calendar,
+  CheckCircle,
+  Clock,
+  Inbox,
+  Layers,
+  SearchIcon,
+} from 'lucide-react'
+import { CommandDialog } from '@/components/ui/command'
+import { useState } from 'react'
+import SearchModal from '../SearchModal'
 
 type Tab = {
   title: string
@@ -44,6 +54,7 @@ const tabs: Tab[] = [
 ]
 
 export default function NavMain() {
+  const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
   return (
@@ -62,6 +73,20 @@ export default function NavMain() {
           </SidebarMenuButton>
         </SidebarMenuItem>
       ))}
+      {/* Search */}
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          tooltip="Search"
+          onClick={() => setOpen(true)}
+          className="cursor-pointer"
+        >
+          <SearchIcon />
+          <span>Search</span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <CommandDialog open={open} onOpenChange={setOpen}>
+        <SearchModal setOpen={setOpen} />
+      </CommandDialog>
     </SidebarMenu>
   )
 }

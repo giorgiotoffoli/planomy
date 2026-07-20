@@ -18,11 +18,13 @@ interface TaskItemProps {
   handleOnDelete: (taskId: string) => void
   shouldHideCompleted: boolean
   isInbox: boolean
+  highlighted: boolean
 }
 
 export function TaskItem({
   task,
   lists,
+  highlighted,
   currentListId,
   handleOnComplete,
   handleOnRename,
@@ -36,6 +38,7 @@ export function TaskItem({
     <li
       className={cn(
         'flex justify-between items-center group transition-all duration-200 rounded-md p-2 hover:bg-gray-300',
+        highlighted && 'border-2 border-blue-400 animate-pulse',
         task.completed &&
           shouldHideCompleted &&
           'opacity-0 scale-95 line-through',

@@ -1,5 +1,7 @@
 import { TaskItem } from '../tasks/task-item/TaskItem'
 import { List, TaskWithList } from '../../types'
+import { useRouter } from 'next/router'
+import { useSearchParams } from 'next/navigation'
 
 interface TaskListProps {
   localTasks: TaskWithList[]
@@ -26,6 +28,10 @@ export default function TaskList({
 }: TaskListProps) {
   const shouldHideCompleted = pathName !== '/completed'
   const isInbox = pathName === '/inbox'
+
+  const searchParams = useSearchParams()
+  const taskId = searchParams.get('task') as string
+
   return (
     <>
       <div className="flex flex-col h-full sm:w-full">
@@ -33,6 +39,7 @@ export default function TaskList({
           <ul>
             {localTasks.map((task) => (
               <TaskItem
+                highlighted={taskId === task.id}
                 key={task.id}
                 task={task}
                 lists={localLists}
