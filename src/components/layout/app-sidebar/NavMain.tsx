@@ -85,7 +85,7 @@ export default function NavMain() {
         </SidebarMenuButton>
       </SidebarMenuItem>
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <SearchModal />
+        <SearchModal setOpen={setOpen} />
       </CommandDialog>
     </SidebarMenu>
   )

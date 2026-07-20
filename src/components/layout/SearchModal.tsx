@@ -11,12 +11,15 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { decryptString } from '@/lib/crypto/e2ee'
-import type { Task, TaskWithList } from '@/types'
+import { TaskWithList } from '@/types'
 import Link from 'next/link'
-import router from 'next/router'
-import { useEffect, useMemo, useState } from 'react'
+import { Dispatch, SetStateAction, useEffect, useMemo, useState } from 'react'
 
-export default function SearchModal() {
+interface SearchModalProps {
+  setOpen: Dispatch<SetStateAction<boolean>>
+}
+
+export default function SearchModal({ setOpen }: SearchModalProps) {
   const { masterKey } = useE2EE()
   const [localTasks, setLocalTasks] = useState<TaskWithList[]>([])
   const [query, setQuery] = useState('')
@@ -77,9 +80,10 @@ export default function SearchModal() {
             <Link
               href={
                 task.list_id
-                  ? `/lists/${task.list_id}?view=${task.list?.default_view}`
-                  : '/inbox'
+                  ? `/lists/${task.list_id}?view=${task.list?.default_view}&task=${task.id}`
+                  : `/inbox&task=${task.id}`
               }
+              onClick={() => setOpen(false)}
             >
               <CommandItem
                 key={task.id}
