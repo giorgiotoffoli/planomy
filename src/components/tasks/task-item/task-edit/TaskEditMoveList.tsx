@@ -1,8 +1,5 @@
 'use client'
-import {
-  DropdownMenuItem,
-  DropdownMenuSubContent,
-} from '@/components/ui/dropdown-menu'
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { List } from '../../../../types'
 import { moveTask } from '../../actions'
 import { Inbox } from 'lucide-react'
@@ -23,7 +20,7 @@ export function TaskEditMoveList({
   }
 
   return (
-    <DropdownMenuSubContent>
+    <>
       {currentListId && (
         <DropdownMenuItem onSelect={() => void handleSelect(null)}>
           <Inbox />
@@ -39,6 +36,6 @@ export function TaskEditMoveList({
           {list.title}
         </DropdownMenuItem>
       ))}
-    </DropdownMenuSubContent>
+    </>
   )
 }

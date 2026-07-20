@@ -1,5 +1,4 @@
 import { getTasks } from '../../../components/tasks/queries'
-import Header from '@/components/layout/header/Header'
 import { getUserLists } from '@/components/lists/queries'
 import TaskClient from '@/components/layout/TaskClient'
 

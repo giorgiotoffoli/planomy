@@ -10,10 +10,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { ReactNode, useState } from 'react'
 import CreateTaskForm from './CreateTaskForm'
-import { usePathname } from 'next/navigation'
+import { List } from '@/types'
 
 interface CreateTaskDialogProps {
   children: ReactNode
+  lists: List[]
   handleOnCreate: (
     title: string,
     dueDate: string,
@@ -25,11 +26,11 @@ interface CreateTaskDialogProps {
 
 export default function CreateTaskDialog({
   children,
+  lists,
   handleOnCreate,
   listId,
 }: CreateTaskDialogProps) {
   const [open, setOpen] = useState(false)
-  const pathName = usePathname()
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -45,12 +46,18 @@ export default function CreateTaskDialog({
             const dueDate = formData.get('due_date') as string
             const notes = formData.get('notes') as string
 
-            handleOnCreate(title, dueDate, notes, listId)
+            // Lists
+            const selectedValue = formData.get('list_id') as string
+            const selectedListId =
+              selectedValue === 'inbox' ? null : selectedValue
+
+            handleOnCreate(title, dueDate, notes, selectedListId)
+
             setOpen(false)
           }}
         >
           {/* Task form */}
-          <CreateTaskForm />
+          <CreateTaskForm lists={lists} currentListId={listId} />
           <br />
           {/* Rest of dialog styling */}
           <DialogFooter>

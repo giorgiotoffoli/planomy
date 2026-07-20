@@ -96,28 +96,49 @@ export default function TaskClient({
     }
   }, [masterKey, tasks])
 
+  function getLocalDateString(date = new Date()) {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+
+    return `${year}-${month}-${day}`
+  }
+
   async function handleOnCreate(
     title: string,
     dueDate: string,
     notes: string,
-    listId: string | null,
+    selectedListId: string | null,
   ) {
     const tempId = `temp-${crypto.randomUUID()}`
-    console.log(listId)
+
+    const normalizedDueDate = dueDate?.slice(0, 10)
+    const today = getLocalDateString()
+
+    const shouldShowOnCurrentPage =
+      pathName === '/all' ||
+      (pathName === '/inbox' && selectedListId === null) ||
+      (pathName.includes('/lists/') && selectedListId === listId) ||
+      (pathName === '/today' && normalizedDueDate === today) ||
+      (pathName === '/scheduled' && Boolean(normalizedDueDate))
+
+    const selectedList =
+      localLists.find((list) => list.id === selectedListId) ?? null
+
     const tempTask: TaskWithList = {
       id: tempId,
       title,
       due_date: dueDate,
       notes,
-      list_id: listId,
+      list_id: selectedListId,
       user_id: 'temp',
       completed: false,
-      list: null,
+      list: selectedList,
     }
 
-    setTimeout(() => {
-      setLocalTasks((prevTasks) => [...prevTasks, tempTask])
-    }, 300)
+    if (shouldShowOnCurrentPage) {
+      setLocalTasks((previousTasks) => [tempTask, ...previousTasks])
+    }
 
     try {
       if (!masterKey) {
@@ -125,36 +146,45 @@ export default function TaskClient({
       }
 
       const encryptedTitle = await encryptString(title, masterKey)
-      const encryptedNotes = await encryptString(notes, masterKey)
+      const encryptedNotes = notes ? await encryptString(notes, masterKey) : ''
 
       const savedTask = await createTask(
         encryptedTitle,
         dueDate,
         encryptedNotes,
-        listId,
+        selectedListId,
       )
 
       if (!savedTask) {
         throw new Error('Task was not created')
       }
 
-      setLocalTasks((prev) =>
-        prev.map((task) =>
-          task.id === tempId
-            ? {
-                ...savedTask,
-                title,
-                notes,
-              }
-            : task,
-        ),
-      )
+      // Only replace the optimistic task if one was displayed.
+      if (shouldShowOnCurrentPage) {
+        setLocalTasks((previousTasks) =>
+          previousTasks.map((task) =>
+            task.id === tempId
+              ? {
+                  ...savedTask,
+                  title,
+                  notes,
+                  list_id: selectedListId,
+                  list: selectedList,
+                }
+              : task,
+          ),
+        )
+      }
     } catch (error) {
-      setLocalTasks((prev) => prev.filter((task) => task.id !== tempId))
+      if (shouldShowOnCurrentPage) {
+        setLocalTasks((previousTasks) =>
+          previousTasks.filter((task) => task.id !== tempId),
+        )
+      }
+
       console.error(error)
     }
   }
-
   function handleOnComplete(taskId: string, isCompleted: boolean) {
     const previousTasks = localTasks
 
@@ -334,7 +364,11 @@ export default function TaskClient({
           )}
         </Suspense>
       </div>
-      <CreateTaskButton handleOnCreate={handleOnCreate} listId={listId} />
+      <CreateTaskButton
+        handleOnCreate={handleOnCreate}
+        listId={listId}
+        lists={localLists}
+      />
     </>
   )
 }
