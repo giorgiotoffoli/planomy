@@ -9,53 +9,45 @@ interface TaskTitleProps {
 
 export function TaskTitle({ task, handleOnRename }: TaskTitleProps) {
   const [isEditingTaskTitle, setIsEditingTaskTitle] = useState(false)
-  return (
-    <>
-      {isEditingTaskTitle ? (
-        <form
-          className="w-full"
-          onSubmit={(e) => {
-            e.preventDefault()
-            const formData = new FormData(e.currentTarget)
 
-            const taskId = formData.get('id') as string
-            const newTitle = formData.get('newTitle') as string
+  const saveTitle = (input: HTMLInputElement) => {
+    const trimmedTitle = input.value.trim()
 
-            const trimmedTitle = newTitle.trim()
+    if (trimmedTitle && trimmedTitle !== task.title.trim()) {
+      handleOnRename(task.id, trimmedTitle)
+    }
 
-            handleOnRename(taskId, trimmedTitle)
+    setIsEditingTaskTitle(false)
+  }
 
-            setIsEditingTaskTitle(false)
-          }}
-        >
-          <input type="hidden" name="id" value={task.id} />
+  return isEditingTaskTitle ? (
+    <input
+      className={`inline-block min-w-0 flex-1 bg-transparent outline-none underline decoration-blue-500 ${
+        task.completed ? 'opacity-75 line-through' : ''
+      }`}
+      type="text"
+      defaultValue={task.title}
+      autoFocus
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          saveTitle(e.currentTarget)
+        }
 
-          <input
-            className={`outline-0 w-full ${
-              task.completed ? 'opacity-75 line-through' : 'my-auto'
-            }`}
-            type="text"
-            name="newTitle"
-            defaultValue={task.title}
-            onBlur={(e) => {
-              if (e.currentTarget.value.trim() !== task.title.trim()) {
-                e.currentTarget.form?.requestSubmit()
-              }
-              setIsEditingTaskTitle(false)
-            }}
-            placeholder="Edit task name..."
-          />
-        </form>
-      ) : (
-        <span
-          className={`outline-0 w-full ${
-            task.completed ? 'opacity-75 line-through' : 'my-auto'
-          }`}
-          onClick={() => setIsEditingTaskTitle(true)}
-        >
-          {task.title}
-        </span>
-      )}
-    </>
+        if (e.key === 'Escape') {
+          setIsEditingTaskTitle(false)
+        }
+      }}
+      onBlur={(e) => saveTitle(e.currentTarget)}
+      placeholder="Edit task name..."
+    />
+  ) : (
+    <span
+      className={task.completed ? 'opacity-75 line-through' : ''}
+      onClick={() => setIsEditingTaskTitle(true)}
+    >
+      {task.title}
+    </span>
   )
 }

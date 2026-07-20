@@ -53,8 +53,8 @@ export function TaskEditDialog({
           }}
         >
           <DialogHeader>
-            <DialogTitle className="mb-3">
-              Editing
+            <DialogTitle className="flex items-center gap-1">
+              <span className="shrink-0">Editing</span>
               <TaskTitle task={task} handleOnRename={handleOnRename} />
             </DialogTitle>
             <DialogDescription className="opacity-75 text-sm">
