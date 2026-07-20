@@ -13,6 +13,7 @@ export interface TaskWithList extends Task {
   list: {
     id: string
     title: string
+    default_view: 'list' | 'board'
   } | null
 }
 
