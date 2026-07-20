@@ -5,6 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuSub,
+  DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -41,6 +42,8 @@ export function TaskEditDropdown({
     <>
       <TaskEditDialog
         task={task}
+        lists={lists}
+        currentListId={currentListId}
         handleOnDueDateChange={handleOnDueDateChange}
         handleOnNotesChange={handleOnNotesChange}
         handleOnRename={handleOnRename}
@@ -61,11 +64,13 @@ export function TaskEditDropdown({
                 Move
               </DropdownMenuSubTrigger>
 
-              <TaskEditMoveList
-                taskId={task.id}
-                lists={lists}
-                currentListId={currentListId}
-              />
+              <DropdownMenuSubContent>
+                <TaskEditMoveList
+                  taskId={task.id}
+                  lists={lists}
+                  currentListId={currentListId}
+                />
+              </DropdownMenuSubContent>
             </DropdownMenuSub>
 
             <DropdownMenuSeparator />

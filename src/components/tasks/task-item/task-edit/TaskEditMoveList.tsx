@@ -23,7 +23,7 @@ export function TaskEditMoveList({
   }
 
   return (
-    <DropdownMenuSubContent>
+    <>
       {currentListId && (
         <DropdownMenuItem onSelect={() => void handleSelect(null)}>
           <Inbox />
@@ -39,6 +39,6 @@ export function TaskEditMoveList({
           {list.title}
         </DropdownMenuItem>
       ))}
-    </DropdownMenuSubContent>
+    </>
   )
 }

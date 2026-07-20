@@ -1,7 +1,7 @@
 'use client'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Task, TaskWithList } from '../../../../types'
+import { List, TaskWithList } from '../../../../types'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { TaskDatePicker } from '../../TaskDatePicker'
 import {
@@ -14,9 +14,30 @@ import {
 } from '@/components/ui/dialog'
 import { ReactNode } from 'react'
 import { TaskTitle } from '../TaskTitle'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+} from '@/components/ui/dropdown-menu'
+import { TaskEditMoveList } from './TaskEditMoveList'
+import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import TaskListDropdown from './TaskListDropdown'
+import { moveTask } from '../../actions'
 
 interface TaskEditDialogProps {
   task: TaskWithList
+  lists: List[]
+  currentListId: string | null
   children: ReactNode
   handleOnDueDateChange: (taskId: string, newDueDate: string) => void
   handleOnNotesChange: (taskId: string, notes: string) => void
@@ -25,6 +46,8 @@ interface TaskEditDialogProps {
 
 export function TaskEditDialog({
   task,
+  lists,
+  currentListId,
   children,
   handleOnDueDateChange,
   handleOnNotesChange,
@@ -35,7 +58,7 @@ export function TaskEditDialog({
       {children}
       <DialogContent className="sm:max-w-md">
         <form
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault()
             console.log('clicked')
             const formData = new FormData(e.currentTarget)
@@ -43,12 +66,18 @@ export function TaskEditDialog({
             const taskId = formData.get('id') as string
             const newDueDate = formData.get('due_date') as string
             const notes = formData.get('notes') as string
+            const selectedList = formData.get('list_id') as string
+            const newListId = selectedList === 'inbox' ? null : selectedList
 
             if (newDueDate) {
               handleOnDueDateChange(taskId, newDueDate)
             }
             if (notes) {
               handleOnNotesChange(taskId, notes)
+            }
+
+            if (newListId !== currentListId) {
+              await moveTask(taskId, newListId)
             }
           }}
         >
@@ -76,6 +105,21 @@ export function TaskEditDialog({
                 placeholder="Task notes..."
                 defaultValue={task.notes}
               />
+            </Field>
+          </FieldGroup>
+          <FieldGroup>
+            <Field>
+              <FieldLabel>List</FieldLabel>
+              <Select name="list_id" defaultValue={currentListId ?? 'inbox'}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Choose List" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <TaskListDropdown lists={lists} />
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </Field>
           </FieldGroup>
           <DialogFooter>
