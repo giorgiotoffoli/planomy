@@ -61,6 +61,7 @@ export function TaskItem({
           handleOnDueDateChange={handleOnDueDateChange}
           handleOnNotesChange={handleOnNotesChange}
           handleOnDelete={handleOnDelete}
+          handleOnRename={handleOnRename}
         >
           <Button variant="ghost" className="cursor-pointer">
             ⋯

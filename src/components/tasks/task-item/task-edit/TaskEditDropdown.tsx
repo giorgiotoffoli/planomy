@@ -24,6 +24,7 @@ interface TaskEditDropdownProps {
   handleOnDueDateChange: (taskId: string, newDueDate: string) => void
   handleOnNotesChange: (taskId: string, notes: string) => void
   handleOnDelete: (taskId: string) => void
+  handleOnRename: (taskId: string, newName: string) => void
 }
 
 export function TaskEditDropdown({
@@ -34,6 +35,7 @@ export function TaskEditDropdown({
   handleOnDueDateChange,
   handleOnNotesChange,
   handleOnDelete,
+  handleOnRename,
 }: TaskEditDropdownProps) {
   return (
     <>
@@ -41,6 +43,7 @@ export function TaskEditDropdown({
         task={task}
         handleOnDueDateChange={handleOnDueDateChange}
         handleOnNotesChange={handleOnNotesChange}
+        handleOnRename={handleOnRename}
       >
         <DropdownMenu>
           <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
