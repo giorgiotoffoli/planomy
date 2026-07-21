@@ -75,7 +75,7 @@ export default function SearchModal({ setOpen }: SearchModalProps) {
       <CommandList>
         <CommandEmpty>No tasks found.</CommandEmpty>
 
-        <CommandGroup heading="Tasks">
+        <CommandGroup heading={localTasks.length !== 0 && 'Tasks'}>
           {localTasks.map((task) => (
             <Link
               href={
