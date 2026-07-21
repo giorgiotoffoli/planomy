@@ -94,10 +94,6 @@ export default function E2EEGate({ children, initialKeychain }: E2EEGateProps) {
             <p className="text-sm font-medium text-blue-600">
               End-to-end encryption
             </p>
-
-            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold tracking-wide text-amber-700 ring-1 ring-amber-200">
-              NEW
-            </span>
           </div>
 
           <h2 className="text-2xl font-semibold text-slate-900">
