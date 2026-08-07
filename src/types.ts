@@ -7,6 +7,7 @@ export interface Task {
   due_date: string | null
   notes?: string
   status_id?: string | null
+  position: number
 }
 
 export interface TaskWithList extends Task {

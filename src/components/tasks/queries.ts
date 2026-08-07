@@ -56,9 +56,13 @@ export async function getTasks(
       break
   }
 
-  const { data: tasks, error } = await query.order('created_at', {
-    ascending: false,
-  })
+  const { data: tasks, error } = await query
+    .order('position', {
+      ascending: false,
+    })
+    .order('created_at', {
+      ascending: false,
+    })
 
   if (error) {
     throw new Error(error.message)
