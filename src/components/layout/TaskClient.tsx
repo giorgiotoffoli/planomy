@@ -19,6 +19,8 @@ import Header from './header/Header'
 import HeaderViewToggle from './header/HeaderViewToggle'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
+import { arrayMove } from '@dnd-kit/sortable'
+import { reorderTasks } from '../tasks/actions'
 
 interface TaskClientProps {
   tasks: TaskWithList[]
@@ -134,6 +136,7 @@ export default function TaskClient({
       user_id: 'temp',
       completed: false,
       list: selectedList,
+      position: 0,
     }
 
     if (shouldShowOnCurrentPage) {
@@ -289,6 +292,32 @@ export default function TaskClient({
     })
   }
 
+  // Reordering
+  function handleOnReorder(activeId: string, overId: string) {
+    if (activeId === overId) return
+
+    const previousTasks = localTasks
+
+    const oldIndex = localTasks.findIndex((task) => task.id == activeId)
+    const newIndex = localTasks.findIndex((task) => task.id === overId)
+
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const reorderedTasks = arrayMove(localTasks, oldIndex, newIndex)
+
+    setLocalTasks(reorderedTasks)
+
+    const updates = reorderedTasks.map((task, index) => ({
+      id: task.id,
+      position: index,
+    }))
+
+    reorderTasks(updates).catch((error) => {
+      console.log(error)
+      setLocalTasks(previousTasks)
+    })
+  }
+
   return (
     <>
       <Header
@@ -347,6 +376,7 @@ export default function TaskClient({
               localTasks={localTasks}
               localLists={localLists}
               currentListId={listId}
+              handleOnReorder={handleOnReorder}
               handleOnComplete={handleOnComplete}
               handleOnRename={handleOnRename}
               handleOnDueDateChange={handleOnDueDateChange}
