@@ -58,7 +58,7 @@ export async function getTasks(
 
   const { data: tasks, error } = await query
     .order('position', {
-      ascending: false,
+      ascending: true,
     })
     .order('created_at', {
       ascending: false,
