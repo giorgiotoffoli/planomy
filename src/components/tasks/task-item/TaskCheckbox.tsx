@@ -9,7 +9,7 @@ interface TaskCheckboxProps {
 export function TaskCheckbox({ task, handleOnComplete }: TaskCheckboxProps) {
   return (
     <Checkbox
-      className="mr-2 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500 border-blue-500"
+      className="mr-2 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500 border-blue-500 rounded-2xl"
       checked={task.completed}
       onCheckedChange={(checked) => {
         handleOnComplete(task.id, checked === true)
