@@ -23,7 +23,7 @@ export async function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex h-8 items-end gap-2 rounded-md px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:pl-1">
-              <PlanomyIcon size={26} className="mb-0.5" />
+              <PlanomyIcon size={24} className="mb-0.5" />
               <h2 className="font-heading text-2xl font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
                 planomy
               </h2>
