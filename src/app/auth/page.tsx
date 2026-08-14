@@ -2,10 +2,11 @@
 
 import { Suspense, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Mail, Lock, ArrowRight, Pyramid } from 'lucide-react'
+import { Mail, Lock, ArrowRight } from 'lucide-react'
 import { signIn, signUp } from './actions'
 import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
+import { PlanomyIcon } from '@/icons/PlanomyIcon'
 
 function DisplayErrorMessage() {
   const searchParams = useSearchParams()
@@ -41,11 +42,11 @@ export default function AuthPage() {
             initial={{ y: 10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-3xl font-bold tracking-tight text-slate-900 font-stretch-expanded"
+            className="font-heading font-bold text-3xl tracking-tight"
           >
-            <div className="flex align-baseline justify-center gap-2 ">
-              <Pyramid className="relative top-1.5" />
-              <h2 className="font-stretch-expanded">Planomy</h2>
+            <div className="flex items-end justify-center gap-2 ">
+              <PlanomyIcon size={32} />
+              <h2>planomy</h2>
             </div>
           </motion.h1>
           <motion.p
