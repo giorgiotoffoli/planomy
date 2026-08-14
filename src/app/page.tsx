@@ -172,7 +172,7 @@ export default function Page() {
       <section className="border-b border-black/[0.07] bg-blue-600 text-white">
         <div className="mx-auto grid max-w-280 gap-8 px-5 py-16 sm:px-8 sm:py-24 md:grid-cols-[.9fr_1.1fr] md:items-center">
           <div>
-            <p className="font-mono text-sm uppercase tracking-[.18em] text-blue-200">
+            <p className="font-mono text-xs uppercase tracking-[.18em] text-blue-200">
               End-to-end encryption
             </p>
             <h2 className="mt-4 font-heading text-4xl font-medium leading-none tracking-[-.045em] sm:text-6xl">
