@@ -1,37 +1,25 @@
-import type { SVGProps } from 'react'
+import * as React from 'react'
 
-type PlanomyIconProps = SVGProps<SVGSVGElement> & {
+type PlanomyIconProps = React.SVGProps<SVGSVGElement> & {
   size?: number | string
 }
 
-export function PlanomyIcon({
-  size = 24,
-  className,
-  ...props
-}: PlanomyIconProps) {
-  return (
+const PlanomyIcon = React.forwardRef<SVGSVGElement, PlanomyIconProps>(
+  ({ size = 24, color = 'currentColor', ...props }, ref) => (
     <svg
+      ref={ref}
+      fill={color}
       width={size}
       height={size}
-      viewBox="-5 -2 37 36"
-      fill="none"
+      viewBox="0 0 24 24"
       xmlns="http://www.w3.org/2000/svg"
-      className={className}
       {...props}
     >
-      <g transform="translate(-34.706768,-118.50844)">
-        <g
-          transform="matrix(-0.67976355,-1.177385,1.177385,-0.67976355,42.286498,156.81799)"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="m 13,13.74 a 2,2 0 0 1 -2,0 L 2.5,8.87 a 1,1 0 0 1 0,-1.74 L 11,2.26 a 2,2 0 0 1 2,0 l 8.5,4.87 a 1,1 0 0 1 0,1.74 z" />
-          <path d="m 20,14.285 1.5,0.845 a 1,1 0 0 1 0,1.74 L 13,21.74 a 2,2 0 0 1 -2,0 L 2.5,16.87 a 1,1 0 0 1 0,-1.74 L 4,14.285" />
-        </g>
-      </g>
+      <path d="M11.445 21.832a1 1 0 0 0 1.11 0l9-6A.998.998 0 0 0 21.8 14.4l-9-12c-.377-.504-1.223-.504-1.6 0l-9 12a1 1 0 0 0 .245 1.432l9 6zm8.12-7.078L12 19.798V4.667l7.565 10.087z" />
     </svg>
-  )
-}
+  ),
+)
+
+PlanomyIcon.displayName = 'PlanomyIcon'
+
+export { PlanomyIcon }

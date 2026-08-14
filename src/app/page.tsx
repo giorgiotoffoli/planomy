@@ -22,18 +22,18 @@ export default function Page() {
       <nav className="relative z-50 mx-auto flex h-16 max-w-330 items-center justify-between px-5 sm:px-8">
         <Link
           href="/t3-inspired"
-          className="flex items-center gap-2.5 font-heading text-[17px] font-semibold tracking-tight"
+          className="flex items-center gap-2 font-heading text-xl font-semibold tracking-tight"
         >
-          <PyramidIcon size={20} />
+          <PlanomyIcon size={22} />
           Planomy
         </Link>
         <a
           href="https://github.com/giorgiotoffoli/planomy"
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-2 rounded-full border border-black/10 bg-white/55 px-3.5 py-2 text-xs font-medium shadow-sm backdrop-blur transition hover:bg-white"
+          className="flex items-center gap-2 rounded-full border border-black/10 bg-white/55 px-3.5 py-2 text-sm font-medium shadow-sm backdrop-blur transition hover:bg-white"
         >
-          <Star className="size-3.5 fill-blue-600 text-blue-600" />
+          <Star className="size-4 fill-blue-600 text-blue-600" />
           <span className="hidden sm:inline">Give us a star</span>
         </a>
       </nav>
@@ -102,7 +102,7 @@ export default function Page() {
               delay: 0.08,
               ease: [0.22, 1, 0.36, 1],
             }}
-            className="font-heading text-[clamp(3.5rem,8vw,7.9rem)] font-medium leading-[0.88] tracking-[-0.07em]"
+            className="font-heading sm:text-[clamp(3.5rem,8vw,7.9rem)] font-medium sm:leading-[0.88] tracking-[-0.07em] text-5xl"
           >
             The open-source
             <br />
@@ -137,7 +137,7 @@ export default function Page() {
               href="https://github.com/giorgiotoffoli/planomy"
               target="_blank"
               rel="noreferrer"
-              className="group flex items-center gap-2 text-xs font-medium text-slate-500 transition hover:text-slate-900"
+              className="group flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-900"
             >
               <Github className="size-3.5" />
               Inspect every line yourself
@@ -149,14 +149,20 @@ export default function Page() {
             initial={{ opacity: 0, y: 60, rotateX: 9 }}
             animate={{ opacity: 1, y: 0, rotateX: 0 }}
             transition={{ duration: 1, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="relative mx-auto mt-16 max-w-245 rounded-t-[22px] border border-black/15 bg-[#131722] p-1.5 pb-0 shadow-[0_35px_100px_rgba(37,99,235,.22)] sm:mt-12 sm:rounded-t-[30px] sm:p-2.5 sm:pb-0"
+            className="relative mx-auto mt-16 max-w-245 rounded-t-[22px] border border-black/15 border-b-0 bg-[#131722] p-1.5 pb-0 shadow-[0_35px_100px_rgba(37,99,235,.22)] sm:mt-12 sm:rounded-t-[30px] sm:p-2.5 sm:pb-0"
             style={{ perspective: 1200 }}
           >
-            <div className="h-80 overflow-hidden sm:h-105">
+            <div className="h-100 overflow-hidden sm:h-120 md:h-80 lg:h-112">
+              {/* Mobile */}
               <img
-                src="/planomy_landing_page.png"
-                alt="A custom list in Planomy depicting to-come features!"
-                className="w-full h-auto rounded-t-[18px]"
+                src="/planomy_landing_page_mobile.png"
+                alt="A custom list in Planomy mobile depicting example school tasks."
+                className="w-full h-auto rounded-t-[18px] block md:hidden"
+              />
+              <img
+                src="/planomy_landing_page_desktop.png"
+                alt="A custom list in Planomy desktop depicting to-come features."
+                className="w-full h-full md:h-auto rounded-t-[18px] hidden md:block"
               />
             </div>
           </motion.div>
@@ -164,12 +170,12 @@ export default function Page() {
       </section>
 
       <section className="border-b border-black/[0.07] bg-blue-600 text-white">
-        <div className="mx-auto grid max-w-[1120px] gap-8 px-5 py-16 sm:px-8 sm:py-24 md:grid-cols-[.9fr_1.1fr] md:items-center">
+        <div className="mx-auto grid max-w-280 gap-8 px-5 py-16 sm:px-8 sm:py-24 md:grid-cols-[.9fr_1.1fr] md:items-center">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[.18em] text-blue-200">
+            <p className="font-mono text-sm uppercase tracking-[.18em] text-blue-200">
               End-to-end encryption
             </p>
-            <h2 className="mt-4 font-heading text-4xl font-medium leading-[1] tracking-[-.045em] sm:text-6xl">
+            <h2 className="mt-4 font-heading text-4xl font-medium leading-none tracking-[-.045em] sm:text-6xl">
               Your life is none
               <br />
               of our business.
@@ -182,20 +188,20 @@ export default function Page() {
               ['03', 'Sync', 'Only encrypted ciphertext reaches us.'],
             ].map(([number, title, copy]) => (
               <div key={number} className="bg-blue-600 p-5 sm:p-6">
-                <p className="font-mono text-[9px] text-blue-200">{number}</p>
-                <h3 className="mt-8 font-heading text-lg font-semibold">
+                <p className="font-mono text-sm text-blue-200">{number}</p>
+                <h3 className="mt-4 font-heading text-xl font-semibold">
                   {title}
                 </h3>
-                <p className="mt-2 text-xs leading-5 text-blue-100">{copy}</p>
+                <p className="mt-2 text-sm leading-5 text-blue-100">{copy}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <footer className="mx-auto flex max-w-[1120px] flex-col gap-5 px-5 py-8 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-        <div className="flex items-center gap-2 font-medium text-slate-700">
-          <PyramidIcon size={16} /> Planomy
+      <footer className="mx-auto flex max-w-280 flex-col gap-5 px-5 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+        <div className="flex items-center gap-2 font-medium  text-slate-700">
+          <PlanomyIcon size={16} /> Planomy
         </div>
         <div className="flex gap-5">
           <a href="https://www.youtube.com/@giorgiotoffoli" target="_blank">
