@@ -111,7 +111,7 @@ export default function TaskDetail({
           {shouldShowTaskList && taskListLabel && (
             <Link
               href={taskListHref}
-              className="min-w-0 truncate hover:text-blue-500 hover:cursor-alias"
+              className="min-w-0 truncate hover:text-blue-500 hover:cursor-pointer"
             >
               {taskListLabel}
             </Link>
