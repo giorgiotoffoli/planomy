@@ -140,7 +140,9 @@ export function TaskItem({
         </div>{' '}
       </div>
 
-      <Separator className="mx-3 w-auto" />
+      <div className="mx-3">
+        <Separator />
+      </div>
     </li>
   )
 }
