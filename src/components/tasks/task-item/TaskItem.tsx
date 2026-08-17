@@ -58,26 +58,6 @@ export function TaskItem({
       : 'opacity 300ms ease, background-color 200ms ease',
   }
 
-  const taskList = task.list_id
-    ? lists.find((list) => list.id === task.list_id)
-    : null
-
-  const shouldShowTaskList =
-    !isInbox && (task.list_id === null || currentListId !== task.list_id)
-
-  const taskListLabel = task.list_id ? (
-    taskList?.title
-  ) : (
-    <div className="flex gap-1 items-center">
-      <InboxIcon size={13} />
-      Inbox
-    </div>
-  )
-
-  const taskListHref = task.list_id
-    ? `/lists/${task.list_id}?view=${taskList?.default_view ?? 'list'}`
-    : '/inbox'
-
   return (
     <li
       {...attributes}
@@ -98,9 +78,7 @@ export function TaskItem({
         </div>
         {/* Content */}
         <div className="min-w-0">
-          <div className="flex min-h-6 items-center">
-            <TaskTitle task={task} handleOnRename={handleOnRename} />
-          </div>
+          <TaskTitle task={task} handleOnRename={handleOnRename} />
 
           <TaskDetail
             task={task}
@@ -110,16 +88,10 @@ export function TaskItem({
           />
         </div>
         {/* Right side content */}
+        {/* For status
+                        className="rounded-md bg-blue-100 px-2 py-1 text-sm text-blue-500 hover:bg-blue-200 hover:text-blue-700"
+          */}
         <div className="flex items-center gap-3">
-          {shouldShowTaskList && taskListLabel && (
-            <Link
-              href={taskListHref}
-              className="rounded-md bg-blue-100 px-2 py-1 text-sm text-blue-500 hover:bg-blue-200 hover:text-blue-700"
-            >
-              {taskListLabel}
-            </Link>
-          )}
-
           <TaskEditDropdown
             task={task}
             lists={lists}

@@ -1,5 +1,7 @@
 import { List, TaskWithList } from '@/types'
 import { format, isBefore } from 'date-fns'
+import { InboxIcon, NotebookPenIcon } from 'lucide-react'
+import Link from 'next/link'
 
 interface TaskDetailProps {
   task: TaskWithList
@@ -61,28 +63,61 @@ function getDueDateLabel(dueDate: string | null) {
   }
 }
 
-export default function TaskDetail({ task }: TaskDetailProps) {
+export default function TaskDetail({
+  task,
+  lists,
+  currentListId,
+  isInbox,
+}: TaskDetailProps) {
   const dueDateInfo = getDueDateLabel(task.due_date)
 
-  return (
-    <span className="text-xs text-gray-600 block">
-      {/* Date */}
-      {dueDateInfo && (
-        <>
-          <span className={dueDateInfo.isOverdue ? 'text-rose-500' : ''}>
-            {dueDateInfo.label}
-          </span>
-          <br />
-        </>
-      )}
+  const taskList = task.list_id
+    ? lists.find((list) => list.id === task.list_id)
+    : null
 
+  const shouldShowTaskList =
+    !isInbox && (task.list_id === null || currentListId !== task.list_id)
+
+  const taskListLabel = task.list_id ? (
+    taskList?.title
+  ) : (
+    <div className="flex gap-1 items-center">
+      <InboxIcon size={12} />
+      Inbox
+    </div>
+  )
+
+  const taskListHref = task.list_id
+    ? `/lists/${task.list_id}?view=${taskList?.default_view ?? 'list'}`
+    : '/inbox'
+
+  return (
+    <div className="flex min-w-0 flex-col gap-0.5 text-xs text-gray-600">
       {/* Notes */}
-      {task.notes && (
-        <>
-          <span>{task.notes}</span>
-          <br />
-        </>
+      {task.notes && <p>{task.notes}</p>}
+      {/* Metadata */}
+      {(dueDateInfo || (shouldShowTaskList && taskListLabel)) && (
+        <div className="flex min-w-0 items-center gap-1.5">
+          {dueDateInfo && (
+            <span className={dueDateInfo.isOverdue ? 'text-rose-500' : ''}>
+              {dueDateInfo.label}
+            </span>
+          )}
+
+          {dueDateInfo && shouldShowTaskList && taskListLabel && (
+            <span className="text-gray-400">·</span>
+          )}
+
+          {shouldShowTaskList && taskListLabel && (
+            <Link
+              href={taskListHref}
+              className="min-w-0 truncate hover:text-blue-500 hover:cursor-alias"
+            >
+              {taskListLabel}
+            </Link>
+          )}
+        </div>
       )}
-    </span>
+    </div>
   )
 }
