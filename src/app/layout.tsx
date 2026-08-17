@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'Planomy',
-  description: 'Plan privately',
+  description: 'The open-source planner for your private life.',
 }
 
 export default function RootLayout({
