@@ -4,7 +4,9 @@ import { useSearchParams } from 'next/navigation'
 import {
   DndContext,
   DragEndEvent,
+  MouseSensor,
   PointerSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -38,9 +40,15 @@ export default function TaskList({
   handleOnReorder,
 }: TaskListProps) {
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 5,
+        distance: 6,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 8,
       },
     }),
   )
@@ -75,34 +83,32 @@ export default function TaskList({
   )
 
   return (
-    <>
-      <div className="flex flex-col h-full sm:w-full">
-        <div className="flex-1 overflow-y-auto scroll-smooth pb-16">
-          {canReorder ? (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={(event: DragEndEvent) => {
-                const { active, over } = event
+    <div className="flex flex-col h-full sm:w-full">
+      <div className="flex-1 overflow-y-auto scroll-smooth pb-16">
+        {canReorder ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={(event: DragEndEvent) => {
+              const { active, over } = event
 
-                if (!over) return
-                if (active.id === over.id) return
+              if (!over) return
+              if (active.id === over.id) return
 
-                handleOnReorder(String(active.id), String(over.id))
-              }}
+              handleOnReorder(String(active.id), String(over.id))
+            }}
+          >
+            <SortableContext
+              items={localTasks.map((task) => task.id)}
+              strategy={verticalListSortingStrategy}
             >
-              <SortableContext
-                items={localTasks.map((task) => task.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {tasklist}
-              </SortableContext>
-            </DndContext>
-          ) : (
-            tasklist
-          )}
-        </div>
+              {tasklist}
+            </SortableContext>
+          </DndContext>
+        ) : (
+          tasklist
+        )}
       </div>
-    </>
+    </div>
   )
 }
