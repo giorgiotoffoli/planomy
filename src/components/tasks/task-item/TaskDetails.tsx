@@ -1,6 +1,5 @@
 import { List, TaskWithList } from '@/types'
 import { format, isBefore } from 'date-fns'
-import Link from 'next/link'
 
 interface TaskDetailProps {
   task: TaskWithList
@@ -62,18 +61,8 @@ function getDueDateLabel(dueDate: string | null) {
   }
 }
 
-export default function TaskDetail({
-  task,
-  currentListId,
-  lists,
-  isInbox,
-}: TaskDetailProps) {
+export default function TaskDetail({ task }: TaskDetailProps) {
   const dueDateInfo = getDueDateLabel(task.due_date)
-
-  const parentList = lists.find((list) => list.id === task.list_id)
-  const listDefaultView = parentList?.default_view ?? 'list'
-
-  const shouldShowParentList = currentListId !== task.list_id
 
   return (
     <span className="text-xs text-gray-600 block">
@@ -94,27 +83,6 @@ export default function TaskDetail({
           <br />
         </>
       )}
-
-      {/* Parent List */}
-      <span className="font-bold cursor-pointer hover:text-blue-500">
-        {isInbox ? (
-          ''
-        ) : task.list_id === null ? (
-          <Link href="/inbox">Inbox</Link>
-        ) : shouldShowParentList ? (
-          task.list_id ? (
-            parentList && (
-              <Link href={`/lists/${task.list_id}?view=${listDefaultView}`}>
-                {parentList.title}{' '}
-              </Link>
-            )
-          ) : (
-            <Link href="/inbox">Inbox</Link>
-          )
-        ) : (
-          ''
-        )}
-      </span>
     </span>
   )
 }

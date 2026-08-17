@@ -199,10 +199,10 @@ export default function TaskClient({
     )
 
     // if task is completed, fade it out
-    if (isCompleted) {
+    if (isCompleted && pathName !== '/completed') {
       setTimeout(() => {
         setLocalTasks((prev) => prev.filter((task) => task.id !== taskId))
-      }, 200)
+      }, 300)
     }
 
     if (!isCompleted && pathName === '/completed') {

@@ -8,7 +8,9 @@ import TaskDetail from './TaskDetails'
 import { cn } from '@/lib/utils'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical } from 'lucide-react'
+import { Separator } from '@/components/ui/separator'
+import Link from 'next/link'
+import { InboxIcon } from 'lucide-react'
 
 interface TaskItemProps {
   task: TaskWithList
@@ -37,7 +39,6 @@ export function TaskItem({
   handleOnDelete,
   shouldHideCompleted,
   isInbox,
-  canReorder,
 }: TaskItemProps) {
   const {
     attributes,
@@ -52,62 +53,94 @@ export function TaskItem({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: transition
+      ? `${transition}, opacity 300ms ease, background-color 200ms ease`
+      : 'opacity 300ms ease, background-color 200ms ease',
   }
+
+  const taskList = task.list_id
+    ? lists.find((list) => list.id === task.list_id)
+    : null
+
+  const shouldShowTaskList =
+    !isInbox && (task.list_id === null || currentListId !== task.list_id)
+
+  const taskListLabel = task.list_id ? (
+    taskList?.title
+  ) : (
+    <div className="flex gap-1 items-center">
+      <InboxIcon size={13} />
+      Inbox
+    </div>
+  )
+
+  const taskListHref = task.list_id
+    ? `/lists/${task.list_id}?view=${taskList?.default_view ?? 'list'}`
+    : '/inbox'
+
   return (
     <li
+      {...attributes}
+      {...listeners}
       ref={setNodeRef}
       style={style}
       className={cn(
-        'flex justify-between items-center group transition-colors duration-200 rounded-md p-2 hover:bg-gray-300',
-        isDragging && 'opacity-50',
-        highlighted && 'border-2 border-blue-400 animate-pulse',
-        task.completed &&
-          shouldHideCompleted &&
-          'opacity-0 scale-95 line-through',
+        'group  hover:bg-gray-300',
+        isDragging && 'cursor-grabbing opacity-50',
+        highlighted && 'animate-pulse border-2 border-blue-400',
+        task.completed && shouldHideCompleted && 'opacity-0 line-through',
       )}
     >
-      {canReorder && (
-        <button
-          {...attributes}
-          {...listeners}
-          className="
-    mr-1 cursor-grab opacity-50
-    hover:opacity-100
-    active:cursor-grabbing
-  "
-          aria-label="Reorder task"
-        >
-          <GripVertical className="size-4" />
-        </button>
-      )}
-      <div className="flex flex-col w-full">
-        <div className="flex items-center ">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 px-3 py-3">
+        {/* Checkbox */}
+        <div className="flex h-6 items-center">
           <TaskCheckbox task={task} handleOnComplete={handleOnComplete} />
-          <TaskTitle task={task} handleOnRename={handleOnRename} />
         </div>
-        <TaskDetail
-          task={task}
-          currentListId={currentListId}
-          lists={lists}
-          isInbox={isInbox}
-        />
+        {/* Content */}
+        <div className="min-w-0">
+          <div className="flex min-h-6 items-center">
+            <TaskTitle task={task} handleOnRename={handleOnRename} />
+          </div>
+
+          <TaskDetail
+            task={task}
+            currentListId={currentListId}
+            lists={lists}
+            isInbox={isInbox}
+          />
+        </div>
+        {/* Right side content */}
+        <div className="flex items-center gap-3">
+          {shouldShowTaskList && taskListLabel && (
+            <Link
+              href={taskListHref}
+              className="rounded-md bg-blue-100 px-2 py-1 text-sm text-blue-500 hover:bg-blue-200 hover:text-blue-700"
+            >
+              {taskListLabel}
+            </Link>
+          )}
+
+          <TaskEditDropdown
+            task={task}
+            lists={lists}
+            currentListId={currentListId}
+            handleOnDueDateChange={handleOnDueDateChange}
+            handleOnNotesChange={handleOnNotesChange}
+            handleOnDelete={handleOnDelete}
+            handleOnRename={handleOnRename}
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 cursor-pointer"
+            >
+              ⋯
+            </Button>
+          </TaskEditDropdown>
+        </div>{' '}
       </div>
-      <div>
-        <TaskEditDropdown
-          task={task}
-          lists={lists}
-          currentListId={currentListId}
-          handleOnDueDateChange={handleOnDueDateChange}
-          handleOnNotesChange={handleOnNotesChange}
-          handleOnDelete={handleOnDelete}
-          handleOnRename={handleOnRename}
-        >
-          <Button variant="ghost" className="cursor-pointer">
-            ⋯
-          </Button>
-        </TaskEditDropdown>
-      </div>
+
+      <Separator className="mx-3 w-auto" />
     </li>
   )
 }
