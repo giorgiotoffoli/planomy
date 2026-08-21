@@ -111,10 +111,6 @@ export function TaskItem({
           </TaskEditDropdown>
         </div>{' '}
       </div>
-
-      <div className="mx-3">
-        <Separator />
-      </div>
     </li>
   )
 }
