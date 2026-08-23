@@ -65,7 +65,7 @@ export function TaskItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'group  hover:bg-gray-300',
+        'group  hover:bg-gray-300 rounded-2xl',
         isDragging && 'cursor-grabbing opacity-50',
         highlighted && 'animate-pulse border-2 border-blue-400',
         task.completed && shouldHideCompleted && 'opacity-0 line-through',
