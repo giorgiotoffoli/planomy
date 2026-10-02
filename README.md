@@ -1,76 +1,66 @@
 <p align="center">
-  <img src="src/app/readme-banner.png" alt="Planomy header">
+  <img src="src/app/readme-banner.png" alt="Planomy">
 </p>
 
-> [!WARNING]  
-> Planomy is currently in **beta**.  
-> Features may change, bugs may occur, and breaking updates are possible.
-> You have been warned!
+# Planomy
 
-**Planomy** is an open-source, end-to-end encrypted task manager designed to make planning feel simple, fast, and distraction-free without compromising your privacy.
+Planomy is an open-source, end-to-end encrypted task manager for organizing
+work without giving up privacy. It combines focused daily planning, flexible
+lists, scheduling, and board views in a responsive web application.
 
-Built with a focus on clarity and usability, Planomy helps you organize your tasks, stay on top of your schedule, and actually enjoy the process of getting things done.
+> [!WARNING]
+> Planomy is in beta. Features and data models may change between releases.
 
-## 🔐 Encrytption in v1
+## Features
 
-### 1. E2EE Promise
+- **My Day** — choose tasks from any list, carry unfinished work forward
+  intentionally, and pin up to three daily focus tasks.
+- **Lists and inbox** — capture unassigned tasks or organize them into multiple
+  plans without duplicating task data.
+- **List and Kanban views** — switch between focused lists and visual boards.
+- **Scheduling** — assign and reschedule due dates, with dedicated Today and
+  Scheduled views.
+- **Task workflows** — create, edit, move, complete, reopen, search, sort, and
+  review completed tasks.
+- **Responsive interface** — use the same planning workflows on desktop and
+  mobile layouts.
+- **End-to-end encryption** — task titles, notes, and list names are encrypted
+  in the browser before being stored.
 
-Planomy will encrypt private planner data before it leaves the user's device.
+## Privacy
 
-The server may store and sync encrypted data, but it should not be able to read task titles, notes, or list names.
+Planomy's server stores encrypted planner content. Plaintext task titles,
+notes, and list names are available only in the browser while the user's vault
+is unlocked. My Day stores references to existing tasks rather than copies of
+their content.
 
-Plaintext should only exist in the user's browser while the vault is unlocked.
+## Technology
 
-### 2. What We Are Protecting
+- Next.js, React, and TypeScript
+- Tailwind CSS and shadcn/ui
+- Supabase Auth and PostgreSQL
+- Web Crypto-based end-to-end encryption
 
-Encrypted in v1:
+## Roadmap
 
-- Task title
-- Task notes/description
-- List name
+### Available now
 
-## ✨ Features
+- [x] End-to-end encrypted task and list content
+- [x] Inbox, lists, task search, sorting, and completed-task history
+- [x] Due dates with Today and Scheduled views
+- [x] List and Kanban board layouts
+- [x] My Day selection, suggestions, daily focus, and rollover
+- [x] Optimistic task updates and responsive navigation
 
-- 🧠 **Focused task management** — no clutter, just what matters
-- 🗂️ **Multiple lists** — organize tasks your way
-- 🔁 **Move tasks between lists** — flexible workflows
-- 🔢 **Live task counters** — beautiful, real-time updates (NumberFlow)
-- ✅ **Completed view** — review everything you’ve finished
-- 📅 **Scheduling** — plan ahead with ease
-- 🔒 **Privacy-first** — no trackers, no data selling, ever
-- 🧩 **Open-source** — fully transparent and customizable
+### Planned
 
-## 🛠️ Tech Stack
+- [ ] Shared plans and collaboration
+- [ ] Native mobile applications
+- [ ] Offline-first synchronization
+- [ ] Accessibility and performance improvements
 
-- **Frontend:** Next.js, React, TypeScript
-- **UI:** TailwindCSS, shadcn/ui
-- **Backend & DB:** Supabase (PostgreSQL)
-- **Deployment:** Vercel
+## Contributing
 
-## 💡 Philosophy
-
-Planomy is built on a few simple ideas:
-
-- Software should feel **fast and intuitive**
-- Productivity tools should reduce stress, not add to it
-- Your data should belong to **you**, not be tracked or sold
-
-## 🤝 Contributing
-
-Contributions, feedback, and ideas are always welcome.
-
-If you’d like to help:
-
-- Open an issue
-- Suggest a feature
-- Submit a pull request
-
-## 📌 Roadmap
-
-- [X] 🔒 E2EE
-- [X] 😊 Optimistic UI
-- [x] 🎯 Kanban Boards
-- [ ] 🤝 Collaboration features
-- [ ] 📱 Mobile app
-- [ ] ⚡ Performance improvements
-- [ ] 🧠 Smarter task organization
+Issues and pull requests are welcome. Please keep changes focused, preserve the
+project's encryption boundaries, and include relevant verification with each
+contribution.
