@@ -1,8 +1,15 @@
 # Supabase database setup
 
-Planomy's application code and database schema must be deployed together. My
-Day requires `migrations/20261002000000_add_daily_task_selections.sql` in the
-same Supabase project used by the app's `NEXT_PUBLIC_SUPABASE_URL`.
+Planomy's application code and database schema must be deployed together. A
+fresh project must apply both migrations in filename order:
+
+1. `20261001000000_create_planomy_schema.sql` creates the core keychain, list,
+   status, and task tables used throughout the application.
+2. `20261002000000_add_daily_task_selections.sql` adds My Day references and
+   focus behavior after `public.tasks` exists.
+
+Apply them to the same project used by the app's
+`NEXT_PUBLIC_SUPABASE_URL`.
 
 ## Hosted project: Dashboard method
 
@@ -10,16 +17,19 @@ Use this method if the Supabase CLI is not configured for this repository.
 
 1. Open the Supabase Dashboard and select the project whose URL appears in the
    app's `NEXT_PUBLIC_SUPABASE_URL`.
-2. Open **SQL Editor**, create a new query, and paste the complete contents of
-   `migrations/20261002000000_add_daily_task_selections.sql`.
-3. Click **Run** once. This creates the table, RLS policy, focus RPC, completion
-   trigger, and requests a PostgREST schema-cache reload.
+2. Open **SQL Editor** and check whether `public.tasks` exists in **Table
+   Editor**. For a fresh project, run
+   `migrations/20261001000000_create_planomy_schema.sql` first.
+3. In a new query, run the complete contents of
+   `migrations/20261002000000_add_daily_task_selections.sql`. This creates the
+   My Day table, RLS policy, focus RPC, completion trigger, and requests a
+   PostgREST schema-cache reload.
 4. In **Table Editor**, confirm that `public.daily_task_selections` exists.
 5. Reload Planomy and click **Try again** on the My Day screen.
 
-Do not run this migration against an unrelated project. If the SQL editor says
-that `public.tasks` does not exist, the selected project is not the database
-used by this Planomy installation or its base schema has not been installed.
+Do not run these migrations against an unrelated project. The error
+`relation "public.tasks" does not exist` means the My Day migration was run
+before the base migration, or against the wrong project.
 
 ## Hosted project: CLI method
 
