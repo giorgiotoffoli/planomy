@@ -8,9 +8,6 @@ import TaskDetail from './TaskDetails'
 import { cn } from '@/lib/utils'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Separator } from '@/components/ui/separator'
-import Link from 'next/link'
-import { InboxIcon } from 'lucide-react'
 
 interface TaskItemProps {
   task: TaskWithList
@@ -39,6 +36,7 @@ export function TaskItem({
   handleOnDelete,
   shouldHideCompleted,
   isInbox,
+  canReorder,
 }: TaskItemProps) {
   const {
     attributes,
@@ -49,6 +47,7 @@ export function TaskItem({
     isDragging,
   } = useSortable({
     id: task.id,
+    disabled: !canReorder,
   })
 
   const style = {
@@ -60,8 +59,8 @@ export function TaskItem({
 
   return (
     <li
-      {...attributes}
-      {...listeners}
+      {...(canReorder ? attributes : {})}
+      {...(canReorder ? listeners : {})}
       ref={setNodeRef}
       style={style}
       className={cn(

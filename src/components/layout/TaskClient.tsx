@@ -1,7 +1,7 @@
 'use client'
 
 import { List, Status, TaskWithList } from '@/types'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import TaskList from '../lists/TaskList'
 import TaskBoard from '../boards/TaskBoard'
 import {
@@ -21,6 +21,12 @@ import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
 import { arrayMove } from '@dnd-kit/sortable'
 import { reorderTasks } from '../tasks/actions'
+import TaskSortSelect from '../lists/TaskSortSelect'
+import {
+  isTaskSortOption,
+  sortTasks,
+  type TaskSortOption,
+} from '../lists/task-sorting'
 
 interface TaskClientProps {
   tasks: TaskWithList[]
@@ -43,9 +49,38 @@ export default function TaskClient({
   const [localTasks, setLocalTasks] = useState(tasks)
   const [localLists, setLocalLists] = useState(lists)
   const [localHeaderTitle, setLocalHeaderTitle] = useState(headerTitle)
+  const [sortOption, setSortOption] = useState<TaskSortOption>('manual')
 
   const { masterKey } = useE2EE()
   const pathName = usePathname()
+  const sortStorageKey = listId ? `planomy:list-sort:${listId}` : null
+
+  useEffect(() => {
+    if (!sortStorageKey) return
+
+    const savedSortOption = window.localStorage.getItem(sortStorageKey)
+    const timeoutId = window.setTimeout(() => {
+      setSortOption(
+        savedSortOption && isTaskSortOption(savedSortOption)
+          ? savedSortOption
+          : 'manual',
+      )
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [sortStorageKey])
+
+  const displayedTasks = useMemo(
+    () => sortTasks(localTasks, sortOption),
+    [localTasks, sortOption],
+  )
+
+  function handleSortChange(nextSortOption: TaskSortOption) {
+    setSortOption(nextSortOption)
+    if (sortStorageKey) {
+      window.localStorage.setItem(sortStorageKey, nextSortOption)
+    }
+  }
 
   useEffect(() => {
     if (!masterKey) return
@@ -325,12 +360,20 @@ export default function TaskClient({
         headerTitle={localHeaderTitle}
         rightSlot={
           listId && (
-            <HeaderViewToggle
-              listId={listId}
-              currentView={currentView}
-              localView={localView}
-              setLocalView={setLocalView}
-            />
+            <div className="flex items-center gap-2">
+              {localView === 'list' && (
+                <TaskSortSelect
+                  value={sortOption}
+                  onValueChange={handleSortChange}
+                />
+              )}
+              <HeaderViewToggle
+                listId={listId}
+                currentView={currentView}
+                localView={localView}
+                setLocalView={setLocalView}
+              />
+            </div>
           )
         }
       />
@@ -373,10 +416,11 @@ export default function TaskClient({
         >
           {localView === 'list' ? (
             <TaskList
-              localTasks={localTasks}
+              localTasks={displayedTasks}
               localLists={localLists}
               currentListId={listId}
               handleOnReorder={handleOnReorder}
+              canReorder={sortOption === 'manual'}
               handleOnComplete={handleOnComplete}
               handleOnRename={handleOnRename}
               handleOnDueDateChange={handleOnDueDateChange}

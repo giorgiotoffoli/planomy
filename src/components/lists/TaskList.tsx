@@ -5,7 +5,6 @@ import {
   DndContext,
   DragEndEvent,
   MouseSensor,
-  PointerSensor,
   TouchSensor,
   closestCenter,
   useSensor,
@@ -25,6 +24,7 @@ interface TaskListProps {
   handleOnDelete: (taskId: string) => void
   pathName: string
   handleOnReorder: (activeId: string, overId: string) => void
+  canReorder: boolean
 }
 
 export default function TaskList({
@@ -38,6 +38,7 @@ export default function TaskList({
   handleOnDelete,
   pathName,
   handleOnReorder,
+  canReorder,
 }: TaskListProps) {
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -55,8 +56,6 @@ export default function TaskList({
 
   const shouldHideCompleted = pathName !== '/completed'
   const isInbox = pathName === '/inbox'
-  const canReorder = pathName === '/inbox' || pathName.includes('/lists/')
-
   const searchParams = useSearchParams()
   const taskId = searchParams.get('task') as string
 
