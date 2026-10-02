@@ -4,11 +4,15 @@ import * as actions from './actions'
 
 export const TASKS_CHANGED = 'planomy:tasks-changed'
 
+export function notifyTasksChanged() {
+  window.dispatchEvent(new Event(TASKS_CHANGED))
+}
+
 // A notification contains no decrypted content. Each consumer reloads its own data.
 function notifying<Args extends unknown[], Result>(operation: (...args: Args) => Promise<Result>) {
   return async (...args: Args) => {
     const result = await operation(...args)
-    window.dispatchEvent(new Event(TASKS_CHANGED))
+    notifyTasksChanged()
     return result
   }
 }

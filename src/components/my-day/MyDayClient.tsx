@@ -9,7 +9,8 @@ import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
 import { clearTaskFocusOnCompletion, localDateKey, previousDateKey } from '@/lib/my-day'
 import { getMyDayData, removeTaskFromDay, selectTaskForDay, setTaskFocused } from './actions'
-import { TASKS_CHANGED, createTask, deleteTask, renameTask, updateTaskCompleted, updateTaskDueDate, updateTaskNotes } from '@/components/tasks/mutations'
+import { createTask as createTaskAction } from '@/components/tasks/actions'
+import { TASKS_CHANGED, deleteTask, notifyTasksChanged, renameTask, updateTaskCompleted, updateTaskDueDate, updateTaskNotes } from '@/components/tasks/mutations'
 import Header from '@/components/layout/header/Header'
 import { TaskItem } from '@/components/tasks/task-item/TaskItem'
 import { Button } from '@/components/ui/button'
@@ -120,6 +121,7 @@ export default function MyDayClient({ encryptedLists }: { encryptedLists: List[]
       await selectTaskForDay(taskId, day)
       setData(current => current && ({ ...current, selections: [...current.selections.filter(s => !(s.task_id === taskId && s.selected_date === day)), { task_id: taskId, selected_date: day, focused: false }] }))
       setRetrySelection(null)
+      notifyTasksChanged()
       toast.success('Task added to My Day')
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'Task was not added')
@@ -154,7 +156,9 @@ export default function MyDayClient({ encryptedLists }: { encryptedLists: List[]
   async function createAndSelect(title: string, dueDate: string, notes: string, listId: string | null) {
     if (!masterKey) return
     try {
-      const saved = await createTask(await encryptString(title, masterKey), dueDate, notes ? await encryptString(notes, masterKey) : '', listId)
+      // Quick Capture is a composite mutation. Do not broadcast task creation
+      // until its My Day selection has either completed or failed.
+      const saved = await createTaskAction(await encryptString(title, masterKey), dueDate, notes ? await encryptString(notes, masterKey) : '', listId)
       if (!saved) throw new Error('Task was not created')
       const list = lists.find(item => item.id === listId) ?? null
       const decryptedTask = { ...saved, title, notes, list } as TaskWithList
@@ -164,6 +168,8 @@ export default function MyDayClient({ encryptedLists }: { encryptedLists: List[]
         setData(current => current && ({ ...current, selections: [...current.selections, { task_id: saved.id, selected_date: day, focused: false }] }))
         setRetrySelection(null)
       } catch { setRetrySelection(saved.id) }
+      // This refresh is now guaranteed to observe the final composite state.
+      notifyTasksChanged()
     } catch (cause) { toast.error(cause instanceof Error ? cause.message : 'Task was not created') }
   }
 
