@@ -9,13 +9,14 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { List, Task, TaskWithList } from '@/types'
-import { ReactNode, useState } from 'react'
+import { List, TaskWithList } from '@/types'
+import { ReactNode } from 'react'
 import { TaskEditDialog } from './TaskEditDialog'
 import { Edit, ListEnd } from 'lucide-react'
 import { TaskEditMoveList } from './TaskEditMoveList'
 import { TaskDeleteButton } from './TaskDeleteButton'
 import { DialogTrigger } from '@radix-ui/react-dialog'
+import MyDayMenuItem from '@/components/my-day/MyDayMenuItem'
 
 interface TaskEditDropdownProps {
   task: TaskWithList
@@ -72,6 +73,8 @@ export function TaskEditDropdown({
                 />
               </DropdownMenuSubContent>
             </DropdownMenuSub>
+
+            {!task.completed && <MyDayMenuItem taskId={task.id} />}
 
             <DropdownMenuSeparator />
 
