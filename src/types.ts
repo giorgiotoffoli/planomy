@@ -31,3 +31,9 @@ export interface Status {
   title: string
   position: number
 }
+
+export interface DailySelection {
+  task_id: string
+  selected_date: string
+  focused: boolean
+}

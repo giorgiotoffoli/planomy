@@ -18,25 +18,22 @@ export async function createTask(
   } = await supabase.auth.getUser()
 
   // Checks if '/today' is current patseh, so when you make a task there it automatically is due today
-  let due_date
+  let due_date: Date | string | null
   if (pathName === '/today') {
     due_date = dueDate ? new Date(dueDate) : new Date()
   } else {
-    due_date = new Date(dueDate)
+    due_date = dueDate ? dueDate.slice(0, 10) : null
   }
 
   if (!title) return
 
   // Adds list ID later
-  const task: any = {
+  const task = {
     user_id: user!.id,
     title,
     due_date,
     notes,
-  }
-
-  if (listId) {
-    task.list_id = listId
+    ...(listId ? { list_id: listId } : {}),
   }
 
   const { data, error } = await supabase

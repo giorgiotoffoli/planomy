@@ -47,6 +47,13 @@ Encrypted in v1:
 - **Backend & DB:** Supabase (PostgreSQL)
 - **Deployment:** Vercel
 
+## Database setup
+
+Apply the SQL files in `supabase/migrations` in filename order (with the Supabase CLI,
+`supabase db push`) before running a version that includes new schema features. My Day
+uses the device's local calendar date consistently; changing timezones never rewrites
+the date stored on an existing daily selection.
+
 ## 💡 Philosophy
 
 Planomy is built on a few simple ideas:

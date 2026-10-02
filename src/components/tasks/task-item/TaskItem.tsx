@@ -8,6 +8,7 @@ import TaskDetail from './TaskDetails'
 import { cn } from '@/lib/utils'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import type { ReactNode } from 'react'
 
 interface TaskItemProps {
   task: TaskWithList
@@ -22,6 +23,8 @@ interface TaskItemProps {
   isInbox: boolean
   highlighted: boolean
   canReorder: boolean
+  leadingBadge?: ReactNode
+  trailingActions?: ReactNode
 }
 
 export function TaskItem({
@@ -37,6 +40,8 @@ export function TaskItem({
   shouldHideCompleted,
   isInbox,
   canReorder,
+  leadingBadge,
+  trailingActions,
 }: TaskItemProps) {
   const {
     attributes,
@@ -77,6 +82,7 @@ export function TaskItem({
         </div>
         {/* Content */}
         <div className="min-w-0">
+          {leadingBadge}
           <TaskTitle task={task} handleOnRename={handleOnRename} />
 
           <TaskDetail
@@ -91,6 +97,7 @@ export function TaskItem({
                         className="rounded-md bg-blue-100 px-2 py-1 text-sm text-blue-500 hover:bg-blue-200 hover:text-blue-700"
           */}
         <div className="flex items-center gap-3">
+          {trailingActions}
           <TaskEditDropdown
             task={task}
             lists={lists}

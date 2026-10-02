@@ -14,6 +14,7 @@ import {
   Inbox,
   Layers,
   SearchIcon,
+  Sun,
 } from 'lucide-react'
 import { CommandDialog } from '@/components/ui/command'
 import { useState } from 'react'
@@ -26,6 +27,11 @@ type Tab = {
 }
 
 const tabs: Tab[] = [
+  {
+    title: 'My Day',
+    link: '/my-day',
+    icon: <Sun />,
+  },
   {
     title: 'Inbox',
     link: '/inbox',
