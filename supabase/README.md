@@ -27,9 +27,18 @@ Use this method if the Supabase CLI is not configured for this repository.
 4. In **Table Editor**, confirm that `public.daily_task_selections` exists.
 5. Reload Planomy and click **Try again** on the My Day screen.
 
+Both migrations are safe to rerun. If an earlier attempt stopped after creating
+some objects, run the complete base migration and then the complete My Day
+migration again; existing tables and indexes are retained while policies,
+functions, triggers, and grants are brought to the expected definition.
+
 Do not run these migrations against an unrelated project. The error
 `relation "public.tasks" does not exist` means the My Day migration was run
 before the base migration, or against the wrong project.
+
+The error `relation "daily_task_selections" already exists` means an earlier
+attempt created the table. Pull the latest migration and rerun it in full; do
+not manually delete the table, because it may already contain user selections.
 
 ## Hosted project: CLI method
 

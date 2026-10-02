@@ -58,16 +58,19 @@ alter table public.lists enable row level security;
 alter table public.statuses enable row level security;
 alter table public.tasks enable row level security;
 
+drop policy if exists "Users manage their own keychain" on public.user_keychain;
 create policy "Users manage their own keychain"
   on public.user_keychain for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users manage their own lists" on public.lists;
 create policy "Users manage their own lists"
   on public.lists for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users manage statuses in their own lists" on public.statuses;
 create policy "Users manage statuses in their own lists"
   on public.statuses for all
   using (
@@ -83,6 +86,7 @@ create policy "Users manage statuses in their own lists"
     )
   );
 
+drop policy if exists "Users manage their own tasks" on public.tasks;
 create policy "Users manage their own tasks"
   on public.tasks for all
   using (auth.uid() = user_id)
@@ -124,6 +128,7 @@ begin
 end;
 $$;
 
+drop trigger if exists create_statuses_for_new_list on public.lists;
 create trigger create_statuses_for_new_list
 after insert on public.lists
 for each row execute function public.create_default_list_statuses();

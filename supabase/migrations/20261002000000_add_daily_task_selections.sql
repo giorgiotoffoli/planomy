@@ -1,5 +1,5 @@
 -- Personal, date-scoped references to existing tasks. No decrypted task content is stored here.
-create table public.daily_task_selections (
+create table if not exists public.daily_task_selections (
   user_id uuid not null references auth.users(id) on delete cascade,
   task_id uuid not null references public.tasks(id) on delete cascade,
   selected_date date not null,
@@ -8,9 +8,10 @@ create table public.daily_task_selections (
   primary key (user_id, task_id, selected_date)
 );
 
-create index daily_task_selections_user_date_idx on public.daily_task_selections (user_id, selected_date);
+create index if not exists daily_task_selections_user_date_idx on public.daily_task_selections (user_id, selected_date);
 alter table public.daily_task_selections enable row level security;
 
+drop policy if exists "Users manage their own daily selections" on public.daily_task_selections;
 create policy "Users manage their own daily selections"
   on public.daily_task_selections for all
   using (auth.uid() = user_id)
@@ -48,8 +49,13 @@ begin
   return new;
 end $$;
 
+drop trigger if exists clear_daily_focus_when_task_completed on public.tasks;
 create trigger clear_daily_focus_when_task_completed after update of completed on public.tasks
 for each row execute function public.clear_completed_daily_focus();
+
+grant select, insert, update, delete on public.daily_task_selections to authenticated;
+revoke execute on function public.set_daily_task_focus(uuid, date, boolean) from public, anon;
+grant execute on function public.set_daily_task_focus(uuid, date, boolean) to authenticated;
 
 -- Ask PostgREST to immediately expose the new table and RPC through Supabase's API.
 notify pgrst, 'reload schema';
