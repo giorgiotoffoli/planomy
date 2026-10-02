@@ -11,16 +11,17 @@ import {
   updateTaskCompleted,
   updateTaskDueDate,
   updateTaskNotes,
-} from '../tasks/actions'
+} from '../tasks/mutations'
 import CreateTaskButton from '../tasks/create-task/CreateTaskButton'
 import { Skeleton } from '../ui/skeleton'
 import { usePathname } from 'next/navigation'
+import { toast } from 'sonner'
 import Header from './header/Header'
 import HeaderViewToggle from './header/HeaderViewToggle'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
 import { arrayMove } from '@dnd-kit/sortable'
-import { reorderTasks } from '../tasks/actions'
+import { reorderTasks } from '../tasks/mutations'
 import TaskSortSelect from '../lists/TaskSortSelect'
 import {
   isTaskSortOption,
@@ -134,7 +135,7 @@ export default function TaskClient({
     return () => {
       isCancelled = true
     }
-  }, [masterKey, tasks])
+  }, [masterKey, tasks, lists, headerTitle])
 
   function getLocalDateString(date = new Date()) {
     const year = date.getFullYear()
@@ -226,7 +227,7 @@ export default function TaskClient({
       console.error(error)
     }
   }
-  function handleOnComplete(taskId: string, isCompleted: boolean) {
+  async function handleOnComplete(taskId: string, isCompleted: boolean) {
     const previousTasks = localTasks
 
     // update the local tasks
@@ -236,22 +237,16 @@ export default function TaskClient({
       ),
     )
 
-    // if task is completed, fade it out
-    if (isCompleted && pathName !== '/completed') {
-      setTimeout(() => {
-        setLocalTasks((prev) => prev.filter((task) => task.id !== taskId))
-      }, 300)
-    }
-
-    if (!isCompleted && pathName === '/completed') {
-      setLocalTasks((prev) => prev.filter((task) => task.completed))
-    }
-
-    // update database, revert if error
-    updateTaskCompleted(taskId, isCompleted).catch((error) => {
+    // Remove only after persistence; an old fade timer must not erase a rollback.
+    try {
+      await updateTaskCompleted(taskId, isCompleted)
+      if (isCompleted !== (pathName === '/completed')) {
+        setLocalTasks(previous => previous.filter(task => task.id !== taskId))
+      }
+    } catch (error) {
       setLocalTasks(previousTasks)
-      console.error(error)
-    })
+      toast.error(error instanceof Error ? error.message : 'Completion was not saved.')
+    }
   }
 
   function handleOnRename(taskId: string, newTitle: string) {

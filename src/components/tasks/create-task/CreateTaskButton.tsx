@@ -27,14 +27,9 @@ export default function CreateTaskButton({
     >
       <Button
         type="button"
+        aria-label="Create task"
         variant="default"
-        className="rounded-full w-12 h-12 
-     
-      fixed bottom-0 right-0 m-6 
-      
-      shadow-lg hover:scale-105 transition 
-     
-      bg-blue-500 hover:bg-sky-400 hover:cursor-pointer"
+        className="absolute bottom-0 right-0 m-6 h-12 w-12 rounded-full bg-blue-500 shadow-lg transition hover:scale-105 hover:cursor-pointer hover:bg-sky-400"
       >
         <PlusIcon className="size-6 sm:size-4" />
       </Button>

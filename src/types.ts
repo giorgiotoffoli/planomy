@@ -37,3 +37,14 @@ export interface DailySelection {
   selected_date: string
   focused: boolean
 }
+
+export interface TimeBlock {
+  task_id: string
+  user_id: string
+  starts_at: string
+  ends_at: string
+}
+
+export interface AgendaBlock extends TimeBlock {
+  task: TaskWithList
+}

@@ -2,6 +2,7 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar/AppSidebar'
 import { getUserKeychain } from '@/components/e2ee/actions'
 import E2EEGate from '@/components/e2ee/e2ee-gate'
+import AgendaProvider from '@/components/agenda/AgendaProvider'
 import { E2EEProvider } from '@/components/e2ee/e2ee-provider'
 
 export default async function AppLayout({
@@ -15,11 +16,9 @@ export default async function AppLayout({
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset className="min-w-0">
-          <div className="flex min-h-screen min-w-0 flex-col">
-            <main className="flex min-w-0 flex-1 flex-col gap-4 p-4 selection:bg-blue-500 selection:text-white">
-              <E2EEGate initialKeychain={keychain}>{children}</E2EEGate>
-            </main>
-          </div>
+          <E2EEGate initialKeychain={keychain}>
+            <AgendaProvider>{children}</AgendaProvider>
+          </E2EEGate>
         </SidebarInset>
       </SidebarProvider>
     </E2EEProvider>

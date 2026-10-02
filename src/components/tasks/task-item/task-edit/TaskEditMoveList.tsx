@@ -1,8 +1,9 @@
 'use client'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { List } from '../../../../types'
-import { moveTask } from '../../actions'
+import { moveTask } from '../../mutations'
 import { Inbox } from 'lucide-react'
+import { toast } from 'sonner'
 
 export function TaskEditMoveList({
   taskId,
@@ -16,7 +17,8 @@ export function TaskEditMoveList({
   const visibleLists = lists.filter((list) => list.id !== currentListId)
 
   async function handleSelect(newListId: string | null) {
-    await moveTask(taskId, newListId)
+    try { await moveTask(taskId, newListId) }
+    catch (error) { toast.error(error instanceof Error ? error.message : 'Task was not moved.') }
   }
 
   return (

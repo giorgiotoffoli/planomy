@@ -20,6 +20,9 @@ lists, scheduling, and board views in a responsive web application.
 - **List and Kanban views** — switch between focused lists and visual boards.
 - **Scheduling** — assign and reschedule due dates, with dedicated Today and
   Scheduled views.
+- **Daily agenda** — open a shared daily timeline beside your workspace, drag
+  tasks into time blocks, and move or resize them independently of deadlines.
+  A scheduling form and mobile drawer provide the same controls without dragging.
 - **Task workflows** — create, edit, move, complete, reopen, search, sort, and
   review completed tasks.
 - **Responsive interface** — use the same planning workflows on desktop and
@@ -60,6 +63,10 @@ their content.
 - [ ] Accessibility and performance improvements
 
 ## Contributing
+
+For daily agenda database setup and verification, see
+[supabase/README.md](supabase/README.md). Apply its migration to your existing
+Supabase project before using time blocks.
 
 Issues and pull requests are welcome. Please keep changes focused, preserve the
 project's encryption boundaries, and include relevant verification with each

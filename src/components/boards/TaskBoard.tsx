@@ -3,7 +3,7 @@ import BoardColumn from '@/components/boards/BoardColumn'
 import { List, Status, TaskWithList } from '../../types'
 import { DragDropProvider } from '@dnd-kit/react'
 import { useEffect, useState } from 'react'
-import { changeTaskStatus } from '../tasks/actions'
+import { changeTaskStatus } from '../tasks/mutations'
 import type { DragDropEvents } from '@dnd-kit/react'
 
 type DragEndEvent = Parameters<DragDropEvents['dragend']>[0]

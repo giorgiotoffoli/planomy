@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { ReactNode } from 'react'
+import { GripVertical } from 'lucide-react'
 
 interface TaskItemProps {
   task: TaskWithList
@@ -23,6 +24,8 @@ interface TaskItemProps {
   isInbox: boolean
   highlighted: boolean
   canReorder: boolean
+  dragScope?: string
+  handleOnReorder?: (activeId: string, overId: string) => void
   leadingBadge?: ReactNode
   trailingActions?: ReactNode
 }
@@ -40,6 +43,8 @@ export function TaskItem({
   shouldHideCompleted,
   isInbox,
   canReorder,
+  dragScope,
+  handleOnReorder,
   leadingBadge,
   trailingActions,
 }: TaskItemProps) {
@@ -47,12 +52,14 @@ export function TaskItem({
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
   } = useSortable({
     id: task.id,
-    disabled: !canReorder,
+    disabled: { draggable: task.id.startsWith('temp-'), droppable: !canReorder },
+    data: { kind: 'task', task, scope: dragScope, reorder: handleOnReorder },
   })
 
   const style = {
@@ -64,8 +71,6 @@ export function TaskItem({
 
   return (
     <li
-      {...(canReorder ? attributes : {})}
-      {...(canReorder ? listeners : {})}
       ref={setNodeRef}
       style={style}
       className={cn(
@@ -77,7 +82,8 @@ export function TaskItem({
     >
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 px-3 py-3">
         {/* Checkbox */}
-        <div className="flex h-6 items-center">
+        <div className="flex h-6 items-center gap-2">
+          <button ref={setActivatorNodeRef} {...attributes} {...listeners} aria-label={`Drag ${task.title} to reorder or schedule`} className="touch-none cursor-grab rounded text-muted-foreground focus-visible:ring-2"><GripVertical className="size-3.5" /></button>
           <TaskCheckbox task={task} handleOnComplete={handleOnComplete} />
         </div>
         {/* Content */}
