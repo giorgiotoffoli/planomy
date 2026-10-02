@@ -1,3 +1,4 @@
+import AgendaToggle from '@/components/agenda/AgendaToggle'
 import TaskCounter from './TaskCounter'
 import {
   Breadcrumb,
@@ -41,7 +42,7 @@ export default function Header({
         </Breadcrumb>
       </div>
 
-      {rightSlot && <div className="px-3">{rightSlot}</div>}
+      <div className="flex shrink-0 items-center gap-2 px-3">{rightSlot}<AgendaToggle /></div>
     </header>
   )
 }

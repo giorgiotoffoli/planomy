@@ -70,11 +70,7 @@ export default function E2EEGate({ children, initialKeychain }: E2EEGateProps) {
   }
 
   if (isRestoring) {
-    return <>{children}</>
-  }
-
-  if (isUnlocked) {
-    return <>{children}</>
+    return <p role="status" className="p-4 text-sm text-muted-foreground">Restoring your vault…</p>
   }
 
   if (isUnlocked) {
@@ -83,8 +79,6 @@ export default function E2EEGate({ children, initialKeychain }: E2EEGateProps) {
 
   return (
     <>
-      {children}
-
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
         <form
           onSubmit={handleSubmit}

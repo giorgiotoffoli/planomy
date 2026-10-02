@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, Plus, Star, StarOff } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -9,7 +9,7 @@ import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
 import { clearTaskFocusOnCompletion, localDateKey, previousDateKey } from '@/lib/my-day'
 import { getMyDayData, removeTaskFromDay, selectTaskForDay, setTaskFocused } from './actions'
-import { createTask, deleteTask, renameTask, updateTaskCompleted, updateTaskDueDate, updateTaskNotes } from '@/components/tasks/actions'
+import { TASKS_CHANGED, createTask, deleteTask, renameTask, updateTaskCompleted, updateTaskDueDate, updateTaskNotes } from '@/components/tasks/mutations'
 import Header from '@/components/layout/header/Header'
 import { TaskItem } from '@/components/tasks/task-item/TaskItem'
 import { Button } from '@/components/ui/button'
@@ -28,9 +28,11 @@ export default function MyDayClient({ encryptedLists }: { encryptedLists: List[]
   const [error, setError] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [retrySelection, setRetrySelection] = useState<string | null>(null)
+  const loadVersion = useRef(0)
 
   const load = useCallback(async (activeDay: string) => {
     if (!masterKey) return
+    const version = ++loadVersion.current
     setError(null)
     try {
       const result = await getMyDayData(activeDay)
@@ -41,10 +43,12 @@ export default function MyDayClient({ encryptedLists }: { encryptedLists: List[]
         notes: task.notes ? await decryptString(task.notes, masterKey) : task.notes,
         list: task.list ? { ...task.list, title: await decryptString(task.list.title, masterKey) } : null,
       })))
-      setLists(decryptedLists)
-      setData({ tasks: decryptedTasks, selections: result.selections })
+      if (version === loadVersion.current) {
+        setLists(decryptedLists)
+        setData({ tasks: decryptedTasks, selections: result.selections })
+      }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'My Day could not be loaded.')
+      if (version === loadVersion.current) setError(cause instanceof Error ? cause.message : 'My Day could not be loaded.')
     }
   }, [encryptedLists, masterKey])
 
@@ -60,9 +64,10 @@ export default function MyDayClient({ encryptedLists }: { encryptedLists: List[]
     }
     const interval = window.setInterval(refreshDay, 60_000)
     const onVisibility = () => { if (!document.hidden) refreshDay() }
+    window.addEventListener(TASKS_CHANGED, refreshDay)
     window.addEventListener('focus', refreshDay)
     document.addEventListener('visibilitychange', onVisibility)
-    return () => { window.clearInterval(interval); window.removeEventListener('focus', refreshDay); document.removeEventListener('visibilitychange', onVisibility) }
+    return () => { window.removeEventListener(TASKS_CHANGED, refreshDay); window.clearInterval(interval); window.removeEventListener('focus', refreshDay); document.removeEventListener('visibilitychange', onVisibility) }
   }, [day, load])
 
   const todaySelections = useMemo(() => new Map(data?.selections.filter(s => s.selected_date === day).map(s => [s.task_id, s]) ?? []), [data, day])
@@ -78,11 +83,13 @@ export default function MyDayClient({ encryptedLists }: { encryptedLists: List[]
     setData(current => current && ({ ...current, tasks: current.tasks.map(task => task.id === taskId ? { ...task, ...change } : task) }))
   }
   async function optimisticTask(taskId: string, change: Partial<TaskWithList>, operation: () => Promise<unknown>) {
+    loadVersion.current++
     const previous = data
     updateTask(taskId, change)
     try { await operation() } catch (cause) { setData(previous); toast.error(cause instanceof Error ? cause.message : 'Change was not saved') }
   }
   async function completeTask(taskId: string, completed: boolean) {
+    loadVersion.current++
     const previous = data
     setData(current => current && ({
       ...current,

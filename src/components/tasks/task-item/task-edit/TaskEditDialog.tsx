@@ -14,15 +14,9 @@ import {
 } from '@/components/ui/dialog'
 import { ReactNode } from 'react'
 import { TaskTitle } from '../TaskTitle'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { toast } from 'sonner'
 import TaskListDropdown from '../../TaskListDropdown'
-import { moveTask } from '../../actions'
+import { moveTask } from '../../mutations'
 
 interface TaskEditDialogProps {
   task: TaskWithList
@@ -50,7 +44,6 @@ export function TaskEditDialog({
         <form
           onSubmit={async (e) => {
             e.preventDefault()
-            console.log('clicked')
             const formData = new FormData(e.currentTarget)
 
             const taskId = formData.get('id') as string
@@ -60,13 +53,14 @@ export function TaskEditDialog({
             const newListId = selectedValue === 'inbox' ? null : selectedValue
 
             if (newListId !== task.list_id) {
-              await moveTask(task.id, newListId)
+              try { await moveTask(task.id, newListId) }
+              catch (error) { toast.error(error instanceof Error ? error.message : 'Task was not moved.'); return }
             }
 
             if (newDueDate) {
               handleOnDueDateChange(taskId, newDueDate)
             }
-            if (notes) {
+            if (notes !== (task.notes ?? '')) {
               handleOnNotesChange(taskId, notes)
             }
           }}

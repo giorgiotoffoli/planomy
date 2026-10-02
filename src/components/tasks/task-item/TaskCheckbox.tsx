@@ -13,6 +13,7 @@ interface TaskCheckboxProps {
 export function TaskCheckbox({ task, handleOnComplete }: TaskCheckboxProps) {
   return (
     <CheckboxPrimitive.Root
+      aria-label={`${task.completed ? 'Reopen' : 'Complete'} ${task.title}`}
       checked={task.completed}
       onCheckedChange={(checked) => {
         handleOnComplete(task.id, checked === true)

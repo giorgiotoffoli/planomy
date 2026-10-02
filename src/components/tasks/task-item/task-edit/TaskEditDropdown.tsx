@@ -12,11 +12,13 @@ import {
 import { List, TaskWithList } from '@/types'
 import { ReactNode } from 'react'
 import { TaskEditDialog } from './TaskEditDialog'
-import { Edit, ListEnd } from 'lucide-react'
+import { Clock, Edit, ListEnd } from 'lucide-react'
 import { TaskEditMoveList } from './TaskEditMoveList'
 import { TaskDeleteButton } from './TaskDeleteButton'
 import { DialogTrigger } from '@radix-ui/react-dialog'
 import MyDayMenuItem from '@/components/my-day/MyDayMenuItem'
+
+import { useAgenda } from '@/components/agenda/AgendaProvider'
 
 interface TaskEditDropdownProps {
   task: TaskWithList
@@ -39,6 +41,7 @@ export function TaskEditDropdown({
   handleOnDelete,
   handleOnRename,
 }: TaskEditDropdownProps) {
+  const agenda = useAgenda()
   return (
     <>
       <TaskEditDialog
@@ -75,6 +78,8 @@ export function TaskEditDropdown({
             </DropdownMenuSub>
 
             {!task.completed && <MyDayMenuItem taskId={task.id} />}
+
+            <DropdownMenuItem disabled={task.id.startsWith('temp-')} onSelect={() => setTimeout(() => agenda.edit(task), 0)}><Clock /> Schedule time</DropdownMenuItem>
 
             <DropdownMenuSeparator />
 

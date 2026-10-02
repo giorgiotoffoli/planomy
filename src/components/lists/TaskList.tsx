@@ -1,15 +1,7 @@
 import { TaskItem } from '../tasks/task-item/TaskItem'
 import { List, TaskWithList } from '../../types'
 import { useSearchParams } from 'next/navigation'
-import {
-  DndContext,
-  DragEndEvent,
-  MouseSensor,
-  TouchSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core'
+import { useId } from 'react'
 
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
@@ -40,19 +32,7 @@ export default function TaskList({
   handleOnReorder,
   canReorder,
 }: TaskListProps) {
-  const sensors = useSensors(
-    useSensor(MouseSensor, {
-      activationConstraint: {
-        distance: 6,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 250,
-        tolerance: 8,
-      },
-    }),
-  )
+  const scope = useId()
 
   const shouldHideCompleted = pathName !== '/completed'
   const isInbox = pathName === '/inbox'
@@ -76,6 +56,8 @@ export default function TaskList({
           shouldHideCompleted={shouldHideCompleted}
           isInbox={isInbox}
           canReorder={canReorder}
+          dragScope={canReorder ? scope : undefined}
+          handleOnReorder={handleOnReorder}
         />
       ))}
     </ul>
@@ -84,29 +66,9 @@ export default function TaskList({
   return (
     <div className="flex flex-col h-full sm:w-full">
       <div className="flex-1 overflow-y-auto scroll-smooth pb-16">
-        {canReorder ? (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={(event: DragEndEvent) => {
-              const { active, over } = event
-
-              if (!over) return
-              if (active.id === over.id) return
-
-              handleOnReorder(String(active.id), String(over.id))
-            }}
-          >
-            <SortableContext
-              items={localTasks.map((task) => task.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {tasklist}
-            </SortableContext>
-          </DndContext>
-        ) : (
-          tasklist
-        )}
+        <SortableContext items={localTasks.map(task => task.id)} strategy={verticalListSortingStrategy} disabled={!canReorder}>
+          {tasklist}
+        </SortableContext>
       </div>
     </div>
   )
