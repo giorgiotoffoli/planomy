@@ -74,6 +74,9 @@ export default function TaskClient({
     () => sortTasks(localTasks, sortOption),
     [localTasks, sortOption],
   )
+  const canReorderTasks =
+    sortOption === 'manual' &&
+    (pathName === '/inbox' || pathName.startsWith('/lists/'))
 
   function handleSortChange(nextSortOption: TaskSortOption) {
     setSortOption(nextSortOption)
@@ -420,7 +423,7 @@ export default function TaskClient({
               localLists={localLists}
               currentListId={listId}
               handleOnReorder={handleOnReorder}
-              canReorder={sortOption === 'manual'}
+              canReorder={canReorderTasks}
               handleOnComplete={handleOnComplete}
               handleOnRename={handleOnRename}
               handleOnDueDateChange={handleOnDueDateChange}
