@@ -8,7 +8,6 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import {
-  Calendar,
   CheckCircle,
   Clock,
   Inbox,
@@ -36,11 +35,6 @@ const tabs: Tab[] = [
     title: 'Inbox',
     link: '/inbox',
     icon: <Inbox />,
-  },
-  {
-    title: 'Today',
-    link: '/today',
-    icon: <Calendar />,
   },
   {
     title: 'Scheduled',

@@ -59,7 +59,7 @@ export default function Page() {
             },
             {
               icon: CalendarDays,
-              label: 'Today',
+              label: 'My Day',
               position: 'right-[8%] top-[23%]',
               delay: 0.6,
             },

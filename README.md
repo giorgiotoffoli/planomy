@@ -18,8 +18,8 @@ lists, scheduling, and board views in a responsive web application.
 - **Lists and inbox** — capture unassigned tasks or organize them into multiple
   plans without duplicating task data.
 - **List and Kanban views** — switch between focused lists and visual boards.
-- **Scheduling** — assign and reschedule due dates, with dedicated Today and
-  Scheduled views.
+- **Scheduling** — assign and reschedule due dates, with a dedicated Scheduled
+  view and due-date suggestions in My Day.
 - **Daily agenda** — open a shared daily timeline beside your workspace, drag
   tasks into time blocks, and move or resize them independently of deadlines.
   A scheduling form and mobile drawer provide the same controls without dragging.
@@ -50,7 +50,7 @@ their content.
 
 - [x] End-to-end encrypted task and list content
 - [x] Inbox, lists, task search, sorting, and completed-task history
-- [x] Due dates with Today and Scheduled views
+- [x] Due dates with My Day suggestions and a Scheduled view
 - [x] List and Kanban board layouts
 - [x] My Day selection, suggestions, daily focus, and rollover
 - [x] Optimistic task updates and responsive navigation

@@ -22,7 +22,7 @@ export async function signUp(formData: FormData) {
   if (error) {
     redirect(`/auth?message=${encodeURIComponent(error.message)}`)
   }
-  redirect('/inbox')
+  redirect('/onboarding')
 }
 
 export async function signIn(formData: FormData) {
@@ -39,7 +39,7 @@ export async function signIn(formData: FormData) {
   if (error) {
     redirect(`/auth?message=${encodeURIComponent(error.message)}`)
   }
-  redirect('/inbox')
+  redirect('/my-day')
 }
 
 export async function signOut() {

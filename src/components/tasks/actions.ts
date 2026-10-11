@@ -10,7 +10,6 @@ export async function createTask(
   dueDate: string,
   notes: string,
   listId: string | null,
-  pathName?: string,
 ) {
   const supabase = await createClient()
 
@@ -18,13 +17,7 @@ export async function createTask(
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Checks if '/today' is current patseh, so when you make a task there it automatically is due today
-  let due_date: Date | string | null
-  if (pathName === '/today') {
-    due_date = dueDate ? new Date(dueDate) : new Date()
-  } else {
-    due_date = dueDate ? dueDate.slice(0, 10) : null
-  }
+  const due_date = dueDate ? dueDate.slice(0, 10) : null
 
   if (!title) return
 
