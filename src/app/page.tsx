@@ -14,7 +14,7 @@ import {
   PyramidIcon,
   Star,
 } from 'lucide-react'
-import { PlanomyIcon } from '@/icons/PlanomyIcon'
+import { PlanomyIcon } from '@/icons/planomy-icon'
 
 export default function Page() {
   return (
@@ -155,12 +155,12 @@ export default function Page() {
             <div className="h-100 overflow-hidden sm:h-120 md:h-80 lg:h-112">
               {/* Mobile */}
               <img
-                src="/planomy_landing_page_mobile.png"
+                src="/planomy-landing-page-mobile.png"
                 alt="A custom list in Planomy mobile depicting example school tasks."
                 className="w-full h-auto rounded-t-[18px] block md:hidden"
               />
               <img
-                src="/planomy_landing_page_desktop.png"
+                src="/planomy-landing-page-desktop.png"
                 alt="A custom list in Planomy desktop depicting to-come features."
                 className="w-full h-full md:h-auto rounded-t-[18px] hidden md:block"
               />

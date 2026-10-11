@@ -1,8 +1,9 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { toAgendaBlock, toList } from '@/lib/supabase/domain-mappers'
 import { validateInterval } from '@/lib/agenda'
-import type { AgendaBlock, List, TimeBlock } from '@/types'
+import type { TimeBlock } from '@/types'
 
 async function authenticatedClient() {
   const supabase = await createClient()
@@ -13,7 +14,7 @@ async function authenticatedClient() {
 
 function databaseError(error: { code?: string; message: string }) {
   return new Error(['42P01', 'PGRST205'].includes(error.code ?? '')
-    ? 'Agenda is not set up yet. Apply the task time blocks database migration, then try again.'
+    ? 'Agenda is not configured in this Supabase project. Contact the project administrator.'
     : error.message)
 }
 
@@ -28,7 +29,7 @@ export async function getAgendaData(startsAt: string, endsAt: string) {
   ])
   if (blocks.error) throw databaseError(blocks.error)
   if (lists.error) throw databaseError(lists.error)
-  return { blocks: blocks.data as unknown as AgendaBlock[], lists: lists.data as List[] }
+  return { blocks: blocks.data.map(toAgendaBlock), lists: lists.data.map(toList) }
 }
 
 export async function getTaskTimeBlock(taskId: string) {

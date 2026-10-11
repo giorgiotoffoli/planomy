@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import type { List } from '@/types'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -59,8 +60,8 @@ export async function renameList(list_id: string, title: string) {
 }
 
 export async function updateListDefaultView(
-  listId: string | null,
-  defaultView: string,
+  listId: string,
+  defaultView: List['default_view'],
 ) {
   const supabase = await createClient()
   const { error } = await supabase

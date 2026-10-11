@@ -1,8 +1,8 @@
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import { AppSidebar } from '@/components/layout/app-sidebar/AppSidebar'
+import { AppSidebar } from '@/components/layout/app-sidebar/app-sidebar'
 import { getUserKeychain } from '@/components/e2ee/actions'
 import E2EEGate from '@/components/e2ee/e2ee-gate'
-import AgendaProvider from '@/components/agenda/AgendaProvider'
+import AgendaProvider from '@/components/agenda/agenda-provider'
 import { E2EEProvider } from '@/components/e2ee/e2ee-provider'
 
 export default async function AppLayout({

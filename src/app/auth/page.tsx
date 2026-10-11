@@ -6,7 +6,7 @@ import { Mail, Lock, ArrowRight } from 'lucide-react'
 import { signIn, signUp } from './actions'
 import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { PlanomyIcon } from '@/icons/PlanomyIcon'
+import { PlanomyIcon } from '@/icons/planomy-icon'
 
 function DisplayErrorMessage() {
   const searchParams = useSearchParams()

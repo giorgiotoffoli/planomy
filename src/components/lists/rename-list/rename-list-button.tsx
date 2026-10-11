@@ -1,0 +1,16 @@
+'use client'
+import { Pencil } from 'lucide-react'
+import { DropdownMenuItem } from '../../ui/dropdown-menu'
+import { List } from '@/types'
+import { RenameListDialog } from './rename-list-dialog'
+
+export function RenameListButton({ list }: { list: List }) {
+  return (
+    <RenameListDialog list={list}>
+      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+        <Pencil />
+        Rename
+      </DropdownMenuItem>
+    </RenameListDialog>
+  )
+}

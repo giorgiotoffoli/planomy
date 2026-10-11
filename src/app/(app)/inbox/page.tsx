@@ -1,13 +1,13 @@
 import { getTasks } from '../../../components/tasks/queries'
 import { getUserLists } from '@/components/lists/queries'
-import TaskClient from '@/components/layout/TaskClient'
+import TaskWorkspace from '@/components/layout/task-workspace'
 
 export default async function InboxPage() {
   const tasks = await getTasks('inbox')
   const lists = await getUserLists()
 
   return (
-    <TaskClient
+    <TaskWorkspace
       tasks={tasks}
       lists={lists}
       listId={null}

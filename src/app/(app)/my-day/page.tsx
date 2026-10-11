@@ -1,7 +1,7 @@
 import { getUserLists } from '@/components/lists/queries'
-import MyDayClient from '@/components/my-day/MyDayClient'
+import MyDayPlanner from '@/components/my-day/my-day-planner'
 
 export default async function MyDayPage() {
   const lists = await getUserLists()
-  return <MyDayClient encryptedLists={lists} />
+  return <MyDayPlanner encryptedLists={lists} />
 }
