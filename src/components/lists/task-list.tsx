@@ -1,9 +1,13 @@
 import { TaskItem } from '../tasks/task-item/task-item'
-import { List, TaskWithList } from '../../types'
+import { Category, List, TaskWithList } from '../../types'
 import { useSearchParams } from 'next/navigation'
 import { useId } from 'react'
 
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import {
+  AddCategoryButton,
+  CategoryHeader,
+} from '@/components/categories/category-controls'
 
 interface TaskListProps {
   localTasks: TaskWithList[]
@@ -17,6 +21,18 @@ interface TaskListProps {
   pathName: string
   handleOnReorder: (activeId: string, overId: string) => void
   canReorder: boolean
+  categories?: Category[]
+  handleOnChangeCategory?: (
+    taskId: string,
+    categoryId: string | null,
+  ) => Promise<void>
+  handleOnCreateCategory?: (title: string) => Promise<void>
+  handleOnRenameCategory?: (category: Category, title: string) => Promise<void>
+  handleOnDeleteCategory?: (category: Category) => Promise<void>
+  handleOnMoveCategory?: (
+    category: Category,
+    direction: 'up' | 'down',
+  ) => Promise<void>
 }
 
 export default function TaskList({
@@ -31,42 +47,113 @@ export default function TaskList({
   pathName,
   handleOnReorder,
   canReorder,
+  categories,
+  handleOnChangeCategory,
+  handleOnCreateCategory,
+  handleOnRenameCategory,
+  handleOnDeleteCategory,
+  handleOnMoveCategory,
 }: TaskListProps) {
   const scope = useId()
 
   const shouldHideCompleted = pathName !== '/completed'
   const isInbox = pathName === '/inbox'
   const searchParams = useSearchParams()
-  const taskId = searchParams.get('task') as string
+  const taskId = searchParams.get('task')
 
-  const tasklist = (
-    <ul>
-      {localTasks.map((task) => (
-        <TaskItem
-          highlighted={taskId === task.id}
-          key={task.id}
-          task={task}
-          lists={localLists}
-          currentListId={currentListId}
-          handleOnComplete={handleOnComplete}
-          handleOnRename={handleOnRename}
-          handleOnDueDateChange={handleOnDueDateChange}
-          handleOnNotesChange={handleOnNotesChange}
-          handleOnDelete={handleOnDelete}
-          shouldHideCompleted={shouldHideCompleted}
-          isInbox={isInbox}
-          canReorder={canReorder}
-          dragScope={canReorder ? scope : undefined}
-          handleOnReorder={handleOnReorder}
+  const sortedCategories = categories
+    ? [...categories].sort((a, b) => a.position - b.position)
+    : []
+  const canManageCategories = Boolean(
+    currentListId &&
+      categories &&
+      handleOnCreateCategory &&
+      handleOnRenameCategory &&
+      handleOnDeleteCategory &&
+      handleOnMoveCategory,
+  )
+  const showCategorySections = canManageCategories && sortedCategories.length > 0
+
+  function renderTasks(tasks: TaskWithList[]) {
+    return (
+      <ul>
+        {tasks.map((task) => (
+          <TaskItem
+            highlighted={taskId === task.id}
+            key={task.id}
+            task={task}
+            lists={localLists}
+            currentListId={currentListId}
+            handleOnComplete={handleOnComplete}
+            handleOnRename={handleOnRename}
+            handleOnDueDateChange={handleOnDueDateChange}
+            handleOnNotesChange={handleOnNotesChange}
+            handleOnDelete={handleOnDelete}
+            shouldHideCompleted={shouldHideCompleted}
+            isInbox={isInbox}
+            canReorder={canReorder}
+            dragScope={canReorder ? scope : undefined}
+            handleOnReorder={handleOnReorder}
+            categories={categories}
+            handleOnChangeCategory={handleOnChangeCategory}
+          />
+        ))}
+      </ul>
+    )
+  }
+
+  const tasklist = showCategorySections ? (
+    <div className="flex flex-col gap-7">
+      {sortedCategories.map((category, categoryIndex) => {
+        const categoryTasks = localTasks.filter(
+          (task) => task.category_id === category.id,
+        )
+
+        return (
+          <section key={category.id} aria-labelledby={`category-${category.id}`}>
+            <CategoryHeader
+              category={category}
+              count={categoryTasks.length}
+              headingId={`category-${category.id}`}
+              categoryIndex={categoryIndex}
+              categoryCount={sortedCategories.length}
+              onRename={handleOnRenameCategory}
+              onDelete={handleOnDeleteCategory}
+              onMove={handleOnMoveCategory}
+            />
+            {renderTasks(categoryTasks)}
+          </section>
+        )
+      })}
+
+      <section aria-labelledby="category-uncategorized">
+        <CategoryHeader
+          category={null}
+          count={localTasks.filter((task) => task.category_id === null).length}
+          headingId="category-uncategorized"
         />
-      ))}
-    </ul>
+        {renderTasks(localTasks.filter((task) => task.category_id === null))}
+      </section>
+
+      <AddCategoryButton onCreate={handleOnCreateCategory!} />
+    </div>
+  ) : canManageCategories ? (
+    <div className="flex flex-col gap-4">
+      {renderTasks(localTasks)}
+      <AddCategoryButton onCreate={handleOnCreateCategory!} />
+    </div>
+  ) : (
+    renderTasks(localTasks)
   )
 
   return (
     <div className="flex flex-col h-full sm:w-full">
       <div className="flex-1 overflow-y-auto scroll-smooth pb-16">
-        <SortableContext items={localTasks.map(task => task.id)} strategy={verticalListSortingStrategy} disabled={!canReorder}>
+        <SortableContext
+          items={localTasks.map((task) => task.id)}
+          strategy={verticalListSortingStrategy}
+          disabled={!canReorder}
+        >
           {tasklist}
         </SortableContext>
       </div>

@@ -1,5 +1,5 @@
 'use client'
-import { List, TaskWithList } from '../../../types'
+import { Category, List, TaskWithList } from '../../../types'
 import { TaskEditDropdown } from './task-edit/task-edit-dropdown'
 import { Button } from '@/components/ui/button'
 import { TaskCheckbox } from './task-checkbox'
@@ -31,6 +31,11 @@ interface TaskItemProps {
   handleOnFocus?: (taskId: string, focused: boolean) => void
   handleOnStash?: (taskId: string, stashed: boolean) => void
   showDueDate?: boolean
+  categories?: Category[]
+  handleOnChangeCategory?: (
+    taskId: string,
+    categoryId: string | null,
+  ) => Promise<void>
 }
 
 export function TaskItem({
@@ -53,6 +58,8 @@ export function TaskItem({
   handleOnFocus,
   handleOnStash,
   showDueDate = true,
+  categories,
+  handleOnChangeCategory,
 }: TaskItemProps) {
   const {
     attributes,
@@ -106,9 +113,6 @@ export function TaskItem({
           />
         </div>
         {/* Right side content */}
-        {/* For status
-                        className="rounded-md bg-blue-100 px-2 py-1 text-sm text-blue-500 hover:bg-blue-200 hover:text-blue-700"
-          */}
         <div className="flex items-center gap-3">
           {trailingActions}
           <TaskEditDropdown
@@ -121,6 +125,8 @@ export function TaskItem({
             handleOnRename={handleOnRename}
             handleOnFocus={handleOnFocus}
             handleOnStash={handleOnStash}
+            categories={categories}
+            handleOnChangeCategory={handleOnChangeCategory}
           >
             <Button
               variant="ghost"

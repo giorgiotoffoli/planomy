@@ -13,7 +13,7 @@ function task(overrides: Partial<TaskWithList>): TaskWithList {
     due_date: null,
     due_time: null,
     notes: undefined,
-    status_id: null,
+    category_id: null,
     position: 0,
     created_at: null,
     focused: false,

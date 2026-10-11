@@ -7,7 +7,7 @@ export interface Task {
   due_date: string | null
   due_time: string | null
   notes?: string
-  status_id?: string | null
+  category_id?: string | null
   position: number
   created_at?: string | null
   focused: boolean
@@ -29,11 +29,12 @@ export interface List {
   default_view: 'list' | 'board'
 }
 
-export interface Status {
+export interface Category {
   id: string
   list_id: string
   title: string
   position: number
+  created_at?: string | null
 }
 
 export interface DailySelection {

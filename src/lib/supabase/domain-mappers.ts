@@ -56,7 +56,7 @@ export function toTaskWithList(row: TaskWithListRow): TaskWithList {
     due_date: row.due_date,
     due_time: row.due_time,
     notes: row.notes ?? undefined,
-    status_id: row.status_id,
+    category_id: row.category_id,
     position: row.position,
     created_at: row.created_at,
     focused: row.focused,
