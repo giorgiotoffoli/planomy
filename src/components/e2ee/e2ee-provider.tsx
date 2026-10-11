@@ -10,7 +10,11 @@ import {
 } from 'react'
 import { base64ToBytes, bytesToBase64 } from '@/lib/crypto/e2ee'
 
-const SESSION_MASTER_KEY_STORAGE_KEY = 'planomy:e2ee:master-key:v1'
+const LEGACY_SESSION_MASTER_KEY_STORAGE_KEY = 'planomy:e2ee:master-key:v1'
+
+function storageKey(userId: string) {
+  return `${LEGACY_SESSION_MASTER_KEY_STORAGE_KEY}:${userId}`
+}
 
 type E2EEContextValue = {
   masterKey: Uint8Array | null
@@ -22,24 +26,34 @@ type E2EEContextValue = {
 
 const E2EEContext = createContext<E2EEContextValue | null>(null)
 
-export function E2EEProvider({ children }: { children: ReactNode }) {
+export function E2EEProvider({
+  children,
+  userId,
+}: {
+  children: ReactNode
+  userId: string
+}) {
   const [masterKey, setMasterKeyState] = useState<Uint8Array | null>(null)
   const [isRestoring, setIsRestoring] = useState(true)
 
   useEffect(() => {
-    try {
-      const storedMasterKey = sessionStorage.getItem(
-        SESSION_MASTER_KEY_STORAGE_KEY,
-      )
-      if (storedMasterKey) {
-        setMasterKeyState(base64ToBytes(storedMasterKey))
+    const timeoutId = window.setTimeout(() => {
+      try {
+        sessionStorage.removeItem(LEGACY_SESSION_MASTER_KEY_STORAGE_KEY)
+        const storedMasterKey = sessionStorage.getItem(storageKey(userId))
+        setMasterKeyState(
+          storedMasterKey ? base64ToBytes(storedMasterKey) : null,
+        )
+      } catch (error) {
+        console.error('Failed to restore encrypted session', error)
+        setMasterKeyState(null)
+      } finally {
+        setIsRestoring(false)
       }
-    } catch (error) {
-      console.error('Failed to restores encrypted session', error)
-    } finally {
-      setIsRestoring(false)
-    }
-  }, [])
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [userId])
 
   const value = useMemo<E2EEContextValue>(
     () => ({
@@ -49,17 +63,26 @@ export function E2EEProvider({ children }: { children: ReactNode }) {
       setMasterKey: (newMasteryKey) => {
         setMasterKeyState(newMasteryKey)
 
-        sessionStorage.setItem(
-          SESSION_MASTER_KEY_STORAGE_KEY,
-          bytesToBase64(newMasteryKey),
-        )
+        try {
+          sessionStorage.setItem(
+            storageKey(userId),
+            bytesToBase64(newMasteryKey),
+          )
+        } catch (error) {
+          console.error('Failed to persist encrypted session', error)
+        }
       },
       lock: () => {
         setMasterKeyState(null)
-        sessionStorage.removeItem(SESSION_MASTER_KEY_STORAGE_KEY)
+        try {
+          sessionStorage.removeItem(storageKey(userId))
+          sessionStorage.removeItem(LEGACY_SESSION_MASTER_KEY_STORAGE_KEY)
+        } catch (error) {
+          console.error('Failed to clear encrypted session', error)
+        }
       },
     }),
-    [masterKey, isRestoring],
+    [masterKey, isRestoring, userId],
   )
 
   return <E2EEContext.Provider value={value}>{children}</E2EEContext.Provider>

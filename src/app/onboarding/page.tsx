@@ -10,7 +10,7 @@ export default async function OnboardingPage() {
   if (state.complete) redirect('/my-day')
 
   return (
-    <E2EEProvider>
+    <E2EEProvider userId={state.userId}>
       <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-50 p-4">
         <div className="pointer-events-none absolute left-[-10%] top-[-10%] size-[40vw] rounded-full bg-blue-400/15 blur-[100px]" />
         <div className="pointer-events-none absolute bottom-[-10%] right-[-10%] size-[40vw] rounded-full bg-blue-600/10 blur-[100px]" />

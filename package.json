@@ -7,7 +7,8 @@
     "build": "next build",
     "db:types": "supabase gen types typescript --linked > src/lib/supabase/database-types.ts",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --test --experimental-strip-types src/lib/**/*.test.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

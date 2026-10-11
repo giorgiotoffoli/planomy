@@ -11,6 +11,14 @@ import { PlanomyIcon } from '@/icons/planomy-icon'
 function DisplayErrorMessage() {
   const searchParams = useSearchParams()
   const message = searchParams.get('message')
+  const accountDeleted = searchParams.get('deleted') === 'true'
+  if (accountDeleted) {
+    return (
+      <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        Your account and planner data were permanently deleted.
+      </div>
+    )
+  }
   if (message) {
     return (
       <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">

@@ -1,5 +1,6 @@
 'use client'
 import { signOut } from '@/app/auth/actions'
+import Link from 'next/link'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,8 +10,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar'
 import { User, SettingsIcon, LogOutIcon } from 'lucide-react'
+import { useE2EE } from '@/components/e2ee/e2ee-provider'
 
 export function ProfileButton() {
+  const { lock } = useE2EE()
+
   return (
     <SidebarMenuItem>
       <DropdownMenu>
@@ -21,15 +25,17 @@ export function ProfileButton() {
           </SidebarMenuButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuItem>
-            <SettingsIcon />
-            Settings
+          <DropdownMenuItem asChild>
+            <Link href="/settings">
+              <SettingsIcon />
+              Settings
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" asChild>
             <div>
               <LogOutIcon />
-              <form action={signOut}>
+              <form action={signOut} onSubmit={lock}>
                 <button
                   type="submit"
                   className="flex w-full items-center gap-2"

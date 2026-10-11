@@ -16,7 +16,7 @@ export default async function AppLayout({
   if (!onboarding.complete) redirect('/onboarding')
 
   return (
-    <E2EEProvider>
+    <E2EEProvider userId={onboarding.userId}>
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset className="min-w-0">

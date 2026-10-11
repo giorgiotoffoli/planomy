@@ -6,6 +6,10 @@ import { redirect } from 'next/navigation'
 
 export type StoredKeychain = WrappedMasterKeyPayload
 
+export type ReplaceKeychainResult =
+  | { ok: true }
+  | { ok: false; message: string }
+
 async function getAuthenticatedUser() {
   const supabase = await createClient()
 
@@ -73,4 +77,61 @@ export async function saveUserKeychain(payload: StoredKeychain) {
   if (error) {
     throw new Error(error.message)
   }
+}
+
+export async function replaceUserKeychain(
+  payload: StoredKeychain,
+  expectedWrappedMasterKey: string,
+): Promise<ReplaceKeychainResult> {
+  if (
+    !payload ||
+    typeof expectedWrappedMasterKey !== 'string' ||
+    !expectedWrappedMasterKey ||
+    typeof payload.wrappedMasterKey !== 'string' ||
+    !payload.wrappedMasterKey ||
+    typeof payload.wrappingKeySalt !== 'string' ||
+    !payload.wrappingKeySalt ||
+    typeof payload.wrappingKeyIv !== 'string' ||
+    !payload.wrappingKeyIv ||
+    payload.kdf !== 'PBKDF2-SHA-256' ||
+    !Number.isInteger(payload.kdfIterations) ||
+    payload.kdfIterations < 1 ||
+    payload.wrappingAlgorithm !== 'AES-GCM' ||
+    payload.version !== 1
+  ) {
+    return { ok: false, message: 'The encryption settings are invalid.' }
+  }
+
+  const { supabase, user } = await getAuthenticatedUser()
+
+  const { data, error } = await supabase
+    .from('user_keychain')
+    .update({
+      wrapped_master_key: payload.wrappedMasterKey,
+      wrapping_key_salt: payload.wrappingKeySalt,
+      wrapping_key_iv: payload.wrappingKeyIv,
+      kdf: payload.kdf,
+      kdf_iterations: payload.kdfIterations,
+      wrapping_algorithm: payload.wrappingAlgorithm,
+      version: payload.version,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', user.id)
+    .eq('wrapped_master_key', expectedWrappedMasterKey)
+    .select('user_id')
+    .maybeSingle()
+
+  if (error) {
+    return { ok: false, message: 'The master password could not be changed.' }
+  }
+
+  if (!data) {
+    return {
+      ok: false,
+      message:
+        'Your encryption settings changed in another tab. Reload and try again.',
+    }
+  }
+
+  return { ok: true }
 }
