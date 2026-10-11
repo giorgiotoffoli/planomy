@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { dayBounds, layoutBlocks, MINUTE, PIXELS_PER_MINUTE, shiftDay, timeLabel } from '@/lib/agenda'
-import { localDateKey } from '@/lib/my-day'
+import { localDateKey } from '@/lib/today'
 import { useAgenda } from './agenda-provider'
 import AgendaTaskBlock from './agenda-task-block'
 

@@ -13,13 +13,13 @@ lists, scheduling, and board views in a responsive web application.
 
 ## Features
 
-- **My Day** — choose tasks from any list, carry unfinished work forward
+- **Today** — choose tasks from any list, carry unfinished work forward
   intentionally, and pin up to three daily focus tasks.
 - **Lists and inbox** — capture unassigned tasks or organize them into multiple
   plans without duplicating task data.
 - **List and Kanban views** — switch between focused lists and visual boards.
 - **Scheduling** — assign and reschedule due dates, with a dedicated Scheduled
-  view and due-date suggestions in My Day.
+  view and due-date suggestions in Today.
 - **Daily agenda** — open a shared daily timeline beside your workspace, drag
   tasks into time blocks, and move or resize them independently of deadlines.
   A scheduling form and mobile drawer provide the same controls without dragging.
@@ -34,7 +34,7 @@ lists, scheduling, and board views in a responsive web application.
 
 Planomy's server stores encrypted planner content. Plaintext task titles,
 notes, and list names are available only in the browser while the user's vault
-is unlocked. My Day stores references to existing tasks rather than copies of
+is unlocked. Today stores references to existing tasks rather than copies of
 their content.
 
 ## Technology
@@ -50,9 +50,9 @@ their content.
 
 - [x] End-to-end encrypted task and list content
 - [x] Inbox, lists, task search, sorting, and completed-task history
-- [x] Due dates with My Day suggestions and a Scheduled view
+- [x] Due dates with Today suggestions and a Scheduled view
 - [x] List and Kanban board layouts
-- [x] My Day selection, suggestions, daily focus, and rollover
+- [x] Today selection, suggestions, daily focus, and rollover
 - [x] Optimistic task updates and responsive navigation
 
 ### Planned

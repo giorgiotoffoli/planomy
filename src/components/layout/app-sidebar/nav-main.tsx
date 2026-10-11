@@ -27,8 +27,8 @@ type Tab = {
 
 const tabs: Tab[] = [
   {
-    title: 'My Day',
-    link: '/my-day',
+    title: 'Today',
+    link: '/today',
     icon: <Sun />,
   },
   {

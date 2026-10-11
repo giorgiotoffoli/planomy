@@ -1,4 +1,4 @@
-import { isDateKey, localDateKey } from './my-day.ts'
+import { isDateKey, localDateKey } from './today.ts'
 
 export const MINUTE = 60_000
 export const SLOT_MINUTES = 15

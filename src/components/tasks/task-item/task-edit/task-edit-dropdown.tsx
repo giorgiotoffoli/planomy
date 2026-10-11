@@ -16,7 +16,7 @@ import { Clock, Edit, ListEnd } from 'lucide-react'
 import { TaskEditMoveList } from './task-edit-move-list'
 import { TaskDeleteButton } from './task-delete-button'
 import { DialogTrigger } from '@radix-ui/react-dialog'
-import MyDayMenuItem from '@/components/my-day/my-day-menu-item'
+import TodayMenuItem from '@/components/today/today-menu-item'
 
 import { useAgenda } from '@/components/agenda/agenda-provider'
 
@@ -77,7 +77,7 @@ export function TaskEditDropdown({
               </DropdownMenuSubContent>
             </DropdownMenuSub>
 
-            {!task.completed && <MyDayMenuItem taskId={task.id} />}
+            {!task.completed && <TodayMenuItem taskId={task.id} />}
 
             <DropdownMenuItem disabled={task.id.startsWith('temp-')} onSelect={() => setTimeout(() => agenda.edit(task), 0)}><Clock /> Schedule time</DropdownMenuItem>
 

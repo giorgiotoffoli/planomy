@@ -39,7 +39,7 @@ export async function signIn(formData: FormData) {
   if (error) {
     redirect(`/auth?message=${encodeURIComponent(error.message)}`)
   }
-  redirect('/my-day')
+  redirect('/today')
 }
 
 export async function signOut() {

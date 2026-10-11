@@ -7,7 +7,7 @@ import { getOnboardingState } from '@/components/onboarding/actions'
 export default async function OnboardingPage() {
   const state = await getOnboardingState()
 
-  if (state.complete) redirect('/my-day')
+  if (state.complete) redirect('/today')
 
   return (
     <E2EEProvider userId={state.userId}>

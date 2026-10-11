@@ -5,7 +5,7 @@ import type { TaskWithList, TimeBlock } from '@/types'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { localDateKey } from '@/lib/my-day'
+import { localDateKey } from '@/lib/today'
 import { localTimeCandidates, MINUTE, timeInput, timeLabel } from '@/lib/agenda'
 import { getTaskTimeBlock } from './actions'
 import { useAgenda } from './agenda-provider'
@@ -61,7 +61,7 @@ export default function ScheduleDialog({ task, onClose, restoreFocus }: { task: 
               {candidates.map((instant, index) => <option key={instant} value={instant}>{index === 0 ? 'First' : 'Second'} · {timeLabel(instant)}</option>)}
             </select>
           </label>}
-          <p className="text-xs text-muted-foreground">{Intl.DateTimeFormat().resolvedOptions().timeZone} · Duration is elapsed time. Deadlines and My Day selections stay as they are.</p>
+          <p className="text-xs text-muted-foreground">{Intl.DateTimeFormat().resolvedOptions().timeZone} · Duration is elapsed time. Deadlines and Today selections stay as they are.</p>
           {chosen !== undefined && duration >= 15 && <p className="text-xs text-muted-foreground">Ends {new Date(chosen + duration * MINUTE).toLocaleDateString()} at {timeLabel(chosen + duration * MINUTE)}</p>}
         </fieldset>
         <DialogFooter className="gap-2">
