@@ -2,6 +2,7 @@ import { List, TaskWithList } from '@/types'
 import { format, isBefore } from 'date-fns'
 import { InboxIcon } from 'lucide-react'
 import Link from 'next/link'
+import { ListEmoji } from '@/components/lists/list-emoji'
 
 interface TaskDetailProps {
   task: TaskWithList
@@ -74,14 +75,19 @@ export default function TaskDetail({
   const dueDateInfo = getDueDateLabel(task.due_date)
 
   const taskList = task.list_id
-    ? lists.find((list) => list.id === task.list_id)
+    ? lists.find((list) => list.id === task.list_id) ?? task.list
     : null
 
   const shouldShowTaskList =
     !isInbox && (task.list_id === null || currentListId !== task.list_id)
 
   const taskListLabel = task.list_id ? (
-    taskList?.title
+    taskList ? (
+      <span className="flex min-w-0 items-center gap-1">
+        <ListEmoji emoji={taskList.emoji} className="text-sm" />
+        <span className="truncate">{taskList.title}</span>
+      </span>
+    ) : null
   ) : (
     <div className="flex gap-1 items-center">
       <InboxIcon size={12} />

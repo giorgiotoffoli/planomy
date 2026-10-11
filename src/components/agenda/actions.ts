@@ -23,7 +23,7 @@ export async function getAgendaData(startsAt: string, endsAt: string) {
   if (end - start > 27 * 60 * 60_000) throw new Error('Request one local day at a time.')
   const { supabase, user } = await authenticatedClient()
   const [blocks, lists] = await Promise.all([
-    supabase.from('task_time_blocks').select('*, task:tasks!task_time_blocks_owned_task(*, list:lists(id, title, default_view))')
+    supabase.from('task_time_blocks').select('*, task:tasks!task_time_blocks_owned_task(*, list:lists(id, title, emoji, default_view))')
       .eq('user_id', user.id).lt('starts_at', endsAt).gt('ends_at', startsAt).order('starts_at'),
     supabase.from('lists').select('*').eq('user_id', user.id),
   ])

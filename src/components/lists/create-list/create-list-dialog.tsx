@@ -16,6 +16,7 @@ import { ReactNode, useState } from 'react'
 import CreateListForm from './create-list-form'
 import { createList } from '../actions'
 import { DialogTitle } from '@radix-ui/react-dialog'
+import { normalizeListEmoji } from '@/lib/list-emojis'
 
 export default function CreateListDialog({
   children,
@@ -31,16 +32,20 @@ export default function CreateListDialog({
       return
     }
 
-    const title = formData.get('title') as string
+    const title = String(formData.get('title') ?? '')
+    const emoji = normalizeListEmoji(formData.get('emoji') as string | null)
 
     if (!title.trim()) {
       toast.error('Enter a list name.')
       return
     }
 
-    const encryptedTitle = await encryptString(title, masterKey)
+    const [encryptedTitle, encryptedEmoji] = await Promise.all([
+      encryptString(title.trim(), masterKey),
+      emoji ? encryptString(emoji, masterKey) : Promise.resolve(null),
+    ])
 
-    await createList(encryptedTitle)
+    await createList(encryptedTitle, encryptedEmoji)
     setOpen(false)
   }
 

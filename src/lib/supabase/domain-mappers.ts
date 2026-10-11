@@ -5,7 +5,7 @@ type ListRow = Tables<'lists'>
 type TaskRow = Tables<'tasks'>
 type TimeBlockRow = Tables<'task_time_blocks'>
 
-type ListSummaryRow = Pick<ListRow, 'id' | 'title' | 'default_view'>
+type ListSummaryRow = Pick<ListRow, 'id' | 'title' | 'emoji' | 'default_view'>
 
 export type TaskWithListRow = TaskRow & {
   list: ListSummaryRow | null
@@ -35,6 +35,7 @@ function toListSummary(row: ListSummaryRow): NonNullable<TaskWithList['list']> {
   return {
     id: row.id,
     title: required(row.title, 'lists.title'),
+    emoji: row.emoji,
     default_view: listView(row.default_view),
   }
 }

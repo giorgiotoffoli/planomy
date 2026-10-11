@@ -9,15 +9,18 @@ import {
 import { Separator } from '../../ui/separator'
 import { SidebarTrigger } from '../../ui/sidebar'
 import type { ReactNode } from 'react'
+import { ListEmoji } from '@/components/lists/list-emoji'
 
 export default function Header({
   headerTitle,
   taskCount,
   rightSlot,
+  headerEmoji,
 }: {
   headerTitle: string
   taskCount: number
   rightSlot?: ReactNode
+  headerEmoji?: string | null
 }) {
   return (
     <header className="relative z-10 flex h-12 min-h-12 w-full shrink-0 items-center justify-between border-b border-border bg-background">
@@ -34,7 +37,10 @@ export default function Header({
           <BreadcrumbList className="text-base">
             <BreadcrumbItem>
               <BreadcrumbPage className="line-clamp-1 text-lg font-bold font-heading">
-                {headerTitle}
+                <span className="flex min-w-0 items-center gap-1.5">
+                  {headerEmoji !== undefined && <ListEmoji emoji={headerEmoji} />}
+                  <span className="truncate">{headerTitle}</span>
+                </span>
               </BreadcrumbPage>
             </BreadcrumbItem>
             <BreadcrumbItem>

@@ -37,12 +37,20 @@ export default function TodayPlanner({ encryptedLists }: { encryptedLists: List[
     setError(null)
     try {
       const result = await getTodayData(activeDay)
-      const decryptedLists = await Promise.all(encryptedLists.map(async list => ({ ...list, title: await decryptString(list.title, masterKey) })))
+      const decryptedLists = await Promise.all(encryptedLists.map(async list => ({
+        ...list,
+        title: await decryptString(list.title, masterKey),
+        emoji: list.emoji ? await decryptString(list.emoji, masterKey) : list.emoji,
+      })))
       const decryptedTasks = await Promise.all(result.tasks.map(async task => ({
         ...task,
         title: await decryptString(task.title, masterKey),
         notes: task.notes ? await decryptString(task.notes, masterKey) : task.notes,
-        list: task.list ? { ...task.list, title: await decryptString(task.list.title, masterKey) } : null,
+        list: task.list ? {
+          ...task.list,
+          title: await decryptString(task.list.title, masterKey),
+          emoji: task.list.emoji ? await decryptString(task.list.emoji, masterKey) : task.list.emoji,
+        } : null,
       })))
       if (version === loadVersion.current) {
         setLists(decryptedLists)

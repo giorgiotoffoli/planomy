@@ -5,7 +5,7 @@ import type { List } from '@/types'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-export async function createList(title: string) {
+export async function createList(title: string, emoji: string | null) {
   const supabase = await createClient()
 
   const {
@@ -17,6 +17,7 @@ export async function createList(title: string) {
   const { error } = await supabase.from('lists').insert([
     {
       title,
+      emoji,
       user_id: user!.id,
     },
   ])
@@ -44,12 +45,16 @@ export async function deleteList(list_id: string) {
   redirect('/home')
 }
 
-export async function renameList(list_id: string, title: string) {
+export async function renameList(
+  list_id: string,
+  title: string,
+  emoji: string | null,
+) {
   const supabase = await createClient()
 
   const { error } = await supabase
     .from('lists')
-    .update({ title })
+    .update({ title, emoji })
     .eq('id', list_id)
 
   if (error) {

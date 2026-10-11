@@ -6,7 +6,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
-import { Circle, MoreHorizontal } from 'lucide-react'
+import { MoreHorizontal } from 'lucide-react'
 import Link from 'next/link'
 import {
   DropdownMenu,
@@ -19,6 +19,7 @@ import { List } from '@/types'
 import { useEffect, useState } from 'react'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString } from '@/lib/crypto/e2ee'
+import { ListEmoji } from '@/components/lists/list-emoji'
 
 export function NavLists({ lists }: { lists: List[] }) {
   const { masterKey } = useE2EE()
@@ -35,6 +36,9 @@ export function NavLists({ lists }: { lists: List[] }) {
         lists.map(async (list) => ({
           ...list,
           title: await decryptString(list.title, unlockedMasterKey),
+          emoji: list.emoji
+            ? await decryptString(list.emoji, unlockedMasterKey)
+            : list.emoji,
         })),
       )
       if (!isCancelled) {
@@ -61,7 +65,7 @@ export function NavLists({ lists }: { lists: List[] }) {
                 href={`/lists/${list.id}?view=${list.default_view ?? 'list'}`}
                 prefetch
               >
-                <Circle />
+                <ListEmoji emoji={list.emoji} />
                 <span>{list.title}</span>
               </Link>
             </SidebarMenuButton>
