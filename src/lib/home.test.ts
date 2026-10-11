@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { sortTasks } from '../components/lists/task-sorting.ts'
 import { getDeadlineLabel, getHomeBuckets } from './home.ts'
 import type { TaskWithList } from '../types'
 
@@ -64,4 +65,49 @@ test('due soon sorts by calendar date and then due time', () => {
     'boundary',
   ])
   assert.deepEqual(result.tasks.map(({ id }) => id), ['outside'])
+})
+
+test('task sorting keeps undated tasks last and preserves stable ties', () => {
+  const tasks = [
+    task({ id: 'undated', title: 'Zebra' }),
+    task({ id: 'later', title: 'Beta', due_date: '2026-10-14' }),
+    task({
+      id: 'timed',
+      title: 'Alpha',
+      due_date: '2026-10-13',
+      due_time: '09:00:00',
+    }),
+    task({
+      id: 'untimed',
+      title: 'Gamma',
+      due_date: '2026-10-13',
+    }),
+  ]
+
+  assert.deepEqual(
+    sortTasks(tasks, 'due-date-asc').map(({ id }) => id),
+    ['timed', 'untimed', 'later', 'undated'],
+  )
+  assert.deepEqual(
+    sortTasks(tasks, 'due-date-desc').map(({ id }) => id),
+    ['later', 'timed', 'untimed', 'undated'],
+  )
+})
+
+test('task sorting supports newest and oldest creation dates', () => {
+  const tasks = [
+    task({ id: 'newest', created_at: '2026-10-12T09:00:00.000Z' }),
+    task({ id: 'oldest', created_at: '2026-10-10T09:00:00.000Z' }),
+    task({ id: 'middle', created_at: '2026-10-11T09:00:00.000Z' }),
+    task({ id: 'missing-date', created_at: null }),
+  ]
+
+  assert.deepEqual(
+    sortTasks(tasks, 'created-desc').map(({ id }) => id),
+    ['newest', 'middle', 'oldest', 'missing-date'],
+  )
+  assert.deepEqual(
+    sortTasks(tasks, 'created-asc').map(({ id }) => id),
+    ['oldest', 'middle', 'newest', 'missing-date'],
+  )
 })

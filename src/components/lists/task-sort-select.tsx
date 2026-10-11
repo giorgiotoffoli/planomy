@@ -27,6 +27,8 @@ export default function TaskSortSelect({
       </SelectTrigger>
       <SelectContent align="end">
         <SelectItem value="manual">Manual order</SelectItem>
+        <SelectItem value="created-desc">Created: newest</SelectItem>
+        <SelectItem value="created-asc">Created: oldest</SelectItem>
         <SelectItem value="due-date-asc">Due date: earliest</SelectItem>
         <SelectItem value="due-date-desc">Due date: latest</SelectItem>
         <SelectItem value="alphabetical-asc">Title: A–Z</SelectItem>

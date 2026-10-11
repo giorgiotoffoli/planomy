@@ -23,6 +23,12 @@ import { toast } from 'sonner'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
 import { localDateKey } from '@/lib/today'
+import TaskSortSelect from '@/components/lists/task-sort-select'
+import {
+  isTaskSortOption,
+  sortTasks,
+  type TaskSortOption,
+} from '@/components/lists/task-sorting'
 import {
   DUE_SOON_DAYS,
   getDeadlineLabel,
@@ -56,6 +62,8 @@ import {
 } from '@/components/ui/collapsible'
 
 type HomeData = Awaited<ReturnType<typeof getHomeData>>
+
+const HOME_SORT_STORAGE_KEY = 'planomy:home-sort'
 
 const OPENING_MESSAGES = [
   'Let’s make a little room for what matters. ✨',
@@ -279,6 +287,7 @@ export default function HomePlanner({
   const [tasks, setTasks] = useState<TaskWithList[] | null>(null)
   const [lists, setLists] = useState<List[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [sortOption, setSortOption] = useState<TaskSortOption>('manual')
   const [stashedOpen, setStashedOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const loadVersion = useRef(0)
@@ -330,6 +339,24 @@ export default function HomePlanner({
   }, [applyData, initialData, masterKey])
 
   useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      try {
+        const savedSortOption = window.localStorage.getItem(
+          HOME_SORT_STORAGE_KEY,
+        )
+
+        if (savedSortOption && isTaskSortOption(savedSortOption)) {
+          setSortOption(savedSortOption)
+        }
+      } catch {
+        // Local storage can be unavailable in private browsing contexts.
+      }
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [])
+
+  useEffect(() => {
     const refreshCalendar = () => {
       const nextDay = localDateKey()
       if (dayRef.current === nextDay) return
@@ -369,10 +396,16 @@ export default function HomePlanner({
     )
   }, [searchQuery, tasks])
 
-  const buckets = useMemo(
-    () => getHomeBuckets(filteredTasks, day),
-    [day, filteredTasks],
-  )
+  const buckets = useMemo(() => {
+    const homeBuckets = getHomeBuckets(filteredTasks, day)
+
+    return {
+      focus: sortTasks(homeBuckets.focus, sortOption),
+      dueSoon: sortTasks(homeBuckets.dueSoon, sortOption),
+      tasks: sortTasks(homeBuckets.tasks, sortOption),
+      stashed: sortTasks(homeBuckets.stashed, sortOption),
+    }
+  }, [day, filteredTasks, sortOption])
 
   const activeCount =
     tasks?.filter((task) => !task.completed && !task.stashed).length ?? 0
@@ -381,6 +414,16 @@ export default function HomePlanner({
       day.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) %
         OPENING_MESSAGES.length
     ]
+
+  function handleSortChange(nextSortOption: TaskSortOption) {
+    setSortOption(nextSortOption)
+
+    try {
+      window.localStorage.setItem(HOME_SORT_STORAGE_KEY, nextSortOption)
+    } catch {
+      // Local storage can be unavailable in private browsing contexts.
+    }
+  }
 
   function updateTask(taskId: string, change: Partial<TaskWithList>) {
     setTasks(
@@ -575,6 +618,10 @@ export default function HomePlanner({
               </p>
             </div>
             <div className="flex w-full gap-2 sm:w-auto">
+              <TaskSortSelect
+                value={sortOption}
+                onValueChange={handleSortChange}
+              />
               <label
                 className="relative min-w-0 flex-1 sm:w-64"
                 aria-label="Search tasks"

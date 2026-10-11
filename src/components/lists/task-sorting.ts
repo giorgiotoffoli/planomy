@@ -2,6 +2,8 @@ import type { TaskWithList } from '@/types'
 
 export const taskSortOptions = [
   'manual',
+  'created-asc',
+  'created-desc',
   'due-date-asc',
   'due-date-desc',
   'alphabetical-asc',
@@ -32,6 +34,27 @@ export function sortTasks(
         if (!right.task.due_date) return -1
 
         comparison = left.task.due_date.localeCompare(right.task.due_date)
+
+        if (comparison === 0) {
+          // Tasks on the same date use their scheduled time as a tiebreaker.
+          // Tasks without a time remain after timed tasks in either direction.
+          if (!left.task.due_time && !right.task.due_time) {
+            return left.index - right.index
+          }
+          if (!left.task.due_time) return 1
+          if (!right.task.due_time) return -1
+
+          comparison = left.task.due_time.localeCompare(right.task.due_time)
+        }
+      } else if (sortOption.startsWith('created')) {
+        // Tasks without a creation timestamp always follow dated tasks.
+        if (!left.task.created_at && !right.task.created_at) {
+          return left.index - right.index
+        }
+        if (!left.task.created_at) return 1
+        if (!right.task.created_at) return -1
+
+        comparison = left.task.created_at.localeCompare(right.task.created_at)
       } else {
         comparison = left.task.title.localeCompare(right.task.title, undefined, {
           sensitivity: 'base',
