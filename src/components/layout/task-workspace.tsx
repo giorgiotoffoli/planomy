@@ -137,14 +137,6 @@ export default function TaskWorkspace({
     }
   }, [masterKey, tasks, lists, headerTitle])
 
-  function getLocalDateString(date = new Date()) {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-
-    return `${year}-${month}-${day}`
-  }
-
   async function handleOnCreate(
     title: string,
     dueDate: string,
@@ -153,15 +145,11 @@ export default function TaskWorkspace({
   ) {
     const tempId = `temp-${crypto.randomUUID()}`
 
-    const normalizedDueDate = dueDate?.slice(0, 10)
-    const today = getLocalDateString()
-
     const shouldShowOnCurrentPage =
       pathName === '/all' ||
       (pathName === '/inbox' && selectedListId === null) ||
       (pathName.includes('/lists/') && selectedListId === listId) ||
-      (pathName === '/today' && normalizedDueDate === today) ||
-      (pathName === '/scheduled' && Boolean(normalizedDueDate))
+      (pathName === '/scheduled' && Boolean(dueDate))
 
     const selectedList =
       localLists.find((list) => list.id === selectedListId) ?? null
@@ -377,10 +365,6 @@ export default function TaskWorkspace({
       />
       {localTasks.length === 0 && pathName === '/inbox' && (
         <p>Nothing in your inbox. Capture a task or enjoy the silence.</p>
-      )}
-
-      {localTasks.length === 0 && pathName === '/today' && (
-        <p>Nothing due today. Take it easy.</p>
       )}
 
       {localTasks.length === 0 && pathName === '/scheduled' && (
