@@ -1,17 +1,28 @@
 'use client'
 
 import { List, Status, TaskWithList } from '@/types'
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import TaskList from '../lists/task-list'
 import TaskBoard from '../boards/task-board'
 import {
+  TASKS_CHANGED,
   createTask,
   deleteTask,
   renameTask,
+  reorderTasks,
   updateTaskCompleted,
   updateTaskDueDate,
   updateTaskNotes,
 } from '../tasks/mutations'
+import { getTasks } from '../tasks/queries'
+import { getListTasks } from '../lists/queries'
 import CreateTaskButton from '../tasks/create-task/create-task-button'
 import { Skeleton } from '../ui/skeleton'
 import { usePathname } from 'next/navigation'
@@ -21,7 +32,6 @@ import HeaderViewToggle from './header/header-view-toggle'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
 import { arrayMove } from '@dnd-kit/sortable'
-import { reorderTasks } from '../tasks/mutations'
 import TaskSortSelect from '../lists/task-sort-select'
 import {
   isTaskSortOption,
@@ -36,6 +46,33 @@ interface TaskWorkspaceProps {
   statuses?: Status[]
   currentView: 'list' | 'board'
   headerTitle: string
+}
+
+async function decryptTasks(tasks: TaskWithList[], masterKey: Uint8Array) {
+  return Promise.all(
+    tasks.map(async (task) => ({
+      ...task,
+      title: await decryptString(task.title, masterKey),
+      notes: task.notes
+        ? await decryptString(task.notes, masterKey)
+        : task.notes,
+      list: task.list
+        ? {
+            ...task.list,
+            title: await decryptString(task.list.title, masterKey),
+          }
+        : task.list,
+    })),
+  )
+}
+
+async function decryptLists(lists: List[], masterKey: Uint8Array) {
+  return Promise.all(
+    lists.map(async (list) => ({
+      ...list,
+      title: await decryptString(list.title, masterKey),
+    })),
+  )
 }
 
 export default function TaskWorkspace({
@@ -55,6 +92,38 @@ export default function TaskWorkspace({
   const { masterKey } = useE2EE()
   const pathName = usePathname()
   const sortStorageKey = listId ? `planomy:list-sort:${listId}` : null
+  const taskLoadVersion = useRef(0)
+  const taskView = pathName === '/completed' ? 'completed' : 'scheduled'
+
+  const refreshTasks = useCallback(async () => {
+    if (!masterKey) return
+
+    const request = ++taskLoadVersion.current
+
+    try {
+      const nextTasks = listId
+        ? await getListTasks(listId)
+        : await getTasks(taskView)
+      const decryptedTasks = await decryptTasks(nextTasks, masterKey)
+
+      if (request === taskLoadVersion.current) {
+        setLocalTasks(decryptedTasks)
+      }
+    } catch (error) {
+      if (request === taskLoadVersion.current) {
+        console.error('Failed to refresh task workspace', error)
+      }
+    }
+  }, [listId, masterKey, taskView])
+
+  useEffect(() => {
+    const handleTasksChanged = () => {
+      void refreshTasks()
+    }
+
+    window.addEventListener(TASKS_CHANGED, handleTasksChanged)
+    return () => window.removeEventListener(TASKS_CHANGED, handleTasksChanged)
+  }, [refreshTasks])
 
   useEffect(() => {
     if (!sortStorageKey) return
@@ -91,37 +160,20 @@ export default function TaskWorkspace({
 
     const unlockedMasterKey = masterKey
     let isCancelled = false
+    const request = ++taskLoadVersion.current
 
     async function decryptLoadedData() {
-      const decryptedTasks = await Promise.all(
-        tasks.map(async (task) => ({
-          ...task,
-          title: await decryptString(task.title, unlockedMasterKey),
-          notes: task.notes
-            ? await decryptString(task.notes, unlockedMasterKey)
-            : task.notes,
-          list: task.list
-            ? {
-                ...task.list,
-                title: await decryptString(task.list.title, unlockedMasterKey),
-              }
-            : task.list,
-        })),
-      )
-
-      const decryptedLists = await Promise.all(
-        lists.map(async (list) => ({
-          ...list,
-          title: await decryptString(list.title, unlockedMasterKey),
-        })),
-      )
+      const [decryptedTasks, decryptedLists] = await Promise.all([
+        decryptTasks(tasks, unlockedMasterKey),
+        decryptLists(lists, unlockedMasterKey),
+      ])
 
       const decryptedHeaderTitle = await decryptString(
         headerTitle,
         unlockedMasterKey,
       )
 
-      if (!isCancelled) {
+      if (!isCancelled && request === taskLoadVersion.current) {
         setLocalTasks(decryptedTasks)
         setLocalLists(decryptedLists)
         setLocalHeaderTitle(decryptedHeaderTitle)

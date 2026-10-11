@@ -391,7 +391,6 @@ export default function HomePlanner({
 
     try {
       await updateTaskCompleted(taskId, completed)
-      notifyTasksChanged()
     } catch (cause) {
       setTasks(previous)
       toast.error(
@@ -449,7 +448,6 @@ export default function HomePlanner({
 
     try {
       await renameTask(taskId, await encryptString(title, masterKey))
-      notifyTasksChanged()
     } catch (cause) {
       setTasks(previous)
       toast.error(
@@ -464,7 +462,6 @@ export default function HomePlanner({
 
     try {
       await updateTaskDueDate(taskId, dueDate)
-      notifyTasksChanged()
     } catch (cause) {
       setTasks(previous)
       toast.error(
@@ -480,7 +477,6 @@ export default function HomePlanner({
 
     try {
       await updateTaskNotes(taskId, await encryptString(notes, masterKey))
-      notifyTasksChanged()
     } catch (cause) {
       setTasks(previous)
       toast.error(
@@ -495,7 +491,6 @@ export default function HomePlanner({
 
     try {
       await deleteTask(taskId)
-      notifyTasksChanged()
     } catch (cause) {
       setTasks(previous)
       toast.error(
