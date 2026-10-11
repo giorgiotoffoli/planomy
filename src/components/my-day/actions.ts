@@ -14,7 +14,7 @@ function myDayDatabaseError(error: SupabaseError) {
     error.message.includes('daily_task_selections')
   ) {
     return new Error(
-      'My Day is not set up in this Supabase project. Apply the My Day database migration, then try again.',
+      'My Day is not configured in this Supabase project. Contact the project administrator.',
     )
   }
 
@@ -23,7 +23,7 @@ function myDayDatabaseError(error: SupabaseError) {
     error.message.includes('set_daily_task_focus')
   ) {
     return new Error(
-      'The My Day focus function is missing in this Supabase project. Apply the My Day database migration, then try again.',
+      'The My Day focus function is missing from this Supabase project. Contact the project administrator.',
     )
   }
 

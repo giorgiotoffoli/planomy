@@ -13,7 +13,7 @@ async function authenticatedClient() {
 
 function databaseError(error: { code?: string; message: string }) {
   return new Error(['42P01', 'PGRST205'].includes(error.code ?? '')
-    ? 'Agenda is not set up yet. Apply the task time blocks database migration, then try again.'
+    ? 'Agenda is not configured in this Supabase project. Contact the project administrator.'
     : error.message)
 }
 

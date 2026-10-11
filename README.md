@@ -57,16 +57,12 @@ their content.
 
 ### Planned
 
-- [ ] Shared plans and collaboration
-- [ ] Native mobile applications
+- [ ] Mobile applications
 - [ ] Offline-first synchronization
+- [ ] Shared plans and collaboration
 - [ ] Accessibility and performance improvements
 
 ## Contributing
-
-For daily agenda database setup and verification, see
-[supabase/README.md](supabase/README.md). Apply its migration to your existing
-Supabase project before using time blocks.
 
 Issues and pull requests are welcome. Please keep changes focused, preserve the
 project's encryption boundaries, and include relevant verification with each

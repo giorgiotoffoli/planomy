@@ -1,13 +1,13 @@
 import { getTasks } from '../../../components/tasks/queries'
-import Heaer from '@/components/layout/header/Header'
+import Heaer from '@/components/layout/header/app-header'
 import { getUserLists } from '@/components/lists/queries'
-import TaskClient from '@/components/layout/TaskClient'
+import TaskWorkspace from '@/components/layout/task-workspace'
 
 export default async function CompletedPage() {
   const tasks = await getTasks('completed')
   const lists = await getUserLists()
   return (
-    <TaskClient
+    <TaskWorkspace
       tasks={tasks}
       lists={lists}
       currentView="list"
