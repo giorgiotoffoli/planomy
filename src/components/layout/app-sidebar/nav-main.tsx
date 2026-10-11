@@ -53,6 +53,7 @@ export default function NavMain() {
             asChild
             isActive={pathname === tab.link}
             tooltip={tab.title}
+            className="[&>svg]:!size-5"
           >
             <Link href={tab.link} prefetch>
               {tab.icon}
@@ -66,7 +67,7 @@ export default function NavMain() {
         <SidebarMenuButton
           tooltip="Search"
           onClick={() => setOpen(true)}
-          className="cursor-pointer"
+          className="cursor-pointer [&>svg]:!size-5"
         >
           <SearchIcon />
           <span>Search</span>

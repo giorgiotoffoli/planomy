@@ -20,16 +20,18 @@ export default function Header({
   rightSlot?: ReactNode
 }) {
   return (
-    <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center justify-between border-b bg-background">
-      <div className="flex min-w-0 items-center gap-2 px-3">
-        <SidebarTrigger />
-        <Separator
-          orientation="vertical"
-          className="mr-2 data-[orientation=vertical]:h-4"
-        />
+    <header className="relative z-10 flex h-12 min-h-12 w-full shrink-0 items-center justify-between border-b border-border bg-background">
+      <div className="flex min-w-0 items-center px-3">
+        <div className="flex items-center gap-2 md:hidden">
+          <SidebarTrigger />
+          <Separator
+            orientation="vertical"
+            className="mr-2 data-[orientation=vertical]:h-4"
+          />
+        </div>
 
         <Breadcrumb>
-          <BreadcrumbList>
+          <BreadcrumbList className="text-base">
             <BreadcrumbItem>
               <BreadcrumbPage className="line-clamp-1 text-lg font-bold font-heading">
                 {headerTitle}
@@ -42,7 +44,10 @@ export default function Header({
         </Breadcrumb>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 px-3">{rightSlot}<AgendaToggle /></div>
+      <div className="flex shrink-0 items-center gap-2 px-3">
+        {rightSlot}
+        <AgendaToggle />
+      </div>
     </header>
   )
 }

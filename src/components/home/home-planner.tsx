@@ -210,32 +210,32 @@ function SectionShell({
     <Collapsible
       open={open}
       onOpenChange={setOpen}
-      className={`rounded-[20px] border shadow-[0_12px_32px_rgba(62,84,120,0.05)] ${compactEmpty ? 'px-3 py-2.5 sm:px-4 sm:py-3' : 'p-3 sm:p-4'} ${toneClasses[tone]}`}
+      className={`rounded-2xl border shadow-[0_6px_18px_rgba(62,84,120,0.04)] ${compactEmpty ? 'px-2.5 py-2 sm:px-3 sm:py-2.5' : 'p-2.5 sm:p-3'} ${toneClasses[tone]}`}
     >
       <h2
-        className={`${compactEmpty ? '' : 'mb-2'} flex items-center px-1.5 py-1`}
+        className={`${compactEmpty ? '' : 'mb-1.5'} flex items-center px-1 py-0.5`}
       >
         <CollapsibleTrigger asChild>
           <button
             type="button"
             aria-label={`${open ? 'Collapse' : 'Expand'} ${title}`}
-            className="group flex w-full items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+            className="group flex w-full items-center gap-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
           >
             <span
               className={
                 tone === 'focus'
                   ? 'text-blue-600'
-                  : tone === 'due'
-                    ? 'text-amber-600'
-                    : 'text-blue-700'
+                    : tone === 'due'
+                      ? 'text-amber-600'
+                      : 'text-blue-700'
               }
             >
               {icon}
             </span>
-            <span className="font-heading text-lg font-semibold tracking-[-0.02em] text-slate-950">
+            <span className="font-heading text-base font-semibold tracking-[-0.02em] text-slate-950 sm:text-lg">
               {title}
             </span>
-            <span className="flex size-7 items-center justify-center rounded-full bg-slate-900/[0.06] text-xs font-semibold text-slate-600">
+            <span className="flex size-6 items-center justify-center rounded-full bg-slate-900/[0.06] text-[11px] font-semibold text-slate-600">
               {count}
             </span>
             <ChevronDown
@@ -247,13 +247,13 @@ function SectionShell({
       </h2>
       <CollapsibleContent>
         {count > 0 ? (
-          <ul className="overflow-hidden rounded-[15px] border border-slate-200/80 bg-white/90 divide-y divide-slate-200/80">
+          <ul className="divide-y divide-slate-200/70">
             {children}
           </ul>
         ) : compactEmpty ? (
           <p className="px-1.5 pt-0.5 text-xs text-slate-500">{empty}</p>
         ) : (
-          <div className="rounded-[15px] border border-dashed border-slate-300/70 bg-white/55 px-5 py-7 text-center text-sm text-slate-500">
+          <div className="rounded-xl border border-dashed border-slate-300/70 bg-white/55 px-4 py-5 text-center text-sm text-slate-500">
             {empty}
           </div>
         )}
@@ -562,9 +562,9 @@ export default function HomePlanner({
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
       <Header headerTitle="Home" taskCount={activeCount} />
-      <div className="min-h-0 flex-1 overflow-y-auto bg-background px-4 py-7 sm:px-7 sm:py-9 lg:px-10">
-        <div className="mx-auto w-full max-w-5xl">
-          <div className="mb-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <div className="min-h-0 flex-1 overflow-y-auto bg-background px-3 py-5 sm:px-5 sm:py-6 lg:px-6">
+        <div className="mx-auto w-full max-w-[1440px]">
+          <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h1 className="font-heading text-[clamp(2rem,4vw,3.25rem)] font-semibold leading-none tracking-[-0.055em] text-[#10172c]">
                 {formattedDay}
@@ -621,33 +621,35 @@ export default function HomePlanner({
           )}
 
           {tasks && (
-            <div className="space-y-4">
-              <SectionShell
-                title="Focus"
-                count={buckets.focus.length}
-                icon={<Star className="size-6" />}
-                tone="focus"
-                empty="Pick up to three tasks to keep close today."
-                compactWhenEmpty
-              >
-                {buckets.focus.map((task) => renderTask(task))}
-              </SectionShell>
+            <div className="space-y-3">
+              <div className="grid gap-3 lg:grid-cols-2">
+                <SectionShell
+                  title="Focus"
+                  count={buckets.focus.length}
+                  icon={<Star className="size-5" />}
+                  tone="focus"
+                  empty="Pick up to three tasks to keep close today."
+                  compactWhenEmpty
+                >
+                  {buckets.focus.map((task) => renderTask(task))}
+                </SectionShell>
 
-              <SectionShell
-                title="Due Soon"
-                count={buckets.dueSoon.length}
-                icon={<Clock3 className="size-6" />}
-                tone="due"
-                empty={`Nothing due in the next ${DUE_SOON_DAYS} days. Your future self says thanks.`}
-                compactWhenEmpty
-              >
-                {buckets.dueSoon.map((task) => renderTask(task, true))}
-              </SectionShell>
+                <SectionShell
+                  title="Due Soon"
+                  count={buckets.dueSoon.length}
+                  icon={<Clock3 className="size-5" />}
+                  tone="due"
+                  empty={`Nothing due in the next ${DUE_SOON_DAYS} days. Your future self says thanks.`}
+                  compactWhenEmpty
+                >
+                  {buckets.dueSoon.map((task) => renderTask(task, true))}
+                </SectionShell>
+              </div>
 
               <SectionShell
                 title="Tasks"
                 count={buckets.tasks.length}
-                icon={<ListTodo className="size-6" />}
+                icon={<ListTodo className="size-5" />}
                 tone="tasks"
                 empty={
                   searchQuery
@@ -661,18 +663,18 @@ export default function HomePlanner({
               <Collapsible
                 open={stashedOpen}
                 onOpenChange={setStashedOpen}
-                className="overflow-hidden rounded-[20px] border border-blue-100/80 bg-[#e9f0ff] shadow-[0_12px_32px_rgba(62,84,120,0.04)]"
+                className="overflow-hidden rounded-2xl border border-blue-100/80 bg-[#e9f0ff] shadow-[0_6px_18px_rgba(62,84,120,0.04)]"
               >
                 <CollapsibleTrigger asChild>
                   <button
                     type="button"
-                    className="flex w-full items-center gap-3 px-5 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
                   >
                     <Archive className="size-5 text-blue-700" />
                     <span className="font-semibold text-slate-900">
                       Stashed
                     </span>
-                    <span className="flex size-7 items-center justify-center rounded-full bg-slate-900/[0.06] text-xs font-semibold text-slate-600">
+                    <span className="flex size-6 items-center justify-center rounded-full bg-slate-900/[0.06] text-[11px] font-semibold text-slate-600">
                       {buckets.stashed.length}
                     </span>
                     <span className="ml-auto text-xs text-slate-500">
