@@ -1,5 +1,6 @@
 'use server'
 import { createClient } from '@/lib/supabase/server'
+import { toList, toTaskWithList } from '@/lib/supabase/domain-mappers'
 import { redirect } from 'next/navigation'
 
 export async function getUserLists() {
@@ -17,7 +18,7 @@ export async function getUserLists() {
     throw new Error(error.message)
   }
 
-  return lists
+  return lists.map(toList)
 }
 
 export async function getList(listId: string) {
@@ -42,7 +43,7 @@ export async function getList(listId: string) {
     throw new Error(error.message)
   }
 
-  return list
+  return toList(list)
 }
 
 export async function getListTasks(listId: string) {
@@ -58,7 +59,7 @@ export async function getListTasks(listId: string) {
 
   const { data: tasks, error } = await supabase
     .from('tasks')
-    .select('*, list:lists (title, id)')
+    .select('*, list:lists (title, id, default_view)')
     .eq('user_id', user!.id)
     .eq('list_id', listId)
     .eq('completed', false)
@@ -67,5 +68,5 @@ export async function getListTasks(listId: string) {
     throw new Error(error.message)
   }
 
-  return tasks
+  return tasks.map(toTaskWithList)
 }

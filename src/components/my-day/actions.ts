@@ -2,8 +2,9 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { toTaskWithList } from '@/lib/supabase/domain-mappers'
 import { isDateKey, previousDateKey } from '@/lib/my-day'
-import type { DailySelection, TaskWithList } from '@/types'
+import type { DailySelection } from '@/types'
 
 type SupabaseError = { code?: string; message: string }
 
@@ -51,7 +52,7 @@ export async function getMyDayData(date: string) {
   ])
   if (tasksError) throw new Error(tasksError.message)
   if (selectionsError) throw myDayDatabaseError(selectionsError)
-  return { tasks: tasks as TaskWithList[], selections: selections as DailySelection[] }
+  return { tasks: tasks.map(toTaskWithList), selections: selections as DailySelection[] }
 }
 
 export async function isTaskSelectedToday(taskId: string, date: string) {

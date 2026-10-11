@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { toTaskWithList } from '@/lib/supabase/domain-mappers'
 import { redirect } from 'next/navigation'
 
 export async function getTasks(
@@ -68,5 +69,5 @@ export async function getTasks(
     throw new Error(error.message)
   }
 
-  return tasks
+  return tasks.map(toTaskWithList)
 }

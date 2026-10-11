@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Dispatch, SetStateAction } from 'react'
 
 interface HeaderViewToggleProps {
-  listId: string | null
+  listId: string
   currentView: 'list' | 'board'
   localView: 'list' | 'board'
   setLocalView: Dispatch<SetStateAction<'list' | 'board'>>

@@ -2,6 +2,7 @@
 'use server'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { toTaskWithList } from '@/lib/supabase/domain-mappers'
 
 // Creates new task to the database
 export async function createTask(
@@ -39,7 +40,7 @@ export async function createTask(
   const { data, error } = await supabase
     .from('tasks')
     .insert([task])
-    .select('*, list:lists(id, title)')
+    .select('*, list:lists(id, title, default_view)')
     .single()
 
   if (error) {
@@ -48,7 +49,7 @@ export async function createTask(
 
   revalidatePath('/')
 
-  return data
+  return toTaskWithList(data)
 }
 
 // Toggles tasks as complete or incomplete in the database
