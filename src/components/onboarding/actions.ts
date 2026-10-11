@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
 type InitialOnboardingState = OnboardingState & {
+  userId: string
   keychain: StoredKeychain | null
   pendingTaskExists: boolean
 }
@@ -64,6 +65,7 @@ export async function getOnboardingState(): Promise<InitialOnboardingState> {
 
   return {
     ...state,
+    userId: user.id,
     keychain,
     pendingTaskExists,
   }

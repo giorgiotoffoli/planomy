@@ -95,11 +95,26 @@ export async function createWrappedMasterKey(masterPassword: string): Promise<{
   masterKey: Uint8Array
   payload: WrappedMasterKeyPayload
 }> {
+  const masterKey = randomBytes(MASTER_KEY_BYTES)
+
+  return {
+    masterKey,
+    payload: await wrapMasterKey(masterKey, masterPassword),
+  }
+}
+
+export async function wrapMasterKey(
+  masterKey: Uint8Array,
+  masterPassword: string,
+): Promise<WrappedMasterKeyPayload> {
   if (masterPassword.length < 12) {
     throw new Error('Master password must be at least 12 characters.')
   }
 
-  const masterKey = randomBytes(MASTER_KEY_BYTES)
+  if (masterKey.byteLength !== MASTER_KEY_BYTES) {
+    throw new Error('Master key must be 32 bytes.')
+  }
+
   const salt = randomBytes(SALT_BYTES)
   const iv = randomBytes(AES_GCM_IV_BYTES)
 
@@ -115,16 +130,13 @@ export async function createWrappedMasterKey(masterPassword: string): Promise<{
   )
 
   return {
-    masterKey,
-    payload: {
-      wrappedMasterKey: bytesToBase64(new Uint8Array(wrappedMasterKey)),
-      wrappingKeySalt: bytesToBase64(salt),
-      wrappingKeyIv: bytesToBase64(iv),
-      kdf: 'PBKDF2-SHA-256',
-      kdfIterations: DEFAULT_KDF_ITERATIONS,
-      wrappingAlgorithm: 'AES-GCM',
-      version: KEYCHAIN_VERSION,
-    },
+    wrappedMasterKey: bytesToBase64(new Uint8Array(wrappedMasterKey)),
+    wrappingKeySalt: bytesToBase64(salt),
+    wrappingKeyIv: bytesToBase64(iv),
+    kdf: 'PBKDF2-SHA-256',
+    kdfIterations: DEFAULT_KDF_ITERATIONS,
+    wrappingAlgorithm: 'AES-GCM',
+    version: KEYCHAIN_VERSION,
   }
 }
 
