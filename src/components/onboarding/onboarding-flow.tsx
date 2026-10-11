@@ -2,14 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Inbox, ShieldCheck, Star, Sun } from 'lucide-react'
+import { Home, ShieldCheck, Star, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import VaultPasswordForm from '@/components/e2ee/vault-password-form'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import type { StoredKeychain } from '@/components/e2ee/actions'
 import { encryptString } from '@/lib/crypto/e2ee'
-import { localDateKey } from '@/lib/today'
 import type { OnboardingStep } from '@/lib/onboarding'
 import {
   completeOnboarding,
@@ -26,12 +25,8 @@ type OnboardingFlowProps = {
 }
 
 function errorMessage(result: Extract<OnboardingTaskResult, { ok: false }>) {
-  if (result.stage === 'selection') {
-    return `Your task is safe in Inbox, but it could not be added to Today. ${result.message}`
-  }
-
   if (result.stage === 'focus') {
-    return `Your task is in Inbox and Today, but it could not be pinned as Focus. ${result.message}`
+    return `Your task is on Home, but it could not be pinned as Focus. ${result.message}`
   }
 
   return result.message
@@ -78,7 +73,7 @@ export default function OnboardingFlow({
     setCompletionError(null)
     try {
       await completeOnboarding()
-      router.replace('/today')
+      router.replace('/home')
       router.refresh()
     } catch (error) {
       setCompletionError(
@@ -112,14 +107,13 @@ export default function OnboardingFlow({
         : ''
       const result = await createOnboardingTask({
         encryptedTitle,
-        selectedDate: localDateKey(),
         focused,
       })
 
       if (!result.ok) {
         if (
           result.taskId &&
-          (result.stage === 'selection' || result.stage === 'focus')
+          result.stage === 'focus'
         ) {
           setTaskExists(true)
         }
@@ -154,22 +148,22 @@ export default function OnboardingFlow({
         </h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
           Planomy separates collecting work from committing to it, so a busy
-          Inbox never has to become a busy day.
+          Home keeps attention visible without asking you to manually build a day.
         </p>
 
         <div className="mt-7 grid gap-3 sm:grid-cols-2">
           <div className="rounded-2xl border bg-slate-50 p-4">
-            <Inbox className="size-5 text-blue-600" />
-            <h2 className="mt-3 font-semibold text-slate-900">Inbox</h2>
+            <Home className="size-5 text-blue-600" />
+            <h2 className="mt-3 font-semibold text-slate-900">Home</h2>
             <p className="mt-1 text-sm leading-5 text-slate-600">
-              Capture unorganized tasks quickly and sort them when you are ready.
+              See active work from every list in one calm workspace.
             </p>
           </div>
           <div className="rounded-2xl border bg-slate-50 p-4">
             <Sun className="size-5 text-amber-500" />
-            <h2 className="mt-3 font-semibold text-slate-900">Today</h2>
+            <h2 className="mt-3 font-semibold text-slate-900">Focus</h2>
             <p className="mt-1 text-sm leading-5 text-slate-600">
-              Intentionally choose today’s work from Inbox or any list.
+              Keep up to three priorities close while deadlines stay visible automatically.
             </p>
           </div>
         </div>
@@ -216,7 +210,7 @@ export default function OnboardingFlow({
           Your day is ready.
         </h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Your first task is safely captured in Inbox and selected for Today
+          Your first task is safely captured on Home
           {focused ? ' as a Focus task.' : '.'}
         </p>
         {completionError && (
@@ -225,7 +219,7 @@ export default function OnboardingFlow({
           </p>
         )}
         <Button className="mt-7 w-full" onClick={finish} disabled={isBusy}>
-          {isBusy ? 'Finishing…' : 'Open Today'}
+          {isBusy ? 'Finishing…' : 'Open Home'}
         </Button>
       </div>
     )
@@ -240,15 +234,14 @@ export default function OnboardingFlow({
         Choose your first task.
       </h1>
       <p className="mt-3 text-sm leading-6 text-slate-600">
-        It will stay in Inbox and also appear in Today. You can organize it
-        into a list later.
+        It will appear on Home whether you organize it into a list now or later.
       </p>
 
       <form onSubmit={saveFirstTask} className="mt-6">
         {taskExists ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-            Your first task was already saved. Continue to finish adding it to
-            Today without creating a duplicate.
+            Your first task was already saved. Continue to finish setting up
+            its Home state without creating a duplicate.
           </div>
         ) : (
           <>
@@ -285,7 +278,7 @@ export default function OnboardingFlow({
               Make this my Focus
             </span>
             <span className="mt-1 block text-sm text-slate-600">
-              Focus highlights up to three priorities in Today.
+              Focus highlights up to three priorities on Home.
             </span>
           </span>
         </button>
@@ -314,7 +307,7 @@ export default function OnboardingFlow({
             {isBusy
               ? 'Saving…'
               : taskExists
-                ? 'Retry Today setup'
+                ? 'Retry Home setup'
                 : 'Create first task'}
           </Button>
         </div>

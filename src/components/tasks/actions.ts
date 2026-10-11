@@ -17,13 +17,15 @@ export async function createTask(
     data: { user },
   } = await supabase.auth.getUser()
 
+  if (!user) throw new Error('Unauthorized')
+
   const due_date = dueDate ? dueDate.slice(0, 10) : null
 
   if (!title) return
 
   // Adds list ID later
   const task = {
-    user_id: user!.id,
+    user_id: user.id,
     title,
     due_date,
     notes,
@@ -49,10 +51,17 @@ export async function createTask(
 export async function updateTaskCompleted(id: string, isCompleted: boolean) {
   const supabase = await createClient()
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('Unauthorized')
+
   const { error } = await supabase
     .from('tasks')
-    .update({ completed: isCompleted })
+    .update({ completed: isCompleted, ...(isCompleted ? { focused: false } : {}) })
     .eq('id', id)
+    .eq('user_id', user.id)
 
   if (error) {
     throw new Error(error.message)
@@ -78,7 +87,7 @@ export async function updateTaskDueDate(taskId: string, newDueDate: string) {
 
   const { error } = await supabase
     .from('tasks')
-    .update({ due_date: newDueDate })
+    .update({ due_date: newDueDate || null })
     .eq('id', taskId)
 
   if (error) {

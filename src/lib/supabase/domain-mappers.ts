@@ -54,9 +54,13 @@ export function toTaskWithList(row: TaskWithListRow): TaskWithList {
     title: required(row.title, 'tasks.title'),
     completed: row.completed,
     due_date: row.due_date,
+    due_time: row.due_time,
     notes: row.notes ?? undefined,
     status_id: row.status_id,
     position: row.position,
+    created_at: row.created_at,
+    focused: row.focused,
+    stashed: row.stashed,
     list: row.list ? toListSummary(row.list) : null,
   }
 }

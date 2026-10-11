@@ -58,7 +58,7 @@ export default function SearchModal({ setOpen }: SearchModalProps) {
     })
   }, [masterKey])
 
-  useMemo(() => {
+  const filteredTasks = useMemo(() => {
     if (!normalizedQuery) return []
 
     return localTasks.filter((task) => {
@@ -71,22 +71,26 @@ export default function SearchModal({ setOpen }: SearchModalProps) {
 
   return (
     <Command>
-      <CommandInput placeholder="Search tasks..." />
+      <CommandInput
+        placeholder="Search tasks..."
+        value={query}
+        onValueChange={setQuery}
+      />
       <CommandList>
         <CommandEmpty>No tasks found.</CommandEmpty>
 
-        <CommandGroup heading={localTasks.length !== 0 && 'Tasks'}>
-          {localTasks.map((task) => (
+        <CommandGroup heading={filteredTasks.length !== 0 ? 'Tasks' : undefined}>
+          {filteredTasks.map((task) => (
             <Link
+              key={task.id}
               href={
                 task.list_id
                   ? `/lists/${task.list_id}?view=${task.list?.default_view}&task=${task.id}`
-                  : `/inbox&task=${task.id}`
+                  : `/home?task=${task.id}`
               }
               onClick={() => setOpen(false)}
             >
               <CommandItem
-                key={task.id}
                 value={`${task.title} ${task.notes ?? ''}`}
               >
                 <div className="min-w-0 flex flex-col">

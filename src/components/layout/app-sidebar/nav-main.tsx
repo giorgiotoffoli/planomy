@@ -10,10 +10,8 @@ import {
 import {
   CheckCircle,
   Clock,
-  Inbox,
-  Layers,
+  Home,
   SearchIcon,
-  Sun,
 } from 'lucide-react'
 import { CommandDialog } from '@/components/ui/command'
 import { useState } from 'react'
@@ -27,24 +25,14 @@ type Tab = {
 
 const tabs: Tab[] = [
   {
-    title: 'Today',
-    link: '/today',
-    icon: <Sun />,
-  },
-  {
-    title: 'Inbox',
-    link: '/inbox',
-    icon: <Inbox />,
+    title: 'Home',
+    link: '/home',
+    icon: <Home />,
   },
   {
     title: 'Scheduled',
     link: '/scheduled',
     icon: <Clock />,
-  },
-  {
-    title: 'All',
-    link: '/all',
-    icon: <Layers />,
   },
   {
     title: 'Completed',

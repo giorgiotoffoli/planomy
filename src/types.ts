@@ -5,9 +5,13 @@ export interface Task {
   title: string
   completed: boolean
   due_date: string | null
+  due_time: string | null
   notes?: string
   status_id?: string | null
   position: number
+  created_at?: string | null
+  focused: boolean
+  stashed: boolean
 }
 
 export interface TaskWithList extends Task {

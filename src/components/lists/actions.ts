@@ -41,7 +41,7 @@ export async function deleteList(list_id: string) {
   }
 
   revalidatePath('/')
-  redirect('/inbox')
+  redirect('/home')
 }
 
 export async function renameList(list_id: string, title: string) {
