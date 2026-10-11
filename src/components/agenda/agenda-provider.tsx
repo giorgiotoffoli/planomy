@@ -164,7 +164,7 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
       return args.pointerCoordinates ? pointerWithin({ ...args, droppableContainers: candidates }) : closestCenter({ ...args, droppableContainers: candidates })
     }} onDragStart={event => setDrag(event.active.data.current as AgendaDrag)} onDragOver={event => setPreview(proposal(event))} onDragEnd={finishDrag} onDragCancel={() => { setDrag(null); setPreview(null) }}>
       <div className="flex h-dvh min-w-0 overflow-hidden">
-        <main className="relative flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-4 selection:bg-blue-500 selection:text-white">{children}</main>
+        <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background selection:bg-blue-500 selection:text-white">{children}</main>
         <AgendaPanel />
       </div>
       <DragOverlay dropAnimation={null}>{drag && <div className="max-w-60 rounded-lg border bg-background p-3 text-sm shadow-lg"><p className="truncate font-medium">{drag.task.title}</p>{preview && <p className="text-xs text-muted-foreground">{timeLabel(preview.start)} – {timeLabel(preview.end)}</p>}</div>}</DragOverlay>
