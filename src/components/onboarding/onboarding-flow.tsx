@@ -9,7 +9,7 @@ import VaultPasswordForm from '@/components/e2ee/vault-password-form'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import type { StoredKeychain } from '@/components/e2ee/actions'
 import { encryptString } from '@/lib/crypto/e2ee'
-import { localDateKey } from '@/lib/my-day'
+import { localDateKey } from '@/lib/today'
 import type { OnboardingStep } from '@/lib/onboarding'
 import {
   completeOnboarding,
@@ -27,11 +27,11 @@ type OnboardingFlowProps = {
 
 function errorMessage(result: Extract<OnboardingTaskResult, { ok: false }>) {
   if (result.stage === 'selection') {
-    return `Your task is safe in Inbox, but it could not be added to My Day. ${result.message}`
+    return `Your task is safe in Inbox, but it could not be added to Today. ${result.message}`
   }
 
   if (result.stage === 'focus') {
-    return `Your task is in Inbox and My Day, but it could not be pinned as Focus. ${result.message}`
+    return `Your task is in Inbox and Today, but it could not be pinned as Focus. ${result.message}`
   }
 
   return result.message
@@ -78,7 +78,7 @@ export default function OnboardingFlow({
     setCompletionError(null)
     try {
       await completeOnboarding()
-      router.replace('/my-day')
+      router.replace('/today')
       router.refresh()
     } catch (error) {
       setCompletionError(
@@ -167,7 +167,7 @@ export default function OnboardingFlow({
           </div>
           <div className="rounded-2xl border bg-slate-50 p-4">
             <Sun className="size-5 text-amber-500" />
-            <h2 className="mt-3 font-semibold text-slate-900">My Day</h2>
+            <h2 className="mt-3 font-semibold text-slate-900">Today</h2>
             <p className="mt-1 text-sm leading-5 text-slate-600">
               Intentionally choose today’s work from Inbox or any list.
             </p>
@@ -216,7 +216,7 @@ export default function OnboardingFlow({
           Your day is ready.
         </h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Your first task is safely captured in Inbox and selected for My Day
+          Your first task is safely captured in Inbox and selected for Today
           {focused ? ' as a Focus task.' : '.'}
         </p>
         {completionError && (
@@ -225,7 +225,7 @@ export default function OnboardingFlow({
           </p>
         )}
         <Button className="mt-7 w-full" onClick={finish} disabled={isBusy}>
-          {isBusy ? 'Finishing…' : 'Open My Day'}
+          {isBusy ? 'Finishing…' : 'Open Today'}
         </Button>
       </div>
     )
@@ -240,7 +240,7 @@ export default function OnboardingFlow({
         Choose your first task.
       </h1>
       <p className="mt-3 text-sm leading-6 text-slate-600">
-        It will stay in Inbox and also appear in My Day. You can organize it
+        It will stay in Inbox and also appear in Today. You can organize it
         into a list later.
       </p>
 
@@ -248,7 +248,7 @@ export default function OnboardingFlow({
         {taskExists ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
             Your first task was already saved. Continue to finish adding it to
-            My Day without creating a duplicate.
+            Today without creating a duplicate.
           </div>
         ) : (
           <>
@@ -285,7 +285,7 @@ export default function OnboardingFlow({
               Make this my Focus
             </span>
             <span className="mt-1 block text-sm text-slate-600">
-              Focus highlights up to three priorities in My Day.
+              Focus highlights up to three priorities in Today.
             </span>
           </span>
         </button>
@@ -314,7 +314,7 @@ export default function OnboardingFlow({
             {isBusy
               ? 'Saving…'
               : taskExists
-                ? 'Retry My Day setup'
+                ? 'Retry Today setup'
                 : 'Create first task'}
           </Button>
         </div>

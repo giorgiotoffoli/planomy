@@ -7,8 +7,8 @@ import { toast } from 'sonner'
 import type { DailySelection, List, TaskWithList } from '@/types'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
-import { clearTaskFocusOnCompletion, localDateKey, previousDateKey } from '@/lib/my-day'
-import { getMyDayData, removeTaskFromDay, selectTaskForDay, setTaskFocused } from './actions'
+import { clearTaskFocusOnCompletion, localDateKey, previousDateKey } from '@/lib/today'
+import { getTodayData, removeTaskFromDay, selectTaskForDay, setTaskFocused } from './actions'
 import { createTask as createTaskAction } from '@/components/tasks/actions'
 import { TASKS_CHANGED, deleteTask, notifyTasksChanged, renameTask, updateTaskCompleted, updateTaskDueDate, updateTaskNotes } from '@/components/tasks/mutations'
 import Header from '@/components/layout/header/app-header'
@@ -21,7 +21,7 @@ import CreateTaskDialog from '@/components/tasks/create-task/create-task-dialog'
 
 type LoadedData = { tasks: TaskWithList[]; selections: DailySelection[] }
 
-export default function MyDayPlanner({ encryptedLists }: { encryptedLists: List[] }) {
+export default function TodayPlanner({ encryptedLists }: { encryptedLists: List[] }) {
   const { masterKey } = useE2EE()
   const [day, setDay] = useState(() => localDateKey())
   const [data, setData] = useState<LoadedData | null>(null)
@@ -36,7 +36,7 @@ export default function MyDayPlanner({ encryptedLists }: { encryptedLists: List[
     const version = ++loadVersion.current
     setError(null)
     try {
-      const result = await getMyDayData(activeDay)
+      const result = await getTodayData(activeDay)
       const decryptedLists = await Promise.all(encryptedLists.map(async list => ({ ...list, title: await decryptString(list.title, masterKey) })))
       const decryptedTasks = await Promise.all(result.tasks.map(async task => ({
         ...task,
@@ -49,7 +49,7 @@ export default function MyDayPlanner({ encryptedLists }: { encryptedLists: List[
         setData({ tasks: decryptedTasks, selections: result.selections })
       }
     } catch (cause) {
-      if (version === loadVersion.current) setError(cause instanceof Error ? cause.message : 'My Day could not be loaded.')
+      if (version === loadVersion.current) setError(cause instanceof Error ? cause.message : 'Today could not be loaded.')
     }
   }, [encryptedLists, masterKey])
 
@@ -122,7 +122,7 @@ export default function MyDayPlanner({ encryptedLists }: { encryptedLists: List[
       setData(current => current && ({ ...current, selections: [...current.selections.filter(s => !(s.task_id === taskId && s.selected_date === day)), { task_id: taskId, selected_date: day, focused: false }] }))
       setRetrySelection(null)
       notifyTasksChanged()
-      toast.success('Task added to My Day')
+      toast.success('Task added to Today')
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'Task was not added')
     }
@@ -157,7 +157,7 @@ export default function MyDayPlanner({ encryptedLists }: { encryptedLists: List[
     if (!masterKey) return
     try {
       // Quick Capture is a composite mutation. Do not broadcast task creation
-      // until its My Day selection has either completed or failed.
+      // until its Today selection has either completed or failed.
       const saved = await createTaskAction(await encryptString(title, masterKey), dueDate, notes ? await encryptString(notes, masterKey) : '', listId)
       if (!saved) throw new Error('Task was not created')
       const list = lists.find(item => item.id === listId) ?? null
@@ -174,12 +174,12 @@ export default function MyDayPlanner({ encryptedLists }: { encryptedLists: List[
   }
 
   return <>
-    <Header headerTitle="My Day" taskCount={chosen.length} rightSlot={<CreateTaskDialog lists={lists} listId={null} handleOnCreate={createAndSelect}><Button size="sm"><Plus /> Quick capture</Button></CreateTaskDialog>} />
+    <Header headerTitle="Today" taskCount={chosen.length} rightSlot={<CreateTaskDialog lists={lists} listId={null} handleOnCreate={createAndSelect}><Button size="sm"><Plus /> Quick capture</Button></CreateTaskDialog>} />
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 overflow-y-auto pb-20">
       <div><h1 className="text-2xl font-semibold">{format(new Date(`${day}T12:00:00`), 'EEEE, MMMM d')}</h1><p className="text-sm text-muted-foreground">Your personal workspace for today</p></div>
-      {retrySelection && <div role="alert" className="flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"><span>The task was created, but could not be added to My Day.</span><Button size="sm" onClick={() => retryAdd(retrySelection)}>Retry</Button></div>}
+      {retrySelection && <div role="alert" className="flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"><span>The task was created, but could not be added to Today.</span><Button size="sm" onClick={() => retryAdd(retrySelection)}>Retry</Button></div>}
       {error && <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-4"><p>{error}</p><Button className="mt-2" variant="outline" onClick={() => load(day)}>Try again</Button></div>}
-      {!data && !error && <div className="space-y-3" aria-label="Loading My Day"><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-3/4" /></div>}
+      {!data && !error && <div className="space-y-3" aria-label="Loading Today"><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-3/4" /></div>}
       {data && <>
         <section className="rounded-2xl border bg-card p-3 shadow-sm sm:p-5"><div className="mb-3 flex items-center justify-between gap-2"><div><h2 className="font-semibold">Chosen for today</h2><p className="text-xs text-muted-foreground">Pin up to three tasks to focus.</p></div><Button variant="outline" size="sm" onClick={() => setPickerOpen(true)}><Plus /> Add existing task</Button></div>
           {chosen.length ? <ul className="space-y-1">{chosen.map(task => row(task, 'chosen'))}</ul> : <p className="rounded-xl bg-muted/50 p-6 text-center text-sm text-muted-foreground">Nothing chosen yet. Add a task when you’re ready.</p>}

@@ -1,7 +1,7 @@
 'use server'
 
 import { getUserKeychain, type StoredKeychain } from '@/components/e2ee/actions'
-import { isDateKey } from '@/lib/my-day'
+import { isDateKey } from '@/lib/today'
 import {
   isUuid,
   ONBOARDING_VERSION,
