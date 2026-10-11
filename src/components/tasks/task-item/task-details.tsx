@@ -1,6 +1,6 @@
 import { List, TaskWithList } from '@/types'
 import { format, isBefore } from 'date-fns'
-import { InboxIcon, NotebookPenIcon } from 'lucide-react'
+import { InboxIcon } from 'lucide-react'
 import Link from 'next/link'
 
 interface TaskDetailProps {
@@ -8,6 +8,7 @@ interface TaskDetailProps {
   currentListId: string | null
   lists: List[]
   isInbox: boolean
+  showDueDate?: boolean
 }
 
 function dateStringToLocalDate(dateString: string) {
@@ -68,6 +69,7 @@ export default function TaskDetail({
   lists,
   currentListId,
   isInbox,
+  showDueDate = true,
 }: TaskDetailProps) {
   const dueDateInfo = getDueDateLabel(task.due_date)
 
@@ -89,22 +91,22 @@ export default function TaskDetail({
 
   const taskListHref = task.list_id
     ? `/lists/${task.list_id}?view=${taskList?.default_view ?? 'list'}`
-    : '/inbox'
+    : '/home'
 
   return (
     <div className="flex min-w-0 flex-col gap-0.5 text-xs text-gray-600">
       {/* Notes */}
       {task.notes && <p>{task.notes}</p>}
       {/* Metadata */}
-      {(dueDateInfo || (shouldShowTaskList && taskListLabel)) && (
+      {((showDueDate && dueDateInfo) || (shouldShowTaskList && taskListLabel)) && (
         <div className="flex min-w-0 items-center gap-1.5">
-          {dueDateInfo && (
+          {showDueDate && dueDateInfo && (
             <span className={dueDateInfo.isOverdue ? 'text-rose-500' : ''}>
               {dueDateInfo.label}
             </span>
           )}
 
-          {dueDateInfo && shouldShowTaskList && taskListLabel && (
+          {showDueDate && dueDateInfo && shouldShowTaskList && taskListLabel && (
             <span className="text-gray-400">·</span>
           )}
 

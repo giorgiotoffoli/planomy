@@ -134,11 +134,13 @@ export type Database = {
           created_at: string | null
           due_date: string | null
           due_time: string | null
+          focused: boolean
           id: string
           list_id: string | null
           notes: string | null
           position: number
           status_id: string | null
+          stashed: boolean
           title: string | null
           user_id: string | null
         }
@@ -147,11 +149,13 @@ export type Database = {
           created_at?: string | null
           due_date?: string | null
           due_time?: string | null
+          focused?: boolean
           id?: string
           list_id?: string | null
           notes?: string | null
           position?: number
           status_id?: string | null
+          stashed?: boolean
           title?: string | null
           user_id?: string | null
         }
@@ -160,11 +164,13 @@ export type Database = {
           created_at?: string | null
           due_date?: string | null
           due_time?: string | null
+          focused?: boolean
           id?: string
           list_id?: string | null
           notes?: string | null
           position?: number
           status_id?: string | null
+          stashed?: boolean
           title?: string | null
           user_id?: string | null
         }
@@ -231,6 +237,10 @@ export type Database = {
     Functions: {
       set_daily_task_focus: {
         Args: { p_focused: boolean; p_selected_date: string; p_task_id: string }
+        Returns: undefined
+      }
+      set_task_focus: {
+        Args: { p_focused: boolean; p_task_id: string }
         Returns: undefined
       }
     }

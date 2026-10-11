@@ -5,21 +5,22 @@
 # Planomy
 
 Planomy is an open-source, end-to-end encrypted task manager for organizing
-work without giving up privacy. It combines focused daily planning, flexible
-lists, scheduling, and board views in a responsive web application.
+work without giving up privacy. It combines an attention-first Home workspace,
+flexible lists, scheduling, and board views in a responsive web application.
 
 > [!WARNING]
 > Planomy is in beta. Features and data models may change between releases.
 
 ## Features
 
-- **Today** — choose tasks from any list, carry unfinished work forward
-  intentionally, and pin up to three daily focus tasks.
+- **Home** — see what matters now across every list, with up to three persistent
+  Focus tasks, automatic deadline protection, and a place for everything else.
 - **Lists and inbox** — capture unassigned tasks or organize them into multiple
-  plans without duplicating task data.
+  plans without duplicating task data. Inbox is an organization state, not a
+  separate primary screen.
 - **List and Kanban views** — switch between focused lists and visual boards.
 - **Scheduling** — assign and reschedule due dates, with a dedicated Scheduled
-  view and due-date suggestions in Today.
+  view and automatic Due Soon protection on Home.
 - **Daily agenda** — open a shared daily timeline beside your workspace, drag
   tasks into time blocks, and move or resize them independently of deadlines.
   A scheduling form and mobile drawer provide the same controls without dragging.
@@ -34,8 +35,8 @@ lists, scheduling, and board views in a responsive web application.
 
 Planomy's server stores encrypted planner content. Plaintext task titles,
 notes, and list names are available only in the browser while the user's vault
-is unlocked. Today stores references to existing tasks rather than copies of
-their content.
+is unlocked. Home stores task state and references rather than copies of task
+content.
 
 ## Technology
 
@@ -49,10 +50,10 @@ their content.
 ### Available now
 
 - [x] End-to-end encrypted task and list content
-- [x] Inbox, lists, task search, sorting, and completed-task history
-- [x] Due dates with Today suggestions and a Scheduled view
+- [x] Home, lists, task search, sorting, and completed-task history
+- [x] Due dates with automatic Home deadline protection and a Scheduled view
 - [x] List and Kanban board layouts
-- [x] Today selection, suggestions, daily focus, and rollover
+- [x] Persistent Focus, Stashed tasks, and local-date-aware Home updates
 - [x] Optimistic task updates and responsive navigation
 
 ### Planned

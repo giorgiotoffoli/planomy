@@ -1,7 +1,6 @@
 'use server'
 
 import { getUserKeychain, type StoredKeychain } from '@/components/e2ee/actions'
-import { isDateKey } from '@/lib/today'
 import {
   isUuid,
   ONBOARDING_VERSION,
@@ -22,7 +21,7 @@ export type OnboardingTaskResult =
   | {
       ok: false
       taskId: string | null
-      stage: 'prepare' | 'task' | 'selection' | 'focus'
+      stage: 'prepare' | 'task' | 'focus'
       message: string
     }
 
@@ -126,18 +125,8 @@ export async function completeOnboarding() {
 
 export async function createOnboardingTask(input: {
   encryptedTitle: string
-  selectedDate: string
   focused: boolean
 }): Promise<OnboardingTaskResult> {
-  if (!isDateKey(input.selectedDate)) {
-    return {
-      ok: false,
-      taskId: null,
-      stage: 'selection',
-      message: 'The selected day is invalid.',
-    }
-  }
-
   const { supabase, user } = await authenticatedClient()
   const taskId = isUuid(user.user_metadata.onboarding_task_id)
     ? user.user_metadata.onboarding_task_id
@@ -202,33 +191,9 @@ export async function createOnboardingTask(input: {
     }
   }
 
-  const { error: selectionError } = await supabase
-    .from('daily_task_selections')
-    .upsert(
-      {
-        user_id: user.id,
-        task_id: taskId,
-        selected_date: input.selectedDate,
-      },
-      {
-        onConflict: 'user_id,task_id,selected_date',
-        ignoreDuplicates: true,
-      },
-    )
-
-  if (selectionError) {
-    return {
-      ok: false,
-      taskId,
-      stage: 'selection',
-      message: selectionError.message,
-    }
-  }
-
   if (input.focused) {
-    const { error: focusError } = await supabase.rpc('set_daily_task_focus', {
+    const { error: focusError } = await supabase.rpc('set_task_focus', {
       p_task_id: taskId,
-      p_selected_date: input.selectedDate,
       p_focused: true,
     })
 

@@ -24,7 +24,8 @@ export default function TaskBoard({
   const [localTasks, setLocalTasks] = useState(tasks)
 
   useEffect(() => {
-    setLocalTasks(tasks)
+    const timeoutId = window.setTimeout(() => setLocalTasks(tasks), 0)
+    return () => window.clearTimeout(timeoutId)
   }, [tasks])
 
   const sortedStatuses = [...statuses].sort((a, b) => a.position - b.position)

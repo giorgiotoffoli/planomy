@@ -158,12 +158,16 @@ export default function TaskWorkspace({
       id: tempId,
       title,
       due_date: dueDate,
+      due_time: null,
       notes,
       list_id: selectedListId,
       user_id: 'temp',
       completed: false,
+      focused: false,
+      stashed: false,
       list: selectedList,
       position: 0,
+      created_at: null,
     }
 
     if (shouldShowOnCurrentPage) {

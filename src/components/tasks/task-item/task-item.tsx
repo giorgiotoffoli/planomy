@@ -28,6 +28,9 @@ interface TaskItemProps {
   handleOnReorder?: (activeId: string, overId: string) => void
   leadingBadge?: ReactNode
   trailingActions?: ReactNode
+  handleOnFocus?: (taskId: string, focused: boolean) => void
+  handleOnStash?: (taskId: string, stashed: boolean) => void
+  showDueDate?: boolean
 }
 
 export function TaskItem({
@@ -47,6 +50,9 @@ export function TaskItem({
   handleOnReorder,
   leadingBadge,
   trailingActions,
+  handleOnFocus,
+  handleOnStash,
+  showDueDate = true,
 }: TaskItemProps) {
   const {
     attributes,
@@ -74,7 +80,7 @@ export function TaskItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'group  hover:bg-gray-300 rounded-2xl',
+        'group rounded-xl hover:bg-slate-50',
         isDragging && 'cursor-grabbing opacity-50',
         highlighted && 'animate-pulse border-2 border-blue-400',
         task.completed && shouldHideCompleted && 'opacity-0 line-through',
@@ -83,7 +89,7 @@ export function TaskItem({
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 px-3 py-3">
         {/* Checkbox */}
         <div className="flex h-6 items-center gap-2">
-          <button ref={setActivatorNodeRef} {...attributes} {...listeners} aria-label={`Drag ${task.title} to reorder or schedule`} className="touch-none cursor-grab rounded text-muted-foreground focus-visible:ring-2"><GripVertical className="size-3.5" /></button>
+          {canReorder && <button ref={setActivatorNodeRef} {...attributes} {...listeners} aria-label={`Drag ${task.title} to reorder or schedule`} className="touch-none cursor-grab rounded text-muted-foreground focus-visible:ring-2"><GripVertical className="size-3.5" /></button>}
           <TaskCheckbox task={task} handleOnComplete={handleOnComplete} />
         </div>
         {/* Content */}
@@ -96,6 +102,7 @@ export function TaskItem({
             currentListId={currentListId}
             lists={lists}
             isInbox={isInbox}
+            showDueDate={showDueDate}
           />
         </div>
         {/* Right side content */}
@@ -112,10 +119,13 @@ export function TaskItem({
             handleOnNotesChange={handleOnNotesChange}
             handleOnDelete={handleOnDelete}
             handleOnRename={handleOnRename}
+            handleOnFocus={handleOnFocus}
+            handleOnStash={handleOnStash}
           >
             <Button
               variant="ghost"
               size="icon"
+              aria-label={`Actions for ${task.title}`}
               className="h-7 w-7 shrink-0 cursor-pointer"
             >
               ⋯

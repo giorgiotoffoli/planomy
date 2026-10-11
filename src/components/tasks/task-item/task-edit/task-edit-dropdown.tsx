@@ -12,12 +12,10 @@ import {
 import { List, TaskWithList } from '@/types'
 import { ReactNode } from 'react'
 import { TaskEditDialog } from './task-edit-dialog'
-import { Clock, Edit, ListEnd } from 'lucide-react'
+import { Archive, ArchiveRestore, Clock, Edit, ListEnd, Star } from 'lucide-react'
 import { TaskEditMoveList } from './task-edit-move-list'
 import { TaskDeleteButton } from './task-delete-button'
 import { DialogTrigger } from '@radix-ui/react-dialog'
-import TodayMenuItem from '@/components/today/today-menu-item'
-
 import { useAgenda } from '@/components/agenda/agenda-provider'
 
 interface TaskEditDropdownProps {
@@ -29,6 +27,8 @@ interface TaskEditDropdownProps {
   handleOnNotesChange: (taskId: string, notes: string) => void
   handleOnDelete: (taskId: string) => void
   handleOnRename: (taskId: string, newName: string) => void
+  handleOnFocus?: (taskId: string, focused: boolean) => void
+  handleOnStash?: (taskId: string, stashed: boolean) => void
 }
 
 export function TaskEditDropdown({
@@ -40,6 +40,8 @@ export function TaskEditDropdown({
   handleOnNotesChange,
   handleOnDelete,
   handleOnRename,
+  handleOnFocus,
+  handleOnStash,
 }: TaskEditDropdownProps) {
   const agenda = useAgenda()
   return (
@@ -77,7 +79,23 @@ export function TaskEditDropdown({
               </DropdownMenuSubContent>
             </DropdownMenuSub>
 
-            {!task.completed && <TodayMenuItem taskId={task.id} />}
+            {!task.completed && handleOnFocus && (
+              <DropdownMenuItem
+                onSelect={() => handleOnFocus(task.id, !task.focused)}
+              >
+                <Star />
+                {task.focused ? 'Remove from Focus' : 'Add to Focus'}
+              </DropdownMenuItem>
+            )}
+
+            {!task.completed && handleOnStash && (
+              <DropdownMenuItem
+                onSelect={() => handleOnStash(task.id, !task.stashed)}
+              >
+                {task.stashed ? <ArchiveRestore /> : <Archive />}
+                {task.stashed ? 'Return to Home' : 'Stash'}
+              </DropdownMenuItem>
+            )}
 
             <DropdownMenuItem disabled={task.id.startsWith('temp-')} onSelect={() => setTimeout(() => agenda.edit(task), 0)}><Clock /> Schedule time</DropdownMenuItem>
 

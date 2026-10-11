@@ -18,7 +18,10 @@ export async function AppSidebar() {
   const lists = await getUserLists()
 
   return (
-    <Sidebar variant="floating" collapsible="icon" className="">
+    <Sidebar
+      variant="floating"
+      collapsible="icon"
+    >
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>

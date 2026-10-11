@@ -30,14 +30,14 @@ export default async function SettingsPage() {
         <div className="mx-auto w-full max-w-2xl">
           <header className="mb-8 flex items-center justify-between gap-4">
             <Link
-              href="/today"
+              href="/home"
               className="flex items-center gap-2 font-semibold"
             >
               <PlanomyIcon size={26} />
               <span className="font-heading text-xl">planomy</span>
             </Link>
             <Button variant="outline" size="sm" asChild>
-              <Link href="/today">
+              <Link href="/home">
                 <ArrowLeft /> Back to workspace
               </Link>
             </Button>
