@@ -18,6 +18,7 @@ export interface TaskWithList extends Task {
   list: {
     id: string
     title: string
+    emoji: string | null
     default_view: 'list' | 'board'
   } | null
 }
@@ -26,6 +27,7 @@ export interface List {
   user_id: string
   id: string
   title: string
+  emoji: string | null
   default_view: 'list' | 'board'
 }
 

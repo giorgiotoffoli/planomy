@@ -35,7 +35,7 @@ export async function createTask(
   const { data, error } = await supabase
     .from('tasks')
     .insert([task])
-    .select('*, list:lists(id, title, default_view)')
+    .select('*, list:lists(id, title, emoji, default_view)')
     .single()
 
   if (error) {

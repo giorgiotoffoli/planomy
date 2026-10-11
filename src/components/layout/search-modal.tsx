@@ -14,6 +14,7 @@ import { decryptString } from '@/lib/crypto/e2ee'
 import { TaskWithList } from '@/types'
 import Link from 'next/link'
 import { Dispatch, SetStateAction, useEffect, useMemo, useState } from 'react'
+import { ListEmoji } from '@/components/lists/list-emoji'
 
 interface SearchModalProps {
   setOpen: Dispatch<SetStateAction<boolean>>
@@ -45,6 +46,9 @@ export default function SearchModal({ setOpen }: SearchModalProps) {
             ? {
                 ...task.list,
                 title: await decryptString(task.list.title, unlockedMasterKey),
+                emoji: task.list.emoji
+                  ? await decryptString(task.list.emoji, unlockedMasterKey)
+                  : task.list.emoji,
               }
             : task.list,
         })),
@@ -99,7 +103,12 @@ export default function SearchModal({ setOpen }: SearchModalProps) {
                     {task.notes}
                   </span>
                   <span className="text-xs font-bold text-muted-foreground">
-                    {task.list?.title}
+                    {task.list && (
+                      <span className="flex items-center gap-1">
+                        <ListEmoji emoji={task.list.emoji} className="text-sm" />
+                        {task.list.title}
+                      </span>
+                    )}
                   </span>
                 </div>
               </CommandItem>

@@ -16,7 +16,7 @@ export async function getHomeData() {
     await Promise.all([
       supabase
         .from('tasks')
-        .select('*, list:lists (title, id, default_view)')
+        .select('*, list:lists (title, id, emoji, default_view)')
         .eq('user_id', user.id)
         .is('completed', false)
         .order('position', { ascending: true })

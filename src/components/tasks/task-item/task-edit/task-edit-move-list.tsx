@@ -4,6 +4,7 @@ import { List } from '../../../../types'
 import { moveTask } from '../../mutations'
 import { Inbox } from 'lucide-react'
 import { toast } from 'sonner'
+import { ListEmoji } from '@/components/lists/list-emoji'
 
 export function TaskEditMoveList({
   taskId,
@@ -35,6 +36,7 @@ export function TaskEditMoveList({
           key={list.id}
           onSelect={() => void handleSelect(list.id)}
         >
+          <ListEmoji emoji={list.emoji} />
           {list.title}
         </DropdownMenuItem>
       ))}

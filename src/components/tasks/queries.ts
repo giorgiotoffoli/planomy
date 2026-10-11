@@ -19,7 +19,7 @@ export async function getTasks(
 
   let query = supabase
     .from('tasks')
-    .select('*, list:lists (title, id, default_view)')
+    .select('*, list:lists (title, id, emoji, default_view)')
     .eq('user_id', user!.id)
 
   switch (view) {

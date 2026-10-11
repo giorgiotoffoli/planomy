@@ -71,6 +71,9 @@ function decryptHomeData(data: HomeData, masterKey: Uint8Array) {
       data.lists.map(async (list) => ({
         ...list,
         title: await decryptString(list.title, masterKey),
+        emoji: list.emoji
+          ? await decryptString(list.emoji, masterKey)
+          : list.emoji,
       })),
     ),
     Promise.all(
@@ -84,6 +87,9 @@ function decryptHomeData(data: HomeData, masterKey: Uint8Array) {
           ? {
               ...task.list,
               title: await decryptString(task.list.title, masterKey),
+              emoji: task.list.emoji
+                ? await decryptString(task.list.emoji, masterKey)
+                : task.list.emoji,
             }
           : task.list,
       })),

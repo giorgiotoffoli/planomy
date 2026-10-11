@@ -29,6 +29,7 @@ export default async function ListPage({
       lists={lists}
       categories={categories}
       headerTitle={currentList.title}
+      headerEmoji={currentList.emoji}
     />
   )
 }

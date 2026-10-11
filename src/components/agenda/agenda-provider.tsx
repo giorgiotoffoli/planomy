@@ -79,9 +79,19 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
         ...block.task,
         title: await decryptString(block.task.title, masterKey),
         notes: block.task.notes ? await decryptString(block.task.notes, masterKey) : block.task.notes,
-        list: block.task.list ? { ...block.task.list, title: await decryptString(block.task.list.title, masterKey) } : null,
+        list: block.task.list ? {
+          ...block.task.list,
+          title: await decryptString(block.task.list.title, masterKey),
+          emoji: block.task.list.emoji
+            ? await decryptString(block.task.list.emoji, masterKey)
+            : block.task.list.emoji,
+        } : null,
       } })))
-      const lists = await Promise.all(result.lists.map(async list => ({ ...list, title: await decryptString(list.title, masterKey) })))
+      const lists = await Promise.all(result.lists.map(async list => ({
+        ...list,
+        title: await decryptString(list.title, masterKey),
+        emoji: list.emoji ? await decryptString(list.emoji, masterKey) : list.emoji,
+      })))
       if (request === generation.current) {
         setLoaded(current => ({ day, lists, blocks: current.day === day
           ? [...blocks.filter(block => !pending.current.has(block.task_id)), ...current.blocks.filter(block => pending.current.has(block.task_id))]

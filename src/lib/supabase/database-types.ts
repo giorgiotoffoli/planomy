@@ -49,18 +49,21 @@ export type Database = {
       lists: {
         Row: {
           default_view: string | null
+          emoji: string | null
           id: string
           title: string | null
           user_id: string | null
         }
         Insert: {
           default_view?: string | null
+          emoji?: string | null
           id?: string
           title?: string | null
           user_id?: string | null
         }
         Update: {
           default_view?: string | null
+          emoji?: string | null
           id?: string
           title?: string | null
           user_id?: string | null

@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/select'
 import { List, Task } from '@/types'
 import { InboxIcon } from 'lucide-react'
+import { ListEmoji } from '@/components/lists/list-emoji'
 
 interface TaskListDropdownProps {
   lists: List[]
@@ -35,6 +36,7 @@ export default function TaskListDropdown({
 
         {lists.map((list) => (
           <SelectItem key={list.id} value={list.id}>
+            <ListEmoji emoji={list.emoji} />
             {list.title}
           </SelectItem>
         ))}

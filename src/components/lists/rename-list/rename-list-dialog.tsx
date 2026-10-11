@@ -14,7 +14,6 @@ import {
   Field,
   FieldGroup,
   FieldLabel,
-  FieldLegend,
 } from '@/components/ui/field'
 import { ReactNode, useState } from 'react'
 import { renameList } from '../actions'
@@ -24,6 +23,7 @@ import { DialogDescription } from '@radix-ui/react-dialog'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { encryptString } from '@/lib/crypto/e2ee'
 import { toast } from 'sonner'
+import { ListEmojiPicker } from '../list-emoji-picker'
 
 export function RenameListDialog({
   children,
@@ -33,6 +33,7 @@ export function RenameListDialog({
   list: List
 }) {
   const [open, setOpen] = useState(false)
+  const [emoji, setEmoji] = useState<string | null>(list.emoji)
   const { masterKey } = useE2EE()
 
   return (
@@ -62,13 +63,20 @@ export function RenameListDialog({
               return
             }
 
-            const encryptedTitle = await encryptString(newListTitle, masterKey)
+            const [encryptedTitle, encryptedEmoji] = await Promise.all([
+              encryptString(newListTitle.trim(), masterKey),
+              emoji ? encryptString(emoji, masterKey) : Promise.resolve(null),
+            ])
 
-            await renameList(list.id, encryptedTitle)
+            await renameList(list.id, encryptedTitle, encryptedEmoji)
             setOpen(false)
           }}
         >
           <FieldGroup>
+            <Field orientation="horizontal" className="items-center">
+              <FieldLabel htmlFor="list-emoji">Icon</FieldLabel>
+              <ListEmojiPicker value={emoji} onChange={setEmoji} />
+            </Field>
             <Field>
               <FieldLabel>New Title</FieldLabel>
               <Input

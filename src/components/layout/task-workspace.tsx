@@ -53,6 +53,7 @@ interface TaskWorkspaceProps {
   categories?: Category[]
   currentView: 'list' | 'board'
   headerTitle: string
+  headerEmoji?: string | null
 }
 
 async function decryptTasks(tasks: TaskWithList[], masterKey: Uint8Array) {
@@ -67,6 +68,9 @@ async function decryptTasks(tasks: TaskWithList[], masterKey: Uint8Array) {
         ? {
             ...task.list,
             title: await decryptString(task.list.title, masterKey),
+            emoji: task.list.emoji
+              ? await decryptString(task.list.emoji, masterKey)
+              : task.list.emoji,
           }
         : task.list,
     })),
@@ -78,6 +82,9 @@ async function decryptLists(lists: List[], masterKey: Uint8Array) {
     lists.map(async (list) => ({
       ...list,
       title: await decryptString(list.title, masterKey),
+      emoji: list.emoji
+        ? await decryptString(list.emoji, masterKey)
+        : list.emoji,
     })),
   )
 }
@@ -101,12 +108,16 @@ export default function TaskWorkspace({
   categories,
   currentView,
   headerTitle,
+  headerEmoji,
 }: TaskWorkspaceProps) {
   const [localView, setLocalView] = useState(currentView)
   const [localTasks, setLocalTasks] = useState(tasks)
   const [localLists, setLocalLists] = useState(lists)
   const [localCategories, setLocalCategories] = useState<Category[]>([])
   const [localHeaderTitle, setLocalHeaderTitle] = useState(headerTitle)
+  // Keep encrypted emoji ciphertext out of the first render until the vault
+  // has decrypted the list data on the client.
+  const [localHeaderEmoji, setLocalHeaderEmoji] = useState<string | null>(null)
   const [sortOption, setSortOption] = useState<TaskSortOption>('manual')
 
   const { masterKey } = useE2EE()
@@ -190,16 +201,17 @@ export default function TaskWorkspace({
           decryptCategories(categories ?? [], unlockedMasterKey),
         ])
 
-      const decryptedHeaderTitle = await decryptString(
-        headerTitle,
-        unlockedMasterKey,
-      )
+      const decryptedHeaderTitle = await decryptString(headerTitle, unlockedMasterKey)
+      const decryptedHeaderEmoji = headerEmoji
+        ? await decryptString(headerEmoji, unlockedMasterKey)
+        : null
 
       if (!isCancelled && request === taskLoadVersion.current) {
         setLocalTasks(decryptedTasks)
         setLocalLists(decryptedLists)
         setLocalCategories(decryptedCategories)
         setLocalHeaderTitle(decryptedHeaderTitle)
+        setLocalHeaderEmoji(decryptedHeaderEmoji)
       }
     }
 
@@ -210,7 +222,7 @@ export default function TaskWorkspace({
     return () => {
       isCancelled = true
     }
-  }, [masterKey, tasks, lists, categories, headerTitle])
+  }, [masterKey, tasks, lists, categories, headerTitle, headerEmoji])
 
   async function handleOnCreate(
     title: string,
@@ -552,6 +564,7 @@ export default function TaskWorkspace({
       <Header
         taskCount={localTasks.length}
         headerTitle={localHeaderTitle}
+        headerEmoji={listId ? localHeaderEmoji : undefined}
         rightSlot={
           listId && (
             <div className="flex items-center gap-2">
