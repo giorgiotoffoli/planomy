@@ -9,14 +9,15 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { List, TaskWithList } from '@/types'
+import { Category, List, TaskWithList } from '@/types'
 import { ReactNode } from 'react'
 import { TaskEditDialog } from './task-edit-dialog'
-import { Archive, ArchiveRestore, Clock, Edit, ListEnd, Star } from 'lucide-react'
+import { Archive, ArchiveRestore, Check, Clock, Edit, ListEnd, Tag, Star } from 'lucide-react'
 import { TaskEditMoveList } from './task-edit-move-list'
 import { TaskDeleteButton } from './task-delete-button'
 import { DialogTrigger } from '@radix-ui/react-dialog'
 import { useAgenda } from '@/components/agenda/agenda-provider'
+import { toast } from 'sonner'
 
 interface TaskEditDropdownProps {
   task: TaskWithList
@@ -29,6 +30,11 @@ interface TaskEditDropdownProps {
   handleOnRename: (taskId: string, newName: string) => void
   handleOnFocus?: (taskId: string, focused: boolean) => void
   handleOnStash?: (taskId: string, stashed: boolean) => void
+  categories?: Category[]
+  handleOnChangeCategory?: (
+    taskId: string,
+    categoryId: string | null,
+  ) => Promise<void>
 }
 
 export function TaskEditDropdown({
@@ -42,6 +48,8 @@ export function TaskEditDropdown({
   handleOnRename,
   handleOnFocus,
   handleOnStash,
+  categories,
+  handleOnChangeCategory,
 }: TaskEditDropdownProps) {
   const agenda = useAgenda()
   return (
@@ -78,6 +86,52 @@ export function TaskEditDropdown({
                 />
               </DropdownMenuSubContent>
             </DropdownMenuSub>
+
+            {categories &&
+              categories.length > 0 &&
+              handleOnChangeCategory &&
+              task.list_id && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Tag />
+                  Category
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem
+                    onSelect={() =>
+                      void handleOnChangeCategory(task.id, null).catch((error) =>
+                        toast.error(
+                          error instanceof Error
+                            ? error.message
+                            : 'Category was not changed.',
+                        ),
+                      )
+                    }
+                  >
+                    {task.category_id === null && <Check />}
+                    Uncategorized
+                  </DropdownMenuItem>
+                  {categories.map((category) => (
+                    <DropdownMenuItem
+                      key={category.id}
+                      onSelect={() =>
+                        void handleOnChangeCategory(task.id, category.id).catch(
+                          (error) =>
+                            toast.error(
+                              error instanceof Error
+                                ? error.message
+                                : 'Category was not changed.',
+                            ),
+                        )
+                      }
+                    >
+                      {task.category_id === category.id && <Check />}
+                      {category.title}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
 
             {!task.completed && handleOnFocus && (
               <DropdownMenuItem

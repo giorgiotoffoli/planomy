@@ -67,7 +67,7 @@ export type Database = {
         }
         Relationships: []
       }
-      statuses: {
+      categories: {
         Row: {
           created_at: string | null
           id: string
@@ -91,7 +91,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "statuses_list_id_fkey"
+            foreignKeyName: "categories_list_id_fkey"
             columns: ["list_id"]
             isOneToOne: false
             referencedRelation: "lists"
@@ -139,7 +139,7 @@ export type Database = {
           list_id: string | null
           notes: string | null
           position: number
-          status_id: string | null
+          category_id: string | null
           stashed: boolean
           title: string | null
           user_id: string | null
@@ -154,7 +154,7 @@ export type Database = {
           list_id?: string | null
           notes?: string | null
           position?: number
-          status_id?: string | null
+          category_id?: string | null
           stashed?: boolean
           title?: string | null
           user_id?: string | null
@@ -169,7 +169,7 @@ export type Database = {
           list_id?: string | null
           notes?: string | null
           position?: number
-          status_id?: string | null
+          category_id?: string | null
           stashed?: boolean
           title?: string | null
           user_id?: string | null
@@ -183,10 +183,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "tasks_status_id_fkey"
-            columns: ["status_id"]
+            foreignKeyName: "tasks_category_id_fkey"
+            columns: ["category_id"]
             isOneToOne: false
-            referencedRelation: "statuses"
+            referencedRelation: "categories"
             referencedColumns: ["id"]
           },
         ]
@@ -235,6 +235,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_category: {
+        Args: { p_category_id: string; p_list_id: string }
+        Returns: undefined
+      }
       set_daily_task_focus: {
         Args: { p_focused: boolean; p_selected_date: string; p_task_id: string }
         Returns: undefined

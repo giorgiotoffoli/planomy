@@ -1,8 +1,6 @@
 import { getList, getListTasks, getUserLists } from '@/components/lists/queries'
-import Header from '@/components/layout/header/app-header'
-import getStatuses from '@/components/boards/queries'
+import getCategories from '@/components/boards/queries'
 import TaskWorkspace from '@/components/layout/task-workspace'
-import HeaderViewToggle from '@/components/layout/header/header-view-toggle'
 
 interface ListPageProps {
   params: Promise<{ 'list-id': string }>
@@ -19,7 +17,7 @@ export default async function ListPage({
   const tasks = await getListTasks(listId)
   const lists = await getUserLists()
   const currentList = await getList(listId)
-  const statuses = await getStatuses(listId)
+  const categories = await getCategories(listId)
 
   const currentView = view === 'board' ? 'board' : 'list'
 
@@ -29,7 +27,7 @@ export default async function ListPage({
       currentView={currentView}
       listId={listId}
       lists={lists}
-      statuses={statuses}
+      categories={categories}
       headerTitle={currentList.title}
     />
   )

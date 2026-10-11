@@ -1,6 +1,6 @@
 'use client'
 
-import { List, Status, TaskWithList } from '@/types'
+import { Category, List, TaskWithList } from '@/types'
 import {
   Suspense,
   useCallback,
@@ -20,6 +20,7 @@ import {
   updateTaskCompleted,
   updateTaskDueDate,
   updateTaskNotes,
+  changeTaskCategory,
 } from '../tasks/mutations'
 import { getTasks } from '../tasks/queries'
 import { getListTasks } from '../lists/queries'
@@ -38,12 +39,18 @@ import {
   sortTasks,
   type TaskSortOption,
 } from '../lists/task-sorting'
+import {
+  createCategory,
+  deleteCategory,
+  renameCategory,
+  reorderCategories,
+} from '../categories/actions'
 
 interface TaskWorkspaceProps {
   tasks: TaskWithList[]
   lists: List[]
   listId: string | null
-  statuses?: Status[]
+  categories?: Category[]
   currentView: 'list' | 'board'
   headerTitle: string
 }
@@ -75,17 +82,30 @@ async function decryptLists(lists: List[], masterKey: Uint8Array) {
   )
 }
 
+async function decryptCategories(
+  categories: Category[],
+  masterKey: Uint8Array,
+) {
+  return Promise.all(
+    categories.map(async (category) => ({
+      ...category,
+      title: await decryptString(category.title, masterKey),
+    })),
+  )
+}
+
 export default function TaskWorkspace({
   tasks,
   lists,
   listId,
-  statuses,
+  categories,
   currentView,
   headerTitle,
 }: TaskWorkspaceProps) {
   const [localView, setLocalView] = useState(currentView)
   const [localTasks, setLocalTasks] = useState(tasks)
   const [localLists, setLocalLists] = useState(lists)
+  const [localCategories, setLocalCategories] = useState<Category[]>([])
   const [localHeaderTitle, setLocalHeaderTitle] = useState(headerTitle)
   const [sortOption, setSortOption] = useState<TaskSortOption>('manual')
 
@@ -163,10 +183,12 @@ export default function TaskWorkspace({
     const request = ++taskLoadVersion.current
 
     async function decryptLoadedData() {
-      const [decryptedTasks, decryptedLists] = await Promise.all([
-        decryptTasks(tasks, unlockedMasterKey),
-        decryptLists(lists, unlockedMasterKey),
-      ])
+      const [decryptedTasks, decryptedLists, decryptedCategories] =
+        await Promise.all([
+          decryptTasks(tasks, unlockedMasterKey),
+          decryptLists(lists, unlockedMasterKey),
+          decryptCategories(categories ?? [], unlockedMasterKey),
+        ])
 
       const decryptedHeaderTitle = await decryptString(
         headerTitle,
@@ -176,6 +198,7 @@ export default function TaskWorkspace({
       if (!isCancelled && request === taskLoadVersion.current) {
         setLocalTasks(decryptedTasks)
         setLocalLists(decryptedLists)
+        setLocalCategories(decryptedCategories)
         setLocalHeaderTitle(decryptedHeaderTitle)
       }
     }
@@ -187,7 +210,7 @@ export default function TaskWorkspace({
     return () => {
       isCancelled = true
     }
-  }, [masterKey, tasks, lists, headerTitle])
+  }, [masterKey, tasks, lists, categories, headerTitle])
 
   async function handleOnCreate(
     title: string,
@@ -217,6 +240,7 @@ export default function TaskWorkspace({
       completed: false,
       focused: false,
       stashed: false,
+      category_id: null,
       list: selectedList,
       position: 0,
       created_at: null,
@@ -369,6 +393,134 @@ export default function TaskWorkspace({
     })
   }
 
+  async function handleOnCreateCategory(title: string) {
+    if (!listId) throw new Error('Categories belong to a specific list.')
+    if (!masterKey) throw new Error('Encryption key is locked.')
+
+    const encryptedTitle = await encryptString(title.trim(), masterKey)
+    const savedCategory = await createCategory(listId, encryptedTitle)
+    const decryptedTitle = await decryptString(savedCategory.title, masterKey)
+
+    setLocalCategories((previousCategories) =>
+      [...previousCategories, { ...savedCategory, title: decryptedTitle }].sort(
+        (a, b) => a.position - b.position,
+      ),
+    )
+  }
+
+  async function handleOnRenameCategory(category: Category, title: string) {
+    if (!listId) throw new Error('Categories belong to a specific list.')
+    if (!masterKey) throw new Error('Encryption key is locked.')
+
+    const previousCategories = localCategories
+    setLocalCategories((currentCategories) =>
+      currentCategories.map((currentCategory) =>
+        currentCategory.id === category.id
+          ? { ...currentCategory, title }
+          : currentCategory,
+      ),
+    )
+
+    try {
+      const encryptedTitle = await encryptString(title.trim(), masterKey)
+      await renameCategory(listId, category.id, encryptedTitle)
+    } catch (error) {
+      setLocalCategories(previousCategories)
+      throw error
+    }
+  }
+
+  async function handleOnDeleteCategory(category: Category) {
+    if (!listId) throw new Error('Categories belong to a specific list.')
+
+    const previousCategories = localCategories
+    const previousTasks = localTasks
+    setLocalCategories((currentCategories) =>
+      currentCategories.filter(
+        (currentCategory) => currentCategory.id !== category.id,
+      ),
+    )
+    setLocalTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        task.category_id === category.id
+          ? { ...task, category_id: null }
+          : task,
+      ),
+    )
+
+    try {
+      await deleteCategory(listId, category.id)
+    } catch (error) {
+      setLocalCategories(previousCategories)
+      setLocalTasks(previousTasks)
+      throw error
+    }
+  }
+
+  async function handleOnMoveCategory(
+    category: Category,
+    direction: 'up' | 'down',
+  ) {
+    if (!listId) throw new Error('Categories belong to a specific list.')
+
+    const previousCategories = localCategories
+    const sortedCategories = [...localCategories].sort(
+      (a, b) => a.position - b.position,
+    )
+    const currentIndex = sortedCategories.findIndex(
+      (currentCategory) => currentCategory.id === category.id,
+    )
+    const nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+
+    if (
+      currentIndex < 0 ||
+      nextIndex < 0 ||
+      nextIndex >= sortedCategories.length
+    ) {
+      return
+    }
+
+    const reorderedCategories = arrayMove(
+      sortedCategories,
+      currentIndex,
+      nextIndex,
+    ).map((currentCategory, position) => ({
+      ...currentCategory,
+      position,
+    }))
+
+    setLocalCategories(reorderedCategories)
+
+    try {
+      await reorderCategories(
+        listId,
+        reorderedCategories.map(({ id, position }) => ({ id, position })),
+      )
+    } catch (error) {
+      setLocalCategories(previousCategories)
+      throw error
+    }
+  }
+
+  async function handleOnChangeCategory(
+    taskId: string,
+    categoryId: string | null,
+  ) {
+    const previousTasks = localTasks
+    setLocalTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        task.id === taskId ? { ...task, category_id: categoryId } : task,
+      ),
+    )
+
+    try {
+      await changeTaskCategory(taskId, categoryId)
+    } catch (error) {
+      setLocalTasks(previousTasks)
+      throw error
+    }
+  }
+
   // Reordering
   function handleOnReorder(activeId: string, overId: string) {
     if (activeId === overId) return
@@ -466,13 +618,30 @@ export default function TaskWorkspace({
                 handleOnNotesChange={handleOnNotesChange}
                 handleOnDelete={handleOnDelete}
                 pathName={pathName}
+                categories={listId ? localCategories : undefined}
+                handleOnChangeCategory={listId ? handleOnChangeCategory : undefined}
+                handleOnCreateCategory={
+                  listId ? handleOnCreateCategory : undefined
+                }
+                handleOnRenameCategory={
+                  listId ? handleOnRenameCategory : undefined
+                }
+                handleOnDeleteCategory={
+                  listId ? handleOnDeleteCategory : undefined
+                }
+                handleOnMoveCategory={
+                  listId ? handleOnMoveCategory : undefined
+                }
               />
             ) : (
               <TaskBoard
                 tasks={localTasks}
-                statuses={statuses!}
-                lists={lists}
-                currentListId={listId!}
+                categories={localCategories}
+                onTaskCategoryChange={handleOnChangeCategory}
+                onCreateCategory={handleOnCreateCategory}
+                onRenameCategory={handleOnRenameCategory}
+                onDeleteCategory={handleOnDeleteCategory}
+                onMoveCategory={handleOnMoveCategory}
               />
             )}
           </Suspense>

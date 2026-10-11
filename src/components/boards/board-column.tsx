@@ -1,41 +1,57 @@
-import { Card, CardContent, CardHeader } from '../ui/card'
+import { Card, CardContent } from '../ui/card'
 import { useDroppable } from '@dnd-kit/react'
-import { List, TaskWithList } from '@/types'
+import { Category, TaskWithList } from '@/types'
 import BoardTaskCard from './board-task-card'
+import { CategoryHeader } from '@/components/categories/category-controls'
 
 interface BoardColumnProps {
   tasks: TaskWithList[]
-  title: string
-  statusId: string | null
-  lists: List[]
-  currentListId: string
+  category: Category | null
+  categoryIndex?: number
+  categoryCount?: number
+  onRenameCategory?: (category: Category, title: string) => Promise<void>
+  onDeleteCategory?: (category: Category) => Promise<void>
+  onMoveCategory?: (
+    category: Category,
+    direction: 'up' | 'down',
+  ) => Promise<void>
 }
 
 export default function BoardColumn({
   tasks,
-  title,
-  statusId,
-  lists,
-  currentListId,
+  category,
+  categoryIndex,
+  categoryCount,
+  onRenameCategory,
+  onDeleteCategory,
+  onMoveCategory,
 }: BoardColumnProps) {
   const { ref, isDropTarget } = useDroppable({
-    id: statusId ?? 'unassigned',
+    id: category?.id ?? 'uncategorized',
   })
 
-  const filteredTasks = tasks.filter((tasks) => tasks.status_id === statusId)
+  const filteredTasks = tasks.filter(
+    (task) => task.category_id === (category?.id ?? null),
+  )
 
   return (
-    <div ref={ref}>
-      <Card className={isDropTarget ? 'ring-2 ring-blue-500' : ''}>
-        <CardHeader className="font-bold">{title}</CardHeader>
-        <CardContent>
+    <div ref={ref} className="h-full">
+      <Card className={`h-full ${isDropTarget ? 'ring-2 ring-blue-500' : ''}`}>
+        <CategoryHeader
+          category={category}
+          count={filteredTasks.length}
+          categoryIndex={categoryIndex}
+          categoryCount={categoryCount}
+          onRename={onRenameCategory}
+          onDelete={onDeleteCategory}
+          onMove={onMoveCategory}
+        />
+        <CardContent className="min-h-0 flex-1 overflow-y-auto py-4">
           <ul>
             {filteredTasks.map((task) => (
               <BoardTaskCard
                 key={task.id}
                 task={task}
-                lists={lists}
-                currentListId={currentListId}
               />
             ))}
           </ul>

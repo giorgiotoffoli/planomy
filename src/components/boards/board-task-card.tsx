@@ -1,15 +1,9 @@
 import { useDraggable } from '@dnd-kit/react'
 import { Card, CardContent, CardDescription } from '../ui/card'
-import { List, TaskWithList } from '../../types'
+import { TaskWithList } from '../../types'
 import { format, isBefore } from 'date-fns'
 
-interface BoardTaskCard {
-  task: TaskWithList
-  lists: List[]
-  currentListId: string
-}
-
-export default function BoardTaskCard({ task }: BoardTaskCard) {
+export default function BoardTaskCard({ task }: { task: TaskWithList }) {
   const { ref } = useDraggable({
     id: task.id,
   })

@@ -123,10 +123,41 @@ export async function deleteTask(id: string) {
 export async function moveTask(taskId: string, newListId: string | null) {
   const supabase = await createClient()
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('Unauthorized')
+
+  if (newListId) {
+    const { data: list, error: listError } = await supabase
+      .from('lists')
+      .select('id')
+      .eq('id', newListId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (listError) throw new Error(listError.message)
+    if (!list) throw new Error('List not found')
+  }
+
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .select('list_id')
+    .eq('id', taskId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (taskError) throw new Error(taskError.message)
+
   const { error } = await supabase
     .from('tasks')
-    .update({ list_id: newListId })
+    .update({
+      list_id: newListId,
+      ...(task.list_id !== newListId ? { category_id: null } : {}),
+    })
     .eq('id', taskId)
+    .eq('user_id', user.id)
 
   if (error) {
     throw new Error(error.message)
@@ -135,16 +166,48 @@ export async function moveTask(taskId: string, newListId: string | null) {
   revalidatePath('/')
 }
 
-export async function changeTaskStatus(
+export async function changeTaskCategory(
   taskId: string,
-  newStatusId: string | null,
+  newCategoryId: string | null,
 ) {
   const supabase = await createClient()
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('Unauthorized')
+
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .select('list_id')
+    .eq('id', taskId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (taskError) throw new Error(taskError.message)
+
+  if (newCategoryId) {
+    if (!task.list_id) {
+      throw new Error('Tasks in Inbox cannot be assigned to a category.')
+    }
+
+    const { data: category, error: categoryError } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('id', newCategoryId)
+      .eq('list_id', task.list_id)
+      .single()
+
+    if (categoryError) throw new Error(categoryError.message)
+    if (!category) throw new Error('Category not found')
+  }
+
   const { error } = await supabase
     .from('tasks')
-    .update({ status_id: newStatusId })
+    .update({ category_id: newCategoryId })
     .eq('id', taskId)
+    .eq('user_id', user.id)
 
   if (error) {
     throw new Error(error.message)
