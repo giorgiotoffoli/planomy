@@ -238,6 +238,7 @@ type SectionShellProps = {
   children: ReactNode
   empty: ReactNode
   compactWhenEmpty?: boolean
+  compactEmptyLabel?: string
 }
 
 function SectionShell({
@@ -248,6 +249,7 @@ function SectionShell({
   children,
   empty,
   compactWhenEmpty = false,
+  compactEmptyLabel,
 }: SectionShellProps) {
   const [open, setOpen] = useState(true)
   const toneClasses = {
@@ -289,9 +291,17 @@ function SectionShell({
             <span className="flex size-6 items-center justify-center rounded-full bg-slate-900/[0.06] text-[11px] font-semibold text-slate-600">
               {count}
             </span>
+            {compactEmpty && (
+              <span
+                className="ml-auto min-w-0 truncate text-right text-xs text-slate-500"
+                title={compactEmptyLabel}
+              >
+                {compactEmptyLabel}
+              </span>
+            )}
             <ChevronDown
               aria-hidden="true"
-              className={`ml-auto size-4 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+              className={`${compactEmpty ? '' : 'ml-auto'} size-4 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
             />
           </button>
         </CollapsibleTrigger>
@@ -300,7 +310,9 @@ function SectionShell({
         {count > 0 ? (
           <ul className="divide-y divide-slate-200/70">{children}</ul>
         ) : compactEmpty ? (
-          <p className="px-1.5 pt-0.5 text-xs text-slate-500">{empty}</p>
+          <p className="hidden px-1.5 pt-0.5 text-xs leading-5 text-slate-500 lg:block">
+            {empty}
+          </p>
         ) : (
           <div className="rounded-xl border border-dashed border-slate-300/70 bg-white/55 px-4 py-5 text-center text-sm text-slate-500">
             {empty}
@@ -797,6 +809,7 @@ export default function HomePlanner({
   }
 
   const formattedDay = format(new Date(`${day}T12:00:00`), 'EEEE, MMMM d')
+  const dueSoonHasTasks = buckets.dueSoon.length > 0
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
@@ -812,7 +825,7 @@ export default function HomePlanner({
                 {message}
               </p>
             </div>
-            <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
+            <div className="grid w-full grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto sm:flex-nowrap">
               <HomeSourcesPicker
                 lists={lists}
                 categories={categories}
@@ -832,7 +845,7 @@ export default function HomePlanner({
                 iconOnlyOnMobile
               />
               <label
-                className="relative min-w-0 basis-full flex-1 sm:basis-auto sm:w-64"
+                className="relative col-span-4 row-start-2 min-w-0 w-full sm:order-3 sm:col-auto sm:row-auto sm:w-64"
                 aria-label="Search tasks"
               >
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -848,7 +861,7 @@ export default function HomePlanner({
                 categories={categories}
                 listId={null}
               >
-                <Button className="h-10 shrink-0 rounded-xl bg-blue-500 px-4 shadow-[0_8px_18px_rgba(37,99,235,0.22)] hover:bg-blue-600">
+                <Button className="col-start-4 row-start-1 h-10 shrink-0 rounded-xl bg-blue-500 px-3 shadow-[0_8px_18px_rgba(37,99,235,0.22)] hover:bg-blue-600 sm:order-4 sm:col-auto sm:row-auto sm:px-4">
                   <Plus />
                   <span className="hidden sm:inline">Add task</span>
                   <span className="sm:hidden">Add</span>
@@ -898,8 +911,11 @@ export default function HomePlanner({
                   </Button>
                 </div>
               ) : (
-                <>
-                  <div className="grid gap-3 lg:grid-cols-2">
+                <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_360px]">
+                  <aside
+                    aria-label="Attention"
+                    className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1 lg:self-start"
+                  >
                     <SectionShell
                       title="Focus"
                       count={buckets.focus.length}
@@ -907,76 +923,83 @@ export default function HomePlanner({
                       tone="focus"
                       empty="Pick up to three tasks to keep close today."
                       compactWhenEmpty
+                      compactEmptyLabel="Pick tasks"
                     >
                       {buckets.focus.map((task) => renderTask(task))}
                     </SectionShell>
 
-                    <SectionShell
-                      title="Due Soon"
-                      count={buckets.dueSoon.length}
-                      icon={<Clock3 className="size-5" />}
-                      tone="due"
-                      empty={`Nothing due in the next ${DUE_SOON_DAYS} days. Your future self says thanks.`}
-                      compactWhenEmpty
+                    <div className={!dueSoonHasTasks ? 'hidden lg:block' : undefined}>
+                      <SectionShell
+                        title="Due Soon"
+                        count={buckets.dueSoon.length}
+                        icon={<Clock3 className="size-5" />}
+                        tone="due"
+                        empty={`Nothing due in the next ${DUE_SOON_DAYS} days.`}
+                        compactWhenEmpty
+                        compactEmptyLabel="All clear"
+                      >
+                        {buckets.dueSoon.map((task) => renderTask(task, true))}
+                      </SectionShell>
+                    </div>
+
+                    <Collapsible
+                      open={stashedOpen}
+                      onOpenChange={setStashedOpen}
+                      className="overflow-hidden rounded-2xl border border-slate-300/70 bg-slate-100/70 shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:border-slate-700/70 dark:bg-slate-800/60"
                     >
-                      {buckets.dueSoon.map((task) => renderTask(task, true))}
+                      <CollapsibleTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                        >
+                          <Archive className="size-5 text-slate-600 dark:text-slate-300" />
+                          <span className="font-semibold text-slate-700 dark:text-slate-200">
+                            Stashed
+                          </span>
+                          <span className="flex size-6 items-center justify-center rounded-full bg-slate-200/80 text-[11px] font-semibold text-slate-600 dark:bg-slate-700/80 dark:text-slate-300">
+                            {buckets.stashed.length}
+                          </span>
+                          <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
+                            {stashedOpen ? 'Hide' : 'Show'}
+                          </span>
+                          {stashedOpen ? (
+                            <ArchiveRestore className="size-4 text-slate-500 dark:text-slate-400" />
+                          ) : (
+                            <Archive className="size-4 text-slate-500 dark:text-slate-400" />
+                          )}
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="px-3 pb-3 sm:px-4 sm:pb-4">
+                        {buckets.stashed.length > 0 ? (
+                          <ul className="overflow-hidden rounded-[15px] border border-slate-200/80 bg-white/90 divide-y divide-slate-200/80">
+                            {buckets.stashed.map((task) => renderTask(task))}
+                          </ul>
+                        ) : (
+                          <div className="rounded-[15px] border border-dashed border-slate-300/70 bg-white/55 px-5 py-6 text-center text-sm text-slate-500">
+                            Nothing is stashed right now.
+                          </div>
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </aside>
+
+                  <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+                    <SectionShell
+                      title="Tasks"
+                      count={buckets.tasks.length}
+                      icon={<ListTodo className="size-5" />}
+                      tone="tasks"
+                      empty={
+                        searchQuery
+                          ? 'No tasks match that search.'
+                          : 'Everything is captured. Enjoy the clear space.'
+                      }
+                    >
+                      {buckets.tasks.map((task) => renderTask(task))}
                     </SectionShell>
                   </div>
 
-                  <SectionShell
-                    title="Tasks"
-                    count={buckets.tasks.length}
-                    icon={<ListTodo className="size-5" />}
-                    tone="tasks"
-                    empty={
-                      searchQuery
-                        ? 'No tasks match that search.'
-                        : 'Everything is captured. Enjoy the clear space.'
-                    }
-                  >
-                    {buckets.tasks.map((task) => renderTask(task))}
-                  </SectionShell>
-
-                  <Collapsible
-                    open={stashedOpen}
-                    onOpenChange={setStashedOpen}
-                    className="overflow-hidden rounded-2xl border border-slate-300/70 bg-slate-100/70 shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:border-slate-700/70 dark:bg-slate-800/60"
-                  >
-                    <CollapsibleTrigger asChild>
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
-                      >
-                        <Archive className="size-5 text-slate-600 dark:text-slate-300" />
-                        <span className="font-semibold text-slate-700 dark:text-slate-200">
-                          Stashed
-                        </span>
-                        <span className="flex size-6 items-center justify-center rounded-full bg-slate-200/80 text-[11px] font-semibold text-slate-600 dark:bg-slate-700/80 dark:text-slate-300">
-                          {buckets.stashed.length}
-                        </span>
-                        <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
-                          {stashedOpen ? 'Hide' : 'Show'}
-                        </span>
-                        {stashedOpen ? (
-                          <ArchiveRestore className="size-4 text-slate-500 dark:text-slate-400" />
-                        ) : (
-                          <Archive className="size-4 text-slate-500 dark:text-slate-400" />
-                        )}
-                      </button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="px-3 pb-3 sm:px-4 sm:pb-4">
-                      {buckets.stashed.length > 0 ? (
-                        <ul className="overflow-hidden rounded-[15px] border border-slate-200/80 bg-white/90 divide-y divide-slate-200/80">
-                          {buckets.stashed.map((task) => renderTask(task))}
-                        </ul>
-                      ) : (
-                        <div className="rounded-[15px] border border-dashed border-slate-300/70 bg-white/55 px-5 py-6 text-center text-sm text-slate-500">
-                          Nothing is stashed right now.
-                        </div>
-                      )}
-                    </CollapsibleContent>
-                  </Collapsible>
-                </>
+                </div>
               )}
             </div>
           )}
