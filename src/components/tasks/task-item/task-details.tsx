@@ -1,8 +1,15 @@
 import { List, TaskWithList } from '@/types'
 import { format, isBefore } from 'date-fns'
-import { InboxIcon } from 'lucide-react'
+import { ListPlus } from 'lucide-react'
 import Link from 'next/link'
 import { ListEmoji } from '@/components/lists/list-emoji'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { TaskEditMoveList } from './task-edit/task-edit-move-list'
 
 interface TaskDetailProps {
   task: TaskWithList
@@ -10,6 +17,7 @@ interface TaskDetailProps {
   lists: List[]
   isInbox: boolean
   showDueDate?: boolean
+  showAddToList?: boolean
 }
 
 function dateStringToLocalDate(dateString: string) {
@@ -71,6 +79,7 @@ export default function TaskDetail({
   currentListId,
   isInbox,
   showDueDate = true,
+  showAddToList = false,
 }: TaskDetailProps) {
   const dueDateInfo = getDueDateLabel(task.due_date)
 
@@ -79,21 +88,39 @@ export default function TaskDetail({
     : null
 
   const shouldShowTaskList =
-    !isInbox && (task.list_id === null || currentListId !== task.list_id)
+    !isInbox &&
+    (task.list_id !== null
+      ? currentListId !== task.list_id
+      : showAddToList && lists.length > 0)
 
-  const taskListLabel = task.list_id ? (
-    taskList ? (
-      <span className="flex min-w-0 items-center gap-1">
-        <ListEmoji emoji={taskList.emoji} className="text-sm" />
-        <span className="truncate">{taskList.title}</span>
-      </span>
-    ) : null
-  ) : (
-    <div className="flex gap-1 items-center">
-      <InboxIcon size={12} />
-      Inbox
-    </div>
-  )
+  const taskListLabel = task.list_id && taskList ? (
+    <span className="flex min-w-0 items-center gap-1">
+      <ListEmoji emoji={taskList.emoji} className="text-sm" />
+      <span className="truncate">{taskList.title}</span>
+    </span>
+  ) : task.list_id === null && showAddToList && lists.length > 0 ? (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label="Add to list"
+          className="inline-flex max-w-0 cursor-pointer items-center justify-center gap-1 overflow-hidden rounded-sm text-center text-blue-600 opacity-0 outline-none transition-[max-width,opacity] duration-200 ease-out group-hover:max-w-28 group-hover:opacity-100 group-focus-within:max-w-28 group-focus-within:opacity-100 hover:text-blue-700 hover:underline focus-visible:max-w-28 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-blue-500/40 motion-reduce:transition-none"
+        >
+          <ListPlus aria-hidden="true" className="size-3.5 shrink-0" />
+          <span className="whitespace-nowrap">Add to list</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-48">
+        <DropdownMenuLabel>Add to list</DropdownMenuLabel>
+        <TaskEditMoveList
+          taskId={task.id}
+          lists={lists}
+          currentListId={currentListId}
+          taskListId={task.list_id}
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ) : null
 
   const taskListHref = task.list_id
     ? `/lists/${task.list_id}?view=${taskList?.default_view ?? 'list'}`

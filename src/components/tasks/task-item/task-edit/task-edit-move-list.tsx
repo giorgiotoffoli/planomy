@@ -2,7 +2,7 @@
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { List } from '../../../../types'
 import { moveTask } from '../../mutations'
-import { Inbox } from 'lucide-react'
+import { ListX } from 'lucide-react'
 import { toast } from 'sonner'
 import { ListEmoji } from '@/components/lists/list-emoji'
 
@@ -29,8 +29,8 @@ export function TaskEditMoveList({
     <>
       {sourceListId && (
         <DropdownMenuItem onSelect={() => void handleSelect(null)}>
-          <Inbox />
-          Inbox
+          <ListX />
+          Unsorted
         </DropdownMenuItem>
       )}
 

@@ -7,7 +7,7 @@ import {
   ChevronDown,
   Clock3,
   FolderOpen,
-  Inbox,
+  ListX,
   NotebookPen,
   Star,
   Tag,
@@ -293,7 +293,7 @@ export function TaskForm({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="inbox"><Inbox className="size-4" />Inbox</SelectItem>
+                  <SelectItem value="inbox" title="Tasks not assigned to a list"><ListX className="size-4" />Unsorted</SelectItem>
                   {lists.map((list) => (
                     <SelectItem key={list.id} value={list.id}>
                       <ListEmoji emoji={list.emoji} />

@@ -31,17 +31,31 @@ import {
 } from '@/components/lists/task-sorting'
 import {
   DUE_SOON_DAYS,
+  defaultHomeSourcePreferences,
+  filterHomeTasks,
   getDeadlineLabel,
   getDueTimeLabel,
   getHomeBuckets,
+  getHomeSources,
+  getHomeSourceState,
   MAX_FOCUS_TASKS,
+  setHomeCategoryEnabled,
+  setHomeListEnabled,
+  setHomeSourceEnabled,
+  type HomeSource,
+  type HomeSourcePreferences,
 } from '@/lib/home'
 import type { Category, List, TaskWithList } from '@/types'
 import { getHomeData } from './queries'
-import { setTaskFocused, setTaskStashed } from './actions'
 import {
-  updateTaskCompleted as updateTaskCompletedAction,
-} from '@/components/tasks/actions'
+  setHomeCategoryVisibility,
+  setHomeSourceVisibility,
+  setTaskFocused,
+  setTaskStashed,
+  showAllHomeSources,
+} from './actions'
+import HomeSourcesPicker from './home-sources-picker'
+import { updateTaskCompleted as updateTaskCompletedAction } from '@/components/tasks/actions'
 import {
   TASKS_CHANGED,
   deleteTask,
@@ -112,7 +126,13 @@ function decryptHomeData(data: HomeData, masterKey: Uint8Array) {
         title: await decryptString(category.title, masterKey),
       })),
     ),
-  ]).then(([lists, tasks, categories]) => ({ lists, tasks, categories }))
+    Promise.resolve(data.homePreferences),
+  ]).then(([lists, tasks, categories, homePreferences]) => ({
+    lists,
+    tasks,
+    categories,
+    homePreferences,
+  }))
 }
 
 type HomeTaskRowProps = {
@@ -158,6 +178,7 @@ function HomeTaskRow({
       shouldHideCompleted
       isInbox={false}
       canReorder={false}
+      showAddToList
       isExiting={isExiting}
       handleOnComplete={onComplete}
       handleOnRename={onRename}
@@ -255,9 +276,9 @@ function SectionShell({
               className={
                 tone === 'focus'
                   ? 'text-blue-600'
-                    : tone === 'due'
-                      ? 'text-amber-600'
-                      : 'text-blue-700'
+                  : tone === 'due'
+                    ? 'text-amber-600'
+                    : 'text-blue-700'
               }
             >
               {icon}
@@ -277,9 +298,7 @@ function SectionShell({
       </h2>
       <CollapsibleContent>
         {count > 0 ? (
-          <ul className="divide-y divide-slate-200/70">
-            {children}
-          </ul>
+          <ul className="divide-y divide-slate-200/70">{children}</ul>
         ) : compactEmpty ? (
           <p className="px-1.5 pt-0.5 text-xs text-slate-500">{empty}</p>
         ) : (
@@ -303,6 +322,9 @@ export default function HomePlanner({
   const [tasks, setTasks] = useState<TaskWithList[] | null>(null)
   const [lists, setLists] = useState<List[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [homePreferences, setHomePreferences] = useState<HomeSourcePreferences>(
+    () => initialData.homePreferences,
+  )
   const [searchQuery, setSearchQuery] = useState('')
   const [sortOption, setSortOption] = useState<TaskSortOption>('manual')
   const [exitingTaskIds, setExitingTaskIds] = useState<Set<string>>(
@@ -311,13 +333,28 @@ export default function HomePlanner({
   const [stashedOpen, setStashedOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const loadVersion = useRef(0)
+  const homePreferenceSaveQueue = useRef(Promise.resolve())
+  const homePreferenceChangeVersion = useRef(0)
 
-  const applyData = useCallback(async (data: HomeData, key: Uint8Array) => {
-    const decryptedData = await decryptHomeData(data, key)
-    setLists(decryptedData.lists)
-    setTasks(decryptedData.tasks)
-    setCategories(decryptedData.categories)
-  }, [])
+  const applyData = useCallback(
+    async (
+      data: HomeData,
+      key: Uint8Array,
+      preferenceVersion: number,
+      shouldApplyData: () => boolean = () => true,
+    ) => {
+      const decryptedData = await decryptHomeData(data, key)
+      if (!shouldApplyData()) return
+
+      setLists(decryptedData.lists)
+      setTasks(decryptedData.tasks)
+      setCategories(decryptedData.categories)
+      if (preferenceVersion === homePreferenceChangeVersion.current) {
+        setHomePreferences(decryptedData.homePreferences)
+      }
+    },
+    [],
+  )
 
   const load = useCallback(async () => {
     if (!masterKey) return
@@ -326,8 +363,17 @@ export default function HomePlanner({
     setError(null)
 
     try {
+      await homePreferenceSaveQueue.current.catch(() => {})
+      const preferenceVersion = homePreferenceChangeVersion.current
       const nextData = await getHomeData()
-      if (version === loadVersion.current) await applyData(nextData, masterKey)
+      if (version === loadVersion.current) {
+        await applyData(
+          nextData,
+          masterKey,
+          preferenceVersion,
+          () => version === loadVersion.current,
+        )
+      }
     } catch (cause) {
       if (version === loadVersion.current) {
         setError(
@@ -341,16 +387,27 @@ export default function HomePlanner({
     if (!masterKey) return
 
     let cancelled = false
+    const preferenceVersion = homePreferenceChangeVersion.current
     const timeoutId = window.setTimeout(() => {
-      applyData(initialData, masterKey).catch((cause) => {
-        if (!cancelled) {
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : 'Home could not be loaded.',
-          )
-        }
-      })
+      void homePreferenceSaveQueue.current
+        .catch(() => {})
+        .then(() =>
+          applyData(
+            initialData,
+            masterKey,
+            preferenceVersion,
+            () => !cancelled,
+          ),
+        )
+        .catch((cause) => {
+          if (!cancelled) {
+            setError(
+              cause instanceof Error
+                ? cause.message
+                : 'Home could not be loaded.',
+            )
+          }
+        })
     }, 0)
 
     return () => {
@@ -406,16 +463,41 @@ export default function HomePlanner({
     }
   }, [load])
 
+  const homeSources = useMemo(() => getHomeSources(lists), [lists])
+  const uncategorizedListIds = useMemo(
+    () =>
+      new Set(
+        (tasks ?? [])
+          .filter((task) => task.list_id !== null && task.category_id == null)
+          .map((task) => task.list_id as string),
+      ),
+    [tasks],
+  )
+  const enabledHomeSourceCount = homeSources.filter(
+    (source) =>
+      getHomeSourceState(
+        source,
+        categories,
+        homePreferences,
+        source.type === 'list' && uncategorizedListIds.has(source.listId),
+      ) !== 'disabled',
+  ).length
+
+  const homeTasks = useMemo(
+    () => filterHomeTasks(tasks ?? [], homePreferences, categories),
+    [categories, homePreferences, tasks],
+  )
+
   const filteredTasks = useMemo(() => {
     const query = searchQuery.trim().toLocaleLowerCase()
-    if (!query) return tasks ?? []
+    if (!query) return homeTasks
 
-    return (tasks ?? []).filter((task) =>
+    return homeTasks.filter((task) =>
       [task.title, task.notes, task.list?.title]
         .filter(Boolean)
         .some((value) => value!.toLocaleLowerCase().includes(query)),
     )
-  }, [searchQuery, tasks])
+  }, [homeTasks, searchQuery])
 
   const buckets = useMemo(() => {
     const homeBuckets = getHomeBuckets(filteredTasks, day)
@@ -428,13 +510,13 @@ export default function HomePlanner({
     }
   }, [day, filteredTasks, sortOption])
 
-  const activeCount =
-    tasks?.filter(
-      (task) =>
-        !task.completed &&
-        !task.stashed &&
-        !exitingTaskIds.has(task.id),
-    ).length ?? 0
+  const hasVisibleHomeTasks = Object.values(buckets).some(
+    (bucket) => bucket.length > 0,
+  )
+
+  const activeCount = homeTasks.filter(
+    (task) => !task.completed && !task.stashed && !exitingTaskIds.has(task.id),
+  ).length
   const message =
     OPENING_MESSAGES[
       day.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) %
@@ -448,6 +530,93 @@ export default function HomePlanner({
       window.localStorage.setItem(HOME_SORT_STORAGE_KEY, nextSortOption)
     } catch {
       // Local storage can be unavailable in private browsing contexts.
+    }
+  }
+
+  function enqueueHomePreferenceSave(operation: () => Promise<void>) {
+    const nextSave = homePreferenceSaveQueue.current
+      .catch(() => {})
+      .then(operation)
+    homePreferenceSaveQueue.current = nextSave
+    return nextSave
+  }
+
+  async function handleHomeSourceChange(source: HomeSource, visible: boolean) {
+    const previous = homePreferences
+    const next =
+      source.type === 'list'
+        ? setHomeListEnabled(previous, source.listId, visible, categories)
+        : setHomeSourceEnabled(previous, source, visible)
+    const changeVersion = ++homePreferenceChangeVersion.current
+    setHomePreferences(next)
+
+    try {
+      await enqueueHomePreferenceSave(() =>
+        setHomeSourceVisibility(source, visible),
+      )
+    } catch (cause) {
+      if (changeVersion === homePreferenceChangeVersion.current) {
+        setHomePreferences(previous)
+      }
+      toast.error(
+        cause instanceof Error
+          ? cause.message
+          : 'Home source visibility was not saved.',
+      )
+    }
+  }
+
+  async function handleHomeCategoryChange(
+    categoryId: string,
+    visible: boolean,
+  ) {
+    const previous = homePreferences
+    const next = setHomeCategoryEnabled(
+      previous,
+      categoryId,
+      visible,
+      categories,
+      categories.some(
+        (category) =>
+          category.id === categoryId &&
+          uncategorizedListIds.has(category.list_id),
+      ),
+    )
+    const changeVersion = ++homePreferenceChangeVersion.current
+    setHomePreferences(next)
+
+    try {
+      await enqueueHomePreferenceSave(() =>
+        setHomeCategoryVisibility(categoryId, visible),
+      )
+    } catch (cause) {
+      if (changeVersion === homePreferenceChangeVersion.current) {
+        setHomePreferences(previous)
+      }
+      toast.error(
+        cause instanceof Error
+          ? cause.message
+          : 'Home category visibility was not saved.',
+      )
+    }
+  }
+
+  async function handleShowAllHomeSources() {
+    const previous = homePreferences
+    const changeVersion = ++homePreferenceChangeVersion.current
+    setHomePreferences(defaultHomeSourcePreferences())
+
+    try {
+      await enqueueHomePreferenceSave(showAllHomeSources)
+    } catch (cause) {
+      if (changeVersion === homePreferenceChangeVersion.current) {
+        setHomePreferences(previous)
+      }
+      toast.error(
+        cause instanceof Error
+          ? cause.message
+          : 'Home source visibility was not saved.',
+      )
     }
   }
 
@@ -481,8 +650,7 @@ export default function HomePlanner({
       if (completed) {
         await waitForTaskExit()
         setTasks(
-          (current) =>
-            current?.filter((task) => task.id !== taskId) ?? null,
+          (current) => current?.filter((task) => task.id !== taskId) ?? null,
         )
         setExitingTaskIds((current) => {
           const next = new Set(current)
@@ -634,7 +802,7 @@ export default function HomePlanner({
     <div className="flex min-h-0 flex-1 flex-col bg-background">
       <Header headerTitle="Home" taskCount={activeCount} />
       <div className="min-h-0 flex-1 overflow-y-auto bg-background px-3 py-5 sm:px-5 sm:py-6 lg:px-6">
-        <div className="mx-auto w-full max-w-[1440px]">
+        <div className="mx-auto w-full max-w-360">
           <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h1 className="font-heading text-[clamp(2rem,4vw,3.25rem)] font-semibold leading-none tracking-[-0.055em] text-[#10172c]">
@@ -644,14 +812,27 @@ export default function HomePlanner({
                 {message}
               </p>
             </div>
-            <div className="flex w-full gap-2 sm:w-auto">
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
+              <HomeSourcesPicker
+                lists={lists}
+                categories={categories}
+                uncategorizedListIds={uncategorizedListIds}
+                preferences={homePreferences}
+                onSourceChange={(source, visible) => {
+                  void handleHomeSourceChange(source, visible)
+                }}
+                onCategoryChange={(categoryId, visible) => {
+                  void handleHomeCategoryChange(categoryId, visible)
+                }}
+                onShowAll={() => void handleShowAllHomeSources()}
+              />
               <TaskSortSelect
                 value={sortOption}
                 onValueChange={handleSortChange}
                 iconOnlyOnMobile
               />
               <label
-                className="relative min-w-0 flex-1 sm:w-64"
+                className="relative min-w-0 basis-full flex-1 sm:basis-auto sm:w-64"
                 aria-label="Search tasks"
               >
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -698,83 +879,105 @@ export default function HomePlanner({
 
           {tasks && (
             <div className="space-y-3">
-              <div className="grid gap-3 lg:grid-cols-2">
-                <SectionShell
-                  title="Focus"
-                  count={buckets.focus.length}
-                  icon={<Star className="size-5" />}
-                  tone="focus"
-                  empty="Pick up to three tasks to keep close today."
-                  compactWhenEmpty
-                >
-                  {buckets.focus.map((task) => renderTask(task))}
-                </SectionShell>
-
-                <SectionShell
-                  title="Due Soon"
-                  count={buckets.dueSoon.length}
-                  icon={<Clock3 className="size-5" />}
-                  tone="due"
-                  empty={`Nothing due in the next ${DUE_SOON_DAYS} days. Your future self says thanks.`}
-                  compactWhenEmpty
-                >
-                  {buckets.dueSoon.map((task) => renderTask(task, true))}
-                </SectionShell>
-              </div>
-
-              <SectionShell
-                title="Tasks"
-                count={buckets.tasks.length}
-                icon={<ListTodo className="size-5" />}
-                tone="tasks"
-                empty={
-                  searchQuery
-                    ? 'No tasks match that search.'
-                    : 'Everything is captured. Enjoy the clear space.'
-                }
-              >
-                {buckets.tasks.map((task) => renderTask(task))}
-              </SectionShell>
-
-              <Collapsible
-                open={stashedOpen}
-                onOpenChange={setStashedOpen}
-                className="overflow-hidden rounded-2xl border border-blue-100/80 bg-[#e9f0ff] shadow-[0_6px_18px_rgba(62,84,120,0.04)]"
-              >
-                <CollapsibleTrigger asChild>
-                  <button
+              {enabledHomeSourceCount === 0 && !hasVisibleHomeTasks ? (
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 px-5 py-6 text-center shadow-[0_6px_18px_rgba(62,84,120,0.04)]">
+                  <h2 className="font-heading text-lg font-semibold text-slate-950">
+                    Nothing is shown on Home
+                  </h2>
+                  <p className="mx-auto mt-1 max-w-md text-sm text-slate-600">
+                    All Home sources are hidden. Show all sources to bring your
+                    incomplete tasks back.
+                  </p>
+                  <Button
                     type="button"
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                    size="sm"
+                    className="mt-4 rounded-xl"
+                    onClick={() => void handleShowAllHomeSources()}
                   >
-                    <Archive className="size-5 text-blue-700" />
-                    <span className="font-semibold text-slate-900">
-                      Stashed
-                    </span>
-                    <span className="flex size-6 items-center justify-center rounded-full bg-slate-900/[0.06] text-[11px] font-semibold text-slate-600">
-                      {buckets.stashed.length}
-                    </span>
-                    <span className="ml-auto text-xs text-slate-500">
-                      {stashedOpen ? 'Hide' : 'Show'}
-                    </span>
-                    {stashedOpen ? (
-                      <ArchiveRestore className="size-4 text-slate-500" />
-                    ) : (
-                      <Archive className="size-4 text-slate-500" />
-                    )}
-                  </button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="px-3 pb-3 sm:px-4 sm:pb-4">
-                  {buckets.stashed.length > 0 ? (
-                    <ul className="overflow-hidden rounded-[15px] border border-slate-200/80 bg-white/90 divide-y divide-slate-200/80">
-                      {buckets.stashed.map((task) => renderTask(task))}
-                    </ul>
-                  ) : (
-                    <div className="rounded-[15px] border border-dashed border-slate-300/70 bg-white/55 px-5 py-6 text-center text-sm text-slate-500">
-                      Nothing is stashed right now.
-                    </div>
-                  )}
-                </CollapsibleContent>
-              </Collapsible>
+                    Show all sources
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    <SectionShell
+                      title="Focus"
+                      count={buckets.focus.length}
+                      icon={<Star className="size-5" />}
+                      tone="focus"
+                      empty="Pick up to three tasks to keep close today."
+                      compactWhenEmpty
+                    >
+                      {buckets.focus.map((task) => renderTask(task))}
+                    </SectionShell>
+
+                    <SectionShell
+                      title="Due Soon"
+                      count={buckets.dueSoon.length}
+                      icon={<Clock3 className="size-5" />}
+                      tone="due"
+                      empty={`Nothing due in the next ${DUE_SOON_DAYS} days. Your future self says thanks.`}
+                      compactWhenEmpty
+                    >
+                      {buckets.dueSoon.map((task) => renderTask(task, true))}
+                    </SectionShell>
+                  </div>
+
+                  <SectionShell
+                    title="Tasks"
+                    count={buckets.tasks.length}
+                    icon={<ListTodo className="size-5" />}
+                    tone="tasks"
+                    empty={
+                      searchQuery
+                        ? 'No tasks match that search.'
+                        : 'Everything is captured. Enjoy the clear space.'
+                    }
+                  >
+                    {buckets.tasks.map((task) => renderTask(task))}
+                  </SectionShell>
+
+                  <Collapsible
+                    open={stashedOpen}
+                    onOpenChange={setStashedOpen}
+                    className="overflow-hidden rounded-2xl border border-slate-300/70 bg-slate-100/70 shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:border-slate-700/70 dark:bg-slate-800/60"
+                  >
+                    <CollapsibleTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                      >
+                        <Archive className="size-5 text-slate-600 dark:text-slate-300" />
+                        <span className="font-semibold text-slate-700 dark:text-slate-200">
+                          Stashed
+                        </span>
+                        <span className="flex size-6 items-center justify-center rounded-full bg-slate-200/80 text-[11px] font-semibold text-slate-600 dark:bg-slate-700/80 dark:text-slate-300">
+                          {buckets.stashed.length}
+                        </span>
+                        <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
+                          {stashedOpen ? 'Hide' : 'Show'}
+                        </span>
+                        {stashedOpen ? (
+                          <ArchiveRestore className="size-4 text-slate-500 dark:text-slate-400" />
+                        ) : (
+                          <Archive className="size-4 text-slate-500 dark:text-slate-400" />
+                        )}
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="px-3 pb-3 sm:px-4 sm:pb-4">
+                      {buckets.stashed.length > 0 ? (
+                        <ul className="overflow-hidden rounded-[15px] border border-slate-200/80 bg-white/90 divide-y divide-slate-200/80">
+                          {buckets.stashed.map((task) => renderTask(task))}
+                        </ul>
+                      ) : (
+                        <div className="rounded-[15px] border border-dashed border-slate-300/70 bg-white/55 px-5 py-6 text-center text-sm text-slate-500">
+                          Nothing is stashed right now.
+                        </div>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                </>
+              )}
             </div>
           )}
         </div>

@@ -16,13 +16,8 @@ export async function AppSidebar() {
   const lists = await getUserLists()
 
   return (
-    <Sidebar
-      variant="sidebar"
-      collapsible="icon"
-    >
-      <SidebarHeader
-        className="h-12 min-h-12 max-h-12 shrink-0 justify-center border-b border-sidebar-border px-3 py-0 group-data-[collapsible=icon]:px-2"
-      >
+    <Sidebar variant="sidebar" collapsible="icon">
+      <SidebarHeader className="h-12 min-h-12 max-h-12 shrink-0 justify-center border-b border-sidebar-border px-3 py-0 group-data-[collapsible=icon]:px-2">
         <SidebarBrand />
       </SidebarHeader>
 

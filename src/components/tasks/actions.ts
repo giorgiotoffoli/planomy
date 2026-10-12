@@ -331,7 +331,7 @@ export async function changeTaskCategory(
 
   if (newCategoryId) {
     if (!task.list_id) {
-      throw new Error('Tasks in Inbox cannot be assigned to a category.')
+      throw new Error('Unsorted tasks cannot be assigned to a category.')
     }
 
     const { data: category, error: categoryError } = await supabase

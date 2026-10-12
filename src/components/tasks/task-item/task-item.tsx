@@ -39,6 +39,7 @@ interface TaskItemProps {
   handleOnFocus?: (taskId: string, focused: boolean) => void
   handleOnStash?: (taskId: string, stashed: boolean) => void
   showDueDate?: boolean
+  showAddToList?: boolean
   isExiting?: boolean
   categories?: Category[]
   handleOnChangeCategory?: (
@@ -67,6 +68,7 @@ export function TaskItem({
   handleOnFocus,
   handleOnStash,
   showDueDate = true,
+  showAddToList = false,
   isExiting = false,
   categories,
   handleOnChangeCategory,
@@ -145,6 +147,7 @@ export function TaskItem({
                 lists={lists}
                 isInbox={isInbox}
                 showDueDate={showDueDate}
+                showAddToList={showAddToList}
               />
             </div>
             {/* Right side content */}

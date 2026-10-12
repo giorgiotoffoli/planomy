@@ -65,7 +65,7 @@ function Timeline() {
         <Button size="icon" variant="ghost" aria-label="Next day" onClick={() => setDay(shiftDay(day, 1))}><ChevronRight /></Button>
         <Button size="sm" variant="outline" onClick={() => setDay(localDateKey())}>Today</Button>
       </div>
-      <p className="text-xs text-muted-foreground">{Intl.DateTimeFormat().resolvedOptions().timeZone} · All plans & Inbox</p>
+      <p className="text-xs text-muted-foreground">{Intl.DateTimeFormat().resolvedOptions().timeZone} · All plans & Unsorted</p>
       {loading && <p role="status" className="text-xs text-muted-foreground">Loading agenda…</p>}
       {error && <div role="alert" className="text-sm text-destructive">{error}<Button size="sm" variant="outline" onClick={() => void reload()}>Retry</Button></div>}
       {!loading && !error && blocks.length === 0 && <p className="text-xs text-muted-foreground">Drag a task here, or open Edit on a task to add Plan time.</p>}

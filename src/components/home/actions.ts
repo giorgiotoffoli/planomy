@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import type { HomeSource } from '@/lib/home'
 
 type SupabaseError = { code?: string; message: string }
 
@@ -49,4 +50,43 @@ export async function setTaskStashed(taskId: string, stashed: boolean) {
   if (error) throw new Error(error.message)
 
   revalidatePath('/home')
+}
+
+export async function setHomeSourceVisibility(
+  source: HomeSource,
+  visible: boolean,
+) {
+  const { supabase } = await authenticatedClient()
+  const { error } =
+    source.type === 'unsorted'
+      ? await supabase.rpc('set_home_unsorted_visibility', {
+          p_show_unsorted: visible,
+        })
+      : await supabase.rpc('set_home_list_visibility', {
+          p_list_id: source.listId,
+          p_visible: visible,
+          p_clear_category_overrides: true,
+        })
+
+  if (error) throw new Error(error.message)
+}
+
+export async function setHomeCategoryVisibility(
+  categoryId: string,
+  visible: boolean,
+) {
+  const { supabase } = await authenticatedClient()
+  const { error } = await supabase.rpc('set_home_category_visibility', {
+    p_category_id: categoryId,
+    p_visible: visible,
+  })
+
+  if (error) throw new Error(error.message)
+}
+
+export async function showAllHomeSources() {
+  const { supabase } = await authenticatedClient()
+  const { error } = await supabase.rpc('show_all_home_sources')
+
+  if (error) throw new Error(error.message)
 }

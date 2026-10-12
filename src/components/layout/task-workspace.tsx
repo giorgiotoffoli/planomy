@@ -515,7 +515,7 @@ export default function TaskWorkspace({
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4">
         {localTasks.length === 0 && pathName === '/inbox' && (
-          <p>Nothing in your inbox. Capture a task or enjoy the silence.</p>
+          <p>Nothing in Unsorted. Capture a task or enjoy the silence.</p>
         )}
 
         {localTasks.length === 0 && pathName === '/all' && (
