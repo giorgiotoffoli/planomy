@@ -11,6 +11,14 @@ import { CSS } from '@dnd-kit/utilities'
 import type { ReactNode } from 'react'
 import { GripVertical } from 'lucide-react'
 
+export const TASK_EXIT_ANIMATION_MS = 300
+
+export function waitForTaskExit() {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, TASK_EXIT_ANIMATION_MS)
+  })
+}
+
 interface TaskItemProps {
   task: TaskWithList
   lists: List[]
@@ -31,6 +39,7 @@ interface TaskItemProps {
   handleOnFocus?: (taskId: string, focused: boolean) => void
   handleOnStash?: (taskId: string, stashed: boolean) => void
   showDueDate?: boolean
+  isExiting?: boolean
   categories?: Category[]
   handleOnChangeCategory?: (
     taskId: string,
@@ -58,6 +67,7 @@ export function TaskItem({
   handleOnFocus,
   handleOnStash,
   showDueDate = true,
+  isExiting = false,
   categories,
   handleOnChangeCategory,
 }: TaskItemProps) {
@@ -75,6 +85,10 @@ export function TaskItem({
     data: { kind: 'task', task, scope: dragScope, reorder: handleOnReorder },
   })
 
+  const displayTask = isExiting ? { ...task, completed: true } : task
+  const shouldAnimateExit =
+    isExiting || (task.completed && shouldHideCompleted)
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition: transition
@@ -90,54 +104,77 @@ export function TaskItem({
         'group rounded-xl hover:bg-slate-50',
         isDragging && 'cursor-grabbing opacity-50',
         highlighted && 'animate-pulse border-2 border-blue-400',
-        task.completed && shouldHideCompleted && 'opacity-0 line-through',
       )}
     >
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 px-3 py-3">
-        {/* Checkbox */}
-        <div className="flex h-6 items-center gap-2">
-          {canReorder && <button ref={setActivatorNodeRef} {...attributes} {...listeners} aria-label={`Drag ${task.title} to reorder or schedule`} className="touch-none cursor-grab rounded text-muted-foreground focus-visible:ring-2"><GripVertical className="size-3.5" /></button>}
-          <TaskCheckbox task={task} handleOnComplete={handleOnComplete} />
-        </div>
-        {/* Content */}
-        <div className="min-w-0">
-          {leadingBadge}
-          <TaskTitle task={task} handleOnRename={handleOnRename} />
+      <div
+        className={cn(
+          'grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ease-out',
+          shouldAnimateExit
+            ? 'pointer-events-none grid-rows-[0fr] opacity-0'
+            : 'grid-rows-[1fr] opacity-100',
+        )}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 px-3 py-3">
+            {/* Checkbox */}
+            <div className="flex h-6 items-center gap-2">
+              {canReorder && (
+                <button
+                  ref={setActivatorNodeRef}
+                  {...attributes}
+                  {...listeners}
+                  aria-label={`Drag ${task.title} to reorder or schedule`}
+                  className="touch-none cursor-grab rounded text-muted-foreground focus-visible:ring-2"
+                >
+                  <GripVertical className="size-3.5" />
+                </button>
+              )}
+              <TaskCheckbox
+                task={displayTask}
+                handleOnComplete={handleOnComplete}
+              />
+            </div>
+            {/* Content */}
+            <div className="min-w-0">
+              {leadingBadge}
+              <TaskTitle task={displayTask} handleOnRename={handleOnRename} />
 
-          <TaskDetail
-            task={task}
-            currentListId={currentListId}
-            lists={lists}
-            isInbox={isInbox}
-            showDueDate={showDueDate}
-          />
+              <TaskDetail
+                task={displayTask}
+                currentListId={currentListId}
+                lists={lists}
+                isInbox={isInbox}
+                showDueDate={showDueDate}
+              />
+            </div>
+            {/* Right side content */}
+            <div className="flex items-center gap-3">
+              {trailingActions}
+              <TaskEditDropdown
+                task={displayTask}
+                lists={lists}
+                currentListId={currentListId}
+                handleOnDueDateChange={handleOnDueDateChange}
+                handleOnNotesChange={handleOnNotesChange}
+                handleOnDelete={handleOnDelete}
+                handleOnRename={handleOnRename}
+                handleOnFocus={handleOnFocus}
+                handleOnStash={handleOnStash}
+                categories={categories}
+                handleOnChangeCategory={handleOnChangeCategory}
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Actions for ${task.title}`}
+                  className="h-7 w-7 shrink-0 cursor-pointer"
+                >
+                  ⋯
+                </Button>
+              </TaskEditDropdown>
+            </div>{' '}
+          </div>
         </div>
-        {/* Right side content */}
-        <div className="flex items-center gap-3">
-          {trailingActions}
-          <TaskEditDropdown
-            task={task}
-            lists={lists}
-            currentListId={currentListId}
-            handleOnDueDateChange={handleOnDueDateChange}
-            handleOnNotesChange={handleOnNotesChange}
-            handleOnDelete={handleOnDelete}
-            handleOnRename={handleOnRename}
-            handleOnFocus={handleOnFocus}
-            handleOnStash={handleOnStash}
-            categories={categories}
-            handleOnChangeCategory={handleOnChangeCategory}
-          >
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={`Actions for ${task.title}`}
-              className="h-7 w-7 shrink-0 cursor-pointer"
-            >
-              ⋯
-            </Button>
-          </TaskEditDropdown>
-        </div>{' '}
       </div>
     </li>
   )

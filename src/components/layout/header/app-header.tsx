@@ -24,7 +24,7 @@ export default function Header({
 }) {
   return (
     <header className="relative z-10 flex h-12 min-h-12 w-full shrink-0 items-center justify-between border-b border-border bg-background">
-      <div className="flex min-w-0 items-center px-3">
+      <div className="flex min-w-0 flex-1 items-center px-3">
         <div className="flex items-center gap-2 md:hidden">
           <SidebarTrigger />
           <Separator
@@ -33,10 +33,10 @@ export default function Header({
           />
         </div>
 
-        <Breadcrumb>
-          <BreadcrumbList className="text-base">
-            <BreadcrumbItem>
-              <BreadcrumbPage className="line-clamp-1 text-lg font-bold font-heading">
+        <Breadcrumb className="min-w-0">
+          <BreadcrumbList className="min-w-0 flex-nowrap text-base">
+            <BreadcrumbItem className="min-w-0">
+              <BreadcrumbPage className="min-w-0 line-clamp-1 text-lg font-bold font-heading">
                 <span className="flex min-w-0 items-center gap-1.5">
                   {headerEmoji !== undefined && <ListEmoji emoji={headerEmoji} />}
                   <span className="truncate">{headerTitle}</span>
@@ -50,7 +50,7 @@ export default function Header({
         </Breadcrumb>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 px-3">
+      <div className="flex shrink-0 items-center gap-1 px-2 sm:gap-2 sm:px-3">
         {rightSlot}
         <AgendaToggle />
       </div>

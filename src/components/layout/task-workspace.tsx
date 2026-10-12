@@ -15,13 +15,14 @@ import {
   TASKS_CHANGED,
   createTask,
   deleteTask,
+  notifyTasksChanged,
   renameTask,
   reorderTasks,
-  updateTaskCompleted,
   updateTaskDueDate,
   updateTaskNotes,
   changeTaskCategory,
 } from '../tasks/mutations'
+import { updateTaskCompleted as updateTaskCompletedAction } from '../tasks/actions'
 import { getTasks } from '../tasks/queries'
 import { getListTasks } from '../lists/queries'
 import CreateTaskButton from '../tasks/create-task/create-task-button'
@@ -34,6 +35,7 @@ import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
 import { arrayMove } from '@dnd-kit/sortable'
 import TaskSortSelect from '../lists/task-sort-select'
+import { waitForTaskExit } from '../tasks/task-item/task-item'
 import {
   isTaskSortOption,
   sortTasks,
@@ -319,10 +321,20 @@ export default function TaskWorkspace({
 
     // Remove only after persistence; an old fade timer must not erase a rollback.
     try {
-      await updateTaskCompleted(taskId, isCompleted)
-      if (isCompleted !== (pathName === '/completed')) {
-        setLocalTasks(previous => previous.filter(task => task.id !== taskId))
+      await updateTaskCompletedAction(taskId, isCompleted)
+
+      const shouldRemove = isCompleted !== (pathName === '/completed')
+      if (shouldRemove && isCompleted) {
+        await waitForTaskExit()
       }
+
+      if (shouldRemove) {
+        setLocalTasks((previous) =>
+          previous.filter((task) => task.id !== taskId),
+        )
+      }
+
+      notifyTasksChanged()
     } catch (error) {
       setLocalTasks(previousTasks)
       toast.error(error instanceof Error ? error.message : 'Completion was not saved.')
@@ -572,6 +584,7 @@ export default function TaskWorkspace({
                 <TaskSortSelect
                   value={sortOption}
                   onValueChange={handleSortChange}
+                  iconOnlyOnMobile
                 />
               )}
               <HeaderViewToggle

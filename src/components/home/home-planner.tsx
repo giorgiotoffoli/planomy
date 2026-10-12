@@ -39,19 +39,24 @@ import {
 import type { List, TaskWithList } from '@/types'
 import { getHomeData } from './queries'
 import { setTaskFocused, setTaskStashed } from './actions'
-import { createTask as createTaskAction } from '@/components/tasks/actions'
+import {
+  createTask as createTaskAction,
+  updateTaskCompleted as updateTaskCompletedAction,
+} from '@/components/tasks/actions'
 import {
   TASKS_CHANGED,
   deleteTask,
   notifyTasksChanged,
   renameTask,
-  updateTaskCompleted,
   updateTaskDueDate,
   updateTaskNotes,
 } from '@/components/tasks/mutations'
 import Header from '@/components/layout/header/app-header'
 import CreateTaskDialog from '@/components/tasks/create-task/create-task-dialog'
-import { TaskItem } from '@/components/tasks/task-item/task-item'
+import {
+  TaskItem,
+  waitForTaskExit,
+} from '@/components/tasks/task-item/task-item'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -117,6 +122,7 @@ type HomeTaskRowProps = {
   onDelete: (taskId: string) => void
   onFocus: (taskId: string, focused: boolean) => void
   onStash: (taskId: string, stashed: boolean) => void
+  isExiting: boolean
 }
 
 function HomeTaskRow({
@@ -131,6 +137,7 @@ function HomeTaskRow({
   onDelete,
   onFocus,
   onStash,
+  isExiting,
 }: HomeTaskRowProps) {
   const deadlineIsOverdue = deadlineLabel?.includes('overdue')
 
@@ -143,6 +150,7 @@ function HomeTaskRow({
       shouldHideCompleted
       isInbox={false}
       canReorder={false}
+      isExiting={isExiting}
       handleOnComplete={onComplete}
       handleOnRename={onRename}
       handleOnDueDateChange={onDueDateChange}
@@ -288,6 +296,9 @@ export default function HomePlanner({
   const [lists, setLists] = useState<List[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [sortOption, setSortOption] = useState<TaskSortOption>('manual')
+  const [exitingTaskIds, setExitingTaskIds] = useState<Set<string>>(
+    () => new Set(),
+  )
   const [stashedOpen, setStashedOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const loadVersion = useRef(0)
@@ -408,7 +419,12 @@ export default function HomePlanner({
   }, [day, filteredTasks, sortOption])
 
   const activeCount =
-    tasks?.filter((task) => !task.completed && !task.stashed).length ?? 0
+    tasks?.filter(
+      (task) =>
+        !task.completed &&
+        !task.stashed &&
+        !exitingTaskIds.has(task.id),
+    ).length ?? 0
   const message =
     OPENING_MESSAGES[
       day.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) %
@@ -436,12 +452,43 @@ export default function HomePlanner({
 
   async function handleComplete(taskId: string, completed: boolean) {
     const previous = tasks
-    updateTask(taskId, { completed, ...(completed ? { focused: false } : {}) })
+
+    if (completed) {
+      if (exitingTaskIds.has(taskId)) return
+
+      setExitingTaskIds((current) => {
+        const next = new Set(current)
+        next.add(taskId)
+        return next
+      })
+    } else {
+      updateTask(taskId, { completed })
+    }
 
     try {
-      await updateTaskCompleted(taskId, completed)
+      await updateTaskCompletedAction(taskId, completed)
+
+      if (completed) {
+        await waitForTaskExit()
+        setTasks(
+          (current) =>
+            current?.filter((task) => task.id !== taskId) ?? null,
+        )
+        setExitingTaskIds((current) => {
+          const next = new Set(current)
+          next.delete(taskId)
+          return next
+        })
+      }
+
+      notifyTasksChanged()
     } catch (cause) {
       setTasks(previous)
+      setExitingTaskIds((current) => {
+        const next = new Set(current)
+        next.delete(taskId)
+        return next
+      })
       toast.error(
         cause instanceof Error ? cause.message : 'Change was not saved.',
       )
@@ -597,6 +644,7 @@ export default function HomePlanner({
         onDelete={handleDelete}
         onFocus={handleFocus}
         onStash={handleStash}
+        isExiting={exitingTaskIds.has(task.id)}
       />
     )
   }
@@ -621,6 +669,7 @@ export default function HomePlanner({
               <TaskSortSelect
                 value={sortOption}
                 onValueChange={handleSortChange}
+                iconOnlyOnMobile
               />
               <label
                 className="relative min-w-0 flex-1 sm:w-64"
