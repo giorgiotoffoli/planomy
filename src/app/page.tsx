@@ -21,7 +21,7 @@ export default function Page() {
     <main className="min-h-screen overflow-hidden bg-[#f4f3ee] text-[#121316] selection:bg-blue-200">
       <nav className="relative z-50 mx-auto flex h-16 max-w-330 items-center justify-between px-5 sm:px-8">
         <Link
-          href="/t3-inspired"
+          href="/"
           className="flex items-center gap-2 font-heading text-xl font-semibold tracking-tight"
         >
           <PlanomyIcon size={22} />
