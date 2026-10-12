@@ -65,7 +65,7 @@ export function NavLists({ lists }: { lists: List[] }) {
                 href={`/lists/${list.id}?view=${list.default_view ?? 'list'}`}
                 prefetch
               >
-                <ListEmoji emoji={list.emoji} />
+                <ListEmoji emoji={list.emoji} className="text-lg" />
                 <span>{list.title}</span>
               </Link>
             </SidebarMenuButton>
