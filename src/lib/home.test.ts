@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { sortTasks } from '../components/lists/task-sorting.ts'
-import { getDeadlineLabel, getHomeBuckets } from './home.ts'
+import {
+  defaultHomeSourcePreferences,
+  filterHomeTasks,
+  getDeadlineLabel,
+  getHomeBuckets,
+  isHomeSourceEnabled,
+  normalizeHomeSourcePreferences,
+  setHomeSourceEnabled,
+} from './home.ts'
 import type { TaskWithList } from '../types'
 
 function task(overrides: Partial<TaskWithList>): TaskWithList {
@@ -109,5 +117,73 @@ test('task sorting supports newest and oldest creation dates', () => {
   assert.deepEqual(
     sortTasks(tasks, 'created-asc').map(({ id }) => id),
     ['oldest', 'middle', 'newest', 'missing-date'],
+  )
+})
+
+test('home source filtering happens before stashed bucketing', () => {
+  const preferences = setHomeSourceEnabled(
+    setHomeSourceEnabled(defaultHomeSourcePreferences(), { type: 'list', listId: 'school' }, false),
+    { type: 'unsorted' },
+    false,
+  )
+  const visible = filterHomeTasks(
+    [
+      task({ id: 'school-stashed', list_id: 'school', stashed: true }),
+      task({ id: 'personal', list_id: 'personal' }),
+      task({ id: 'unsorted-stashed', stashed: true }),
+    ],
+    preferences,
+  )
+
+  assert.deepEqual(visible.map(({ id }) => id), ['personal'])
+  assert.equal(
+    isHomeSourceEnabled({ type: 'list', listId: 'school' }, preferences),
+    false,
+  )
+})
+
+test('focused tasks stay visible when their source is hidden', () => {
+  const preferences = setHomeSourceEnabled(
+    defaultHomeSourcePreferences(),
+    { type: 'list', listId: 'school' },
+    false,
+  )
+  const visible = filterHomeTasks(
+    [
+      task({ id: 'focused-school', list_id: 'school', focused: true }),
+      task({ id: 'hidden-school', list_id: 'school' }),
+      task({ id: 'personal', list_id: 'personal' }),
+    ],
+    preferences,
+  )
+
+  assert.deepEqual(visible.map(({ id }) => id), [
+    'focused-school',
+    'personal',
+  ])
+})
+
+test('new lists are enabled by default and stale exclusions are ignored', () => {
+  assert.deepEqual(
+    normalizeHomeSourcePreferences(
+      {
+        excluded_home_list_ids: ['missing', 'school', 'school'],
+        show_unsorted_on_home: true,
+      },
+      ['school', 'personal'],
+    ),
+    { excludedHomeListIds: ['school'], showUnsortedOnHome: true },
+  )
+
+  assert.deepEqual(
+    setHomeSourceEnabled(
+      {
+        excludedHomeListIds: ['school'],
+        showUnsortedOnHome: true,
+      },
+      { type: 'list', listId: 'school' },
+      true,
+    ),
+    { excludedHomeListIds: [], showUnsortedOnHome: true },
   )
 })

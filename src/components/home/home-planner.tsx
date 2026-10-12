@@ -31,14 +31,27 @@ import {
 } from '@/components/lists/task-sorting'
 import {
   DUE_SOON_DAYS,
+  defaultHomeSourcePreferences,
+  filterHomeTasks,
   getDeadlineLabel,
   getDueTimeLabel,
   getHomeBuckets,
+  getHomeSources,
+  isHomeSourceEnabled,
   MAX_FOCUS_TASKS,
+  setHomeSourceEnabled,
+  type HomeSource,
+  type HomeSourcePreferences,
 } from '@/lib/home'
 import type { Category, List, TaskWithList } from '@/types'
 import { getHomeData } from './queries'
-import { setTaskFocused, setTaskStashed } from './actions'
+import {
+  setHomeSourceVisibility,
+  setTaskFocused,
+  setTaskStashed,
+  showAllHomeSources,
+} from './actions'
+import HomeSourcesPicker from './home-sources-picker'
 import {
   updateTaskCompleted as updateTaskCompletedAction,
 } from '@/components/tasks/actions'
@@ -112,7 +125,13 @@ function decryptHomeData(data: HomeData, masterKey: Uint8Array) {
         title: await decryptString(category.title, masterKey),
       })),
     ),
-  ]).then(([lists, tasks, categories]) => ({ lists, tasks, categories }))
+    Promise.resolve(data.homePreferences),
+  ]).then(([lists, tasks, categories, homePreferences]) => ({
+    lists,
+    tasks,
+    categories,
+    homePreferences,
+  }))
 }
 
 type HomeTaskRowProps = {
@@ -158,6 +177,7 @@ function HomeTaskRow({
       shouldHideCompleted
       isInbox={false}
       canReorder={false}
+      showAddToList
       isExiting={isExiting}
       handleOnComplete={onComplete}
       handleOnRename={onRename}
@@ -303,6 +323,8 @@ export default function HomePlanner({
   const [tasks, setTasks] = useState<TaskWithList[] | null>(null)
   const [lists, setLists] = useState<List[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [homePreferences, setHomePreferences] =
+    useState<HomeSourcePreferences>(() => initialData.homePreferences)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortOption, setSortOption] = useState<TaskSortOption>('manual')
   const [exitingTaskIds, setExitingTaskIds] = useState<Set<string>>(
@@ -311,12 +333,15 @@ export default function HomePlanner({
   const [stashedOpen, setStashedOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const loadVersion = useRef(0)
+  const homePreferenceSaveQueue = useRef(Promise.resolve())
+  const homePreferenceChangeVersion = useRef(0)
 
   const applyData = useCallback(async (data: HomeData, key: Uint8Array) => {
     const decryptedData = await decryptHomeData(data, key)
     setLists(decryptedData.lists)
     setTasks(decryptedData.tasks)
     setCategories(decryptedData.categories)
+    setHomePreferences(decryptedData.homePreferences)
   }, [])
 
   const load = useCallback(async () => {
@@ -406,16 +431,26 @@ export default function HomePlanner({
     }
   }, [load])
 
+  const homeSources = useMemo(() => getHomeSources(lists), [lists])
+  const enabledHomeSourceCount = homeSources.filter((source) =>
+    isHomeSourceEnabled(source, homePreferences),
+  ).length
+
+  const homeTasks = useMemo(
+    () => filterHomeTasks(tasks ?? [], homePreferences),
+    [homePreferences, tasks],
+  )
+
   const filteredTasks = useMemo(() => {
     const query = searchQuery.trim().toLocaleLowerCase()
-    if (!query) return tasks ?? []
+    if (!query) return homeTasks
 
-    return (tasks ?? []).filter((task) =>
+    return homeTasks.filter((task) =>
       [task.title, task.notes, task.list?.title]
         .filter(Boolean)
         .some((value) => value!.toLocaleLowerCase().includes(query)),
     )
-  }, [searchQuery, tasks])
+  }, [homeTasks, searchQuery])
 
   const buckets = useMemo(() => {
     const homeBuckets = getHomeBuckets(filteredTasks, day)
@@ -428,13 +463,17 @@ export default function HomePlanner({
     }
   }, [day, filteredTasks, sortOption])
 
+  const hasVisibleHomeTasks = Object.values(buckets).some(
+    (bucket) => bucket.length > 0,
+  )
+
   const activeCount =
-    tasks?.filter(
+    homeTasks.filter(
       (task) =>
         !task.completed &&
         !task.stashed &&
         !exitingTaskIds.has(task.id),
-    ).length ?? 0
+    ).length
   const message =
     OPENING_MESSAGES[
       day.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) %
@@ -448,6 +487,58 @@ export default function HomePlanner({
       window.localStorage.setItem(HOME_SORT_STORAGE_KEY, nextSortOption)
     } catch {
       // Local storage can be unavailable in private browsing contexts.
+    }
+  }
+
+  function enqueueHomePreferenceSave(operation: () => Promise<void>) {
+    const nextSave = homePreferenceSaveQueue.current
+      .catch(() => {})
+      .then(operation)
+    homePreferenceSaveQueue.current = nextSave
+    return nextSave
+  }
+
+  async function handleHomeSourceChange(
+    source: HomeSource,
+    visible: boolean,
+  ) {
+    const previous = homePreferences
+    const next = setHomeSourceEnabled(previous, source, visible)
+    const changeVersion = ++homePreferenceChangeVersion.current
+    setHomePreferences(next)
+
+    try {
+      await enqueueHomePreferenceSave(() =>
+        setHomeSourceVisibility(source, visible),
+      )
+    } catch (cause) {
+      if (changeVersion === homePreferenceChangeVersion.current) {
+        setHomePreferences(previous)
+      }
+      toast.error(
+        cause instanceof Error
+          ? cause.message
+          : 'Home source visibility was not saved.',
+      )
+    }
+  }
+
+  async function handleShowAllHomeSources() {
+    const previous = homePreferences
+    const changeVersion = ++homePreferenceChangeVersion.current
+    setHomePreferences(defaultHomeSourcePreferences())
+
+    try {
+      await enqueueHomePreferenceSave(showAllHomeSources)
+    } catch (cause) {
+      if (changeVersion === homePreferenceChangeVersion.current) {
+        setHomePreferences(previous)
+      }
+      toast.error(
+        cause instanceof Error
+          ? cause.message
+          : 'Home source visibility was not saved.',
+      )
     }
   }
 
@@ -644,14 +735,22 @@ export default function HomePlanner({
                 {message}
               </p>
             </div>
-            <div className="flex w-full gap-2 sm:w-auto">
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
+              <HomeSourcesPicker
+                lists={lists}
+                preferences={homePreferences}
+                onSourceChange={(source, visible) => {
+                  void handleHomeSourceChange(source, visible)
+                }}
+                onShowAll={() => void handleShowAllHomeSources()}
+              />
               <TaskSortSelect
                 value={sortOption}
                 onValueChange={handleSortChange}
                 iconOnlyOnMobile
               />
               <label
-                className="relative min-w-0 flex-1 sm:w-64"
+                className="relative min-w-0 basis-full flex-1 sm:basis-auto sm:w-64"
                 aria-label="Search tasks"
               >
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -698,6 +797,26 @@ export default function HomePlanner({
 
           {tasks && (
             <div className="space-y-3">
+              {enabledHomeSourceCount === 0 && !hasVisibleHomeTasks ? (
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 px-5 py-6 text-center shadow-[0_6px_18px_rgba(62,84,120,0.04)]">
+                  <h2 className="font-heading text-lg font-semibold text-slate-950">
+                    Nothing is shown on Home
+                  </h2>
+                  <p className="mx-auto mt-1 max-w-md text-sm text-slate-600">
+                    All Home sources are hidden. Show all sources to bring your
+                    incomplete tasks back.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="mt-4 rounded-xl"
+                    onClick={() => void handleShowAllHomeSources()}
+                  >
+                    Show all sources
+                  </Button>
+                </div>
+              ) : (
+                <>
               <div className="grid gap-3 lg:grid-cols-2">
                 <SectionShell
                   title="Focus"
@@ -775,6 +894,8 @@ export default function HomePlanner({
                   )}
                 </CollapsibleContent>
               </Collapsible>
+                </>
+              )}
             </div>
           )}
         </div>

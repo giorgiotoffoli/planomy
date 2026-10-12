@@ -233,6 +233,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_preferences: {
+        Row: {
+          created_at: string
+          excluded_home_list_ids: string[]
+          show_unsorted_on_home: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          excluded_home_list_ids?: string[]
+          show_unsorted_on_home?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          excluded_home_list_ids?: string[]
+          show_unsorted_on_home?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -248,6 +272,18 @@ export type Database = {
       }
       set_task_focus: {
         Args: { p_focused: boolean; p_task_id: string }
+        Returns: undefined
+      }
+      set_home_list_visibility: {
+        Args: { p_list_id: string; p_visible: boolean }
+        Returns: undefined
+      }
+      set_home_unsorted_visibility: {
+        Args: { p_show_unsorted: boolean }
+        Returns: undefined
+      }
+      show_all_home_sources: {
+        Args: Record<PropertyKey, never>
         Returns: undefined
       }
     }

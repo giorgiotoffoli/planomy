@@ -179,7 +179,7 @@ export default function TodayPlanner({ encryptedLists }: { encryptedLists: List[
     <CommandDialog open={pickerOpen} onOpenChange={setPickerOpen} title="Add an existing task" description="Search incomplete tasks across your plans">
       <CommandInput placeholder="Search tasks or plans…" autoFocus />
       <CommandList><CommandEmpty>No incomplete tasks found.</CommandEmpty><CommandGroup heading="Incomplete tasks">
-        {incomplete.map(task => <CommandItem key={task.id} value={`${task.title} ${task.list?.title ?? 'Inbox'}`} disabled={todaySelections.has(task.id)} onSelect={() => { add(task.id); setPickerOpen(false) }}><div className="min-w-0"><p className="truncate">{task.title}</p><p className="text-xs text-muted-foreground">{task.list?.title ?? 'Inbox'}{task.due_date ? ` · Due ${task.due_date}` : ''}</p></div><span className="ml-auto text-xs">{todaySelections.has(task.id) ? 'Added' : 'Add'}</span></CommandItem>)}
+        {incomplete.map(task => <CommandItem key={task.id} value={`${task.title} ${task.list?.title ?? 'Unsorted'}`} disabled={todaySelections.has(task.id)} onSelect={() => { add(task.id); setPickerOpen(false) }}><div className="min-w-0"><p className="truncate">{task.title}</p><p className="text-xs text-muted-foreground">{task.list?.title ?? 'Unsorted'}{task.due_date ? ` · Due ${task.due_date}` : ''}</p></div><span className="ml-auto text-xs">{todaySelections.has(task.id) ? 'Added' : 'Add'}</span></CommandItem>)}
       </CommandGroup></CommandList>
     </CommandDialog>
   </>

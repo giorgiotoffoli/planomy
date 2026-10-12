@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import type { TaskWithList } from '@/types'
+import type { List, TaskWithList } from '@/types'
 import {
   addCalendarDays,
   calendarDaysBetween,
@@ -8,6 +8,91 @@ import {
 
 export const MAX_FOCUS_TASKS = 3
 export const DUE_SOON_DAYS = 7
+
+export type HomeSource =
+  | { type: 'unsorted' }
+  | { type: 'list'; listId: string }
+
+export type HomeSourcePreferences = {
+  excludedHomeListIds: string[]
+  showUnsortedOnHome: boolean
+}
+
+export function defaultHomeSourcePreferences(): HomeSourcePreferences {
+  return {
+    excludedHomeListIds: [],
+    showUnsortedOnHome: true,
+  }
+}
+
+export function normalizeHomeSourcePreferences(
+  value:
+    | {
+        excluded_home_list_ids?: string[] | null
+        show_unsorted_on_home?: boolean | null
+      }
+    | null
+    | undefined,
+  listIds?: readonly string[],
+): HomeSourcePreferences {
+  const availableListIds = listIds ? new Set(listIds) : null
+  const excludedHomeListIds = Array.from(
+    new Set(value?.excluded_home_list_ids ?? []),
+  ).filter((listId) => availableListIds?.has(listId) ?? true)
+
+  return {
+    excludedHomeListIds,
+    showUnsortedOnHome: value?.show_unsorted_on_home ?? true,
+  }
+}
+
+export function isHomeSourceEnabled(
+  source: HomeSource,
+  preferences: HomeSourcePreferences,
+) {
+  if (source.type === 'unsorted') return preferences.showUnsortedOnHome
+  return !preferences.excludedHomeListIds.includes(source.listId)
+}
+
+export function setHomeSourceEnabled(
+  preferences: HomeSourcePreferences,
+  source: HomeSource,
+  enabled: boolean,
+): HomeSourcePreferences {
+  if (source.type === 'unsorted') {
+    return { ...preferences, showUnsortedOnHome: enabled }
+  }
+
+  const excludedHomeListIds = enabled
+    ? preferences.excludedHomeListIds.filter((id) => id !== source.listId)
+    : preferences.excludedHomeListIds.includes(source.listId)
+      ? preferences.excludedHomeListIds
+      : [...preferences.excludedHomeListIds, source.listId]
+
+  return { ...preferences, excludedHomeListIds }
+}
+
+export function filterHomeTasks(
+  tasks: TaskWithList[],
+  preferences: HomeSourcePreferences,
+) {
+  const excludedHomeListIds = new Set(preferences.excludedHomeListIds)
+
+  return tasks.filter((task) => {
+    if (task.focused) return true
+
+    return task.list_id === null
+      ? preferences.showUnsortedOnHome
+      : !excludedHomeListIds.has(task.list_id)
+  })
+}
+
+export function getHomeSources(lists: Pick<List, 'id'>[]): HomeSource[] {
+  return [
+    { type: 'unsorted' },
+    ...lists.map((list) => ({ type: 'list' as const, listId: list.id })),
+  ]
+}
 
 export type HomeBuckets = {
   focus: TaskWithList[]
