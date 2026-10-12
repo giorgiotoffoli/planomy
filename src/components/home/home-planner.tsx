@@ -914,7 +914,7 @@ export default function HomePlanner({
                 <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_360px]">
                   <aside
                     aria-label="Attention"
-                    className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1 lg:self-start"
+                    className="contents min-w-0 flex-col gap-3 lg:flex lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1 lg:self-start"
                   >
                     <SectionShell
                       title="Focus"
@@ -942,48 +942,50 @@ export default function HomePlanner({
                       </SectionShell>
                     </div>
 
-                    <Collapsible
-                      open={stashedOpen}
-                      onOpenChange={setStashedOpen}
-                      className="overflow-hidden rounded-2xl border border-slate-300/70 bg-slate-100/70 shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:border-slate-700/70 dark:bg-slate-800/60"
-                    >
-                      <CollapsibleTrigger asChild>
-                        <button
-                          type="button"
-                          className="flex w-full items-center gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
-                        >
-                          <Archive className="size-5 text-slate-600 dark:text-slate-300" />
-                          <span className="font-semibold text-slate-700 dark:text-slate-200">
-                            Stashed
-                          </span>
-                          <span className="flex size-6 items-center justify-center rounded-full bg-slate-200/80 text-[11px] font-semibold text-slate-600 dark:bg-slate-700/80 dark:text-slate-300">
-                            {buckets.stashed.length}
-                          </span>
-                          <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
-                            {stashedOpen ? 'Hide' : 'Show'}
-                          </span>
-                          {stashedOpen ? (
-                            <ArchiveRestore className="size-4 text-slate-500 dark:text-slate-400" />
+                    <div className="order-4 lg:order-none">
+                      <Collapsible
+                        open={stashedOpen}
+                        onOpenChange={setStashedOpen}
+                        className="overflow-hidden rounded-2xl border border-slate-300/70 bg-slate-100/70 shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:border-slate-700/70 dark:bg-slate-800/60"
+                      >
+                        <CollapsibleTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                          >
+                            <Archive className="size-5 text-slate-600 dark:text-slate-300" />
+                            <span className="font-semibold text-slate-700 dark:text-slate-200">
+                              Stashed
+                            </span>
+                            <span className="flex size-6 items-center justify-center rounded-full bg-slate-200/80 text-[11px] font-semibold text-slate-600 dark:bg-slate-700/80 dark:text-slate-300">
+                              {buckets.stashed.length}
+                            </span>
+                            <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
+                              {stashedOpen ? 'Hide' : 'Show'}
+                            </span>
+                            {stashedOpen ? (
+                              <ArchiveRestore className="size-4 text-slate-500 dark:text-slate-400" />
+                            ) : (
+                              <Archive className="size-4 text-slate-500 dark:text-slate-400" />
+                            )}
+                          </button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="px-3 pb-3 sm:px-4 sm:pb-4">
+                          {buckets.stashed.length > 0 ? (
+                            <ul className="overflow-hidden rounded-[15px] border border-slate-200/80 bg-white/90 divide-y divide-slate-200/80">
+                              {buckets.stashed.map((task) => renderTask(task))}
+                            </ul>
                           ) : (
-                            <Archive className="size-4 text-slate-500 dark:text-slate-400" />
+                            <div className="rounded-[15px] border border-dashed border-slate-300/70 bg-white/55 px-5 py-6 text-center text-sm text-slate-500">
+                              Nothing is stashed right now.
+                            </div>
                           )}
-                        </button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="px-3 pb-3 sm:px-4 sm:pb-4">
-                        {buckets.stashed.length > 0 ? (
-                          <ul className="overflow-hidden rounded-[15px] border border-slate-200/80 bg-white/90 divide-y divide-slate-200/80">
-                            {buckets.stashed.map((task) => renderTask(task))}
-                          </ul>
-                        ) : (
-                          <div className="rounded-[15px] border border-dashed border-slate-300/70 bg-white/55 px-5 py-6 text-center text-sm text-slate-500">
-                            Nothing is stashed right now.
-                          </div>
-                        )}
-                      </CollapsibleContent>
-                    </Collapsible>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
                   </aside>
 
-                  <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+                  <div className="order-3 min-w-0 lg:order-none lg:col-start-1 lg:row-start-1">
                     <SectionShell
                       title="Tasks"
                       count={buckets.tasks.length}
