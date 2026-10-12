@@ -1,6 +1,10 @@
 import { format } from 'date-fns'
 import type { TaskWithList } from '@/types'
-import { localDateKey } from './today.ts'
+import {
+  addCalendarDays,
+  calendarDaysBetween,
+  localDateKey,
+} from './today.ts'
 
 export const MAX_FOCUS_TASKS = 3
 export const DUE_SOON_DAYS = 7
@@ -10,26 +14,6 @@ export type HomeBuckets = {
   dueSoon: TaskWithList[]
   tasks: TaskWithList[]
   stashed: TaskWithList[]
-}
-
-function dateKeyToUtcDate(dateKey: string) {
-  const [year, month, day] = dateKey.split('-').map(Number)
-  return new Date(Date.UTC(year, month - 1, day))
-}
-
-export function addCalendarDays(dateKey: string, days: number) {
-  const date = dateKeyToUtcDate(dateKey)
-  date.setUTCDate(date.getUTCDate() + days)
-  return date.toISOString().slice(0, 10)
-}
-
-export function calendarDaysBetween(startDateKey: string, endDateKey: string) {
-  const millisecondsPerDay = 86_400_000
-  return Math.round(
-    (dateKeyToUtcDate(endDateKey).getTime() -
-      dateKeyToUtcDate(startDateKey).getTime()) /
-      millisecondsPerDay,
-  )
 }
 
 export function isDueSoon(task: TaskWithList, day = localDateKey()) {

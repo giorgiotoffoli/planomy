@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/sidebar'
 import {
   CheckCircle,
-  Clock,
+  CalendarClock,
   Home,
   SearchIcon,
 } from 'lucide-react'
@@ -30,9 +30,9 @@ const tabs: Tab[] = [
     icon: <Home />,
   },
   {
-    title: 'Scheduled',
-    link: '/scheduled',
-    icon: <Clock />,
+    title: 'Deadlines',
+    link: '/deadlines',
+    icon: <CalendarClock />,
   },
   {
     title: 'Completed',

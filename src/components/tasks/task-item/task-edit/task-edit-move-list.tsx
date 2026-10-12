@@ -10,12 +10,15 @@ export function TaskEditMoveList({
   taskId,
   lists,
   currentListId,
+  taskListId,
 }: {
   taskId: string
   lists: List[]
   currentListId: string | null
+  taskListId?: string | null
 }) {
-  const visibleLists = lists.filter((list) => list.id !== currentListId)
+  const sourceListId = taskListId ?? currentListId
+  const visibleLists = lists.filter((list) => list.id !== sourceListId)
 
   async function handleSelect(newListId: string | null) {
     try { await moveTask(taskId, newListId) }
@@ -24,7 +27,7 @@ export function TaskEditMoveList({
 
   return (
     <>
-      {currentListId && (
+      {sourceListId && (
         <DropdownMenuItem onSelect={() => void handleSelect(null)}>
           <Inbox />
           Inbox
