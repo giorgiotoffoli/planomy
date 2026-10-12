@@ -65,11 +65,23 @@ export async function setHomeSourceVisibility(
       : await supabase.rpc('set_home_list_visibility', {
           p_list_id: source.listId,
           p_visible: visible,
+          p_clear_category_overrides: true,
         })
 
   if (error) throw new Error(error.message)
+}
 
-  revalidatePath('/home')
+export async function setHomeCategoryVisibility(
+  categoryId: string,
+  visible: boolean,
+) {
+  const { supabase } = await authenticatedClient()
+  const { error } = await supabase.rpc('set_home_category_visibility', {
+    p_category_id: categoryId,
+    p_visible: visible,
+  })
+
+  if (error) throw new Error(error.message)
 }
 
 export async function showAllHomeSources() {
@@ -77,6 +89,4 @@ export async function showAllHomeSources() {
   const { error } = await supabase.rpc('show_all_home_sources')
 
   if (error) throw new Error(error.message)
-
-  revalidatePath('/home')
 }

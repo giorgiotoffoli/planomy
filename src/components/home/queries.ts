@@ -35,7 +35,9 @@ export async function getHomeData() {
       getUserCategories(),
       supabase
         .from('user_preferences')
-        .select('excluded_home_list_ids, show_unsorted_on_home')
+        .select(
+          'excluded_home_list_ids, excluded_home_category_ids, included_home_category_ids, show_unsorted_on_home',
+        )
         .eq('user_id', user.id)
         .maybeSingle(),
   ])
@@ -53,6 +55,8 @@ export async function getHomeData() {
     homePreferences: normalizeHomeSourcePreferences(
       homePreferences,
       mappedLists.map((list) => list.id),
+      categories.map((category) => category.id),
+      categories,
     ),
   }
 }
