@@ -942,47 +942,6 @@ export default function HomePlanner({
                       </SectionShell>
                     </div>
 
-                    <div className="order-4 lg:order-none">
-                      <Collapsible
-                        open={stashedOpen}
-                        onOpenChange={setStashedOpen}
-                        className="overflow-hidden rounded-2xl border border-slate-300/70 bg-slate-100/70 shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:border-slate-700/70 dark:bg-slate-800/60"
-                      >
-                        <CollapsibleTrigger asChild>
-                          <button
-                            type="button"
-                            className="flex w-full items-center gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
-                          >
-                            <Archive className="size-5 text-slate-600 dark:text-slate-300" />
-                            <span className="font-semibold text-slate-700 dark:text-slate-200">
-                              Stashed
-                            </span>
-                            <span className="flex size-6 items-center justify-center rounded-full bg-slate-200/80 text-[11px] font-semibold text-slate-600 dark:bg-slate-700/80 dark:text-slate-300">
-                              {buckets.stashed.length}
-                            </span>
-                            <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
-                              {stashedOpen ? 'Hide' : 'Show'}
-                            </span>
-                            {stashedOpen ? (
-                              <ArchiveRestore className="size-4 text-slate-500 dark:text-slate-400" />
-                            ) : (
-                              <Archive className="size-4 text-slate-500 dark:text-slate-400" />
-                            )}
-                          </button>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent className="px-3 pb-3 sm:px-4 sm:pb-4">
-                          {buckets.stashed.length > 0 ? (
-                            <ul className="overflow-hidden rounded-[15px] border border-slate-200/80 bg-white/90 divide-y divide-slate-200/80">
-                              {buckets.stashed.map((task) => renderTask(task))}
-                            </ul>
-                          ) : (
-                            <div className="rounded-[15px] border border-dashed border-slate-300/70 bg-white/55 px-5 py-6 text-center text-sm text-slate-500">
-                              Nothing is stashed right now.
-                            </div>
-                          )}
-                        </CollapsibleContent>
-                      </Collapsible>
-                    </div>
                   </aside>
 
                   <div className="order-3 min-w-0 lg:order-none lg:col-start-1 lg:row-start-1">
@@ -999,6 +958,46 @@ export default function HomePlanner({
                     >
                       {buckets.tasks.map((task) => renderTask(task))}
                     </SectionShell>
+
+                    <Collapsible
+                      open={stashedOpen}
+                      onOpenChange={setStashedOpen}
+                      className="mt-3 overflow-hidden rounded-2xl border border-slate-300/70 bg-slate-100/70 shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:border-slate-700/70 dark:bg-slate-800/60"
+                    >
+                      <CollapsibleTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                        >
+                          <Archive className="size-5 text-slate-600 dark:text-slate-300" />
+                          <span className="font-semibold text-slate-700 dark:text-slate-200">
+                            Stashed
+                          </span>
+                          <span className="flex size-6 items-center justify-center rounded-full bg-slate-200/80 text-[11px] font-semibold text-slate-600 dark:bg-slate-700/80 dark:text-slate-300">
+                            {buckets.stashed.length}
+                          </span>
+                          <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
+                            {stashedOpen ? 'Hide' : 'Show'}
+                          </span>
+                          {stashedOpen ? (
+                            <ArchiveRestore className="size-4 text-slate-500 dark:text-slate-400" />
+                          ) : (
+                            <Archive className="size-4 text-slate-500 dark:text-slate-400" />
+                          )}
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="px-3 pb-3 sm:px-4 sm:pb-4">
+                        {buckets.stashed.length > 0 ? (
+                          <ul className="overflow-hidden rounded-[15px] border border-slate-200/80 bg-white/90 divide-y divide-slate-200/80">
+                            {buckets.stashed.map((task) => renderTask(task))}
+                          </ul>
+                        ) : (
+                          <div className="rounded-[15px] border border-dashed border-slate-300/70 bg-white/55 px-5 py-6 text-center text-sm text-slate-500">
+                            Nothing is stashed right now.
+                          </div>
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
                   </div>
 
                 </div>
