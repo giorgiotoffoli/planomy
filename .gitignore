@@ -43,3 +43,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Codex skills are local development tooling, not application source.
+/.agents/skills/
