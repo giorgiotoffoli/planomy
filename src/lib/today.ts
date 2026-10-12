@@ -7,6 +7,33 @@ export function localDateKey(date = new Date()) {
   return `${year}-${month}-${day}`
 }
 
+function dateKeyToUtcDate(dateKey: string) {
+  const [year, month, day] = dateKey.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, day))
+}
+
+/** Calendar arithmetic on date-only values; it never converts a local instant to UTC. */
+export function addCalendarDays(dateKey: string, days: number) {
+  const date = dateKeyToUtcDate(dateKey)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
+export function calendarDaysBetween(startDateKey: string, endDateKey: string) {
+  const millisecondsPerDay = 86_400_000
+  return Math.round(
+    (dateKeyToUtcDate(endDateKey).getTime() -
+      dateKeyToUtcDate(startDateKey).getTime()) /
+      millisecondsPerDay,
+  )
+}
+
+/** Returns the Sunday at the end of the local calendar week for a date key. */
+export function calendarWeekEndKey(dateKey: string) {
+  const dayOfWeek = dateKeyToUtcDate(dateKey).getUTCDay()
+  return addCalendarDays(dateKey, (7 - dayOfWeek) % 7)
+}
+
 /** Calendar arithmetic on date-only values; it never converts a local instant to UTC. */
 export function previousDateKey(dateKey: string) {
   const [year, month, day] = dateKey.split('-').map(Number)

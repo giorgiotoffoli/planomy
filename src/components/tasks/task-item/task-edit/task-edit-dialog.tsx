@@ -57,7 +57,7 @@ export function TaskEditDialog({
               catch (error) { toast.error(error instanceof Error ? error.message : 'Task was not moved.'); return }
             }
 
-            if (newDueDate) {
+            if (newDueDate !== (task.due_date ?? '')) {
               handleOnDueDateChange(taskId, newDueDate)
             }
             if (notes !== (task.notes ?? '')) {

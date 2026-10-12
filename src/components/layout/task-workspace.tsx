@@ -126,7 +126,7 @@ export default function TaskWorkspace({
   const pathName = usePathname()
   const sortStorageKey = listId ? `planomy:list-sort:${listId}` : null
   const taskLoadVersion = useRef(0)
-  const taskView = pathName === '/completed' ? 'completed' : 'scheduled'
+  const taskView = pathName === '/completed' ? 'completed' : 'all'
 
   const refreshTasks = useCallback(async () => {
     if (!masterKey) return
@@ -238,7 +238,7 @@ export default function TaskWorkspace({
       pathName === '/all' ||
       (pathName === '/inbox' && selectedListId === null) ||
       (pathName.includes('/lists/') && selectedListId === listId) ||
-      (pathName === '/scheduled' && Boolean(dueDate))
+      (pathName === '/deadlines' && Boolean(dueDate))
 
     const selectedList =
       localLists.find((list) => list.id === selectedListId) ?? null
@@ -602,9 +602,6 @@ export default function TaskWorkspace({
           <p>Nothing in your inbox. Capture a task or enjoy the silence.</p>
         )}
 
-        {localTasks.length === 0 && pathName === '/scheduled' && (
-          <p>No upcoming tasks. Future you is chilling.</p>
-        )}
         {localTasks.length === 0 && pathName === '/all' && (
           <p>No tasks yet. Every good plan starts with one.</p>
         )}

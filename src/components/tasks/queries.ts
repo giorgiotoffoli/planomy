@@ -5,7 +5,7 @@ import { toTaskWithList } from '@/lib/supabase/domain-mappers'
 import { redirect } from 'next/navigation'
 
 export async function getTasks(
-  view: 'inbox' | 'scheduled' | 'all' | 'completed',
+  view: 'inbox' | 'deadlines' | 'all' | 'completed',
 ) {
   const supabase = await createClient()
 
@@ -27,7 +27,7 @@ export async function getTasks(
       query = query.is('list_id', null).is('completed', false)
       break
 
-    case 'scheduled':
+    case 'deadlines':
       query = query.not('due_date', 'is', null).is('completed', false)
       break
 
@@ -55,4 +55,8 @@ export async function getTasks(
   }
 
   return tasks.map(toTaskWithList)
+}
+
+export async function getDeadlineTasks() {
+  return getTasks('deadlines')
 }
