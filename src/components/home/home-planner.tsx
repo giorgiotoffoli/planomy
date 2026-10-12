@@ -928,7 +928,11 @@ export default function HomePlanner({
                       {buckets.focus.map((task) => renderTask(task))}
                     </SectionShell>
 
-                    <div className={!dueSoonHasTasks ? 'hidden lg:block' : undefined}>
+                    <div
+                      className={
+                        !dueSoonHasTasks ? 'hidden lg:block' : undefined
+                      }
+                    >
                       <SectionShell
                         title="Due Soon"
                         count={buckets.dueSoon.length}
@@ -941,7 +945,6 @@ export default function HomePlanner({
                         {buckets.dueSoon.map((task) => renderTask(task, true))}
                       </SectionShell>
                     </div>
-
                   </aside>
 
                   <div className="order-3 min-w-0 lg:order-none lg:col-start-1 lg:row-start-1">
@@ -999,7 +1002,6 @@ export default function HomePlanner({
                       </CollapsibleContent>
                     </Collapsible>
                   </div>
-
                 </div>
               )}
             </div>
