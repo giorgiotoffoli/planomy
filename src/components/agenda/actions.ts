@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { toAgendaBlock, toList } from '@/lib/supabase/domain-mappers'
 import { validateInterval } from '@/lib/agenda'
 import type { TimeBlock } from '@/types'
+import { getUserCategories } from '@/components/categories/queries'
 
 async function authenticatedClient() {
   const supabase = await createClient()
@@ -22,14 +23,15 @@ export async function getAgendaData(startsAt: string, endsAt: string) {
   const { start, end } = validateInterval(startsAt, endsAt)
   if (end - start > 27 * 60 * 60_000) throw new Error('Request one local day at a time.')
   const { supabase, user } = await authenticatedClient()
-  const [blocks, lists] = await Promise.all([
+  const [blocks, lists, categories] = await Promise.all([
     supabase.from('task_time_blocks').select('*, task:tasks!task_time_blocks_owned_task(*, list:lists(id, title, emoji, default_view))')
       .eq('user_id', user.id).lt('starts_at', endsAt).gt('ends_at', startsAt).order('starts_at'),
     supabase.from('lists').select('*').eq('user_id', user.id),
+    getUserCategories(),
   ])
   if (blocks.error) throw databaseError(blocks.error)
   if (lists.error) throw databaseError(lists.error)
-  return { blocks: blocks.data.map(toAgendaBlock), lists: lists.data.map(toList) }
+  return { blocks: blocks.data.map(toAgendaBlock), lists: lists.data.map(toList), categories }
 }
 
 export async function getTaskTimeBlock(taskId: string) {

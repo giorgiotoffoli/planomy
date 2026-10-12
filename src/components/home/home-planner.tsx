@@ -36,11 +36,10 @@ import {
   getHomeBuckets,
   MAX_FOCUS_TASKS,
 } from '@/lib/home'
-import type { List, TaskWithList } from '@/types'
+import type { Category, List, TaskWithList } from '@/types'
 import { getHomeData } from './queries'
 import { setTaskFocused, setTaskStashed } from './actions'
 import {
-  createTask as createTaskAction,
   updateTaskCompleted as updateTaskCompletedAction,
 } from '@/components/tasks/actions'
 import {
@@ -107,12 +106,19 @@ function decryptHomeData(data: HomeData, masterKey: Uint8Array) {
           : task.list,
       })),
     ),
-  ]).then(([lists, tasks]) => ({ lists, tasks }))
+    Promise.all(
+      data.categories.map(async (category) => ({
+        ...category,
+        title: await decryptString(category.title, masterKey),
+      })),
+    ),
+  ]).then(([lists, tasks, categories]) => ({ lists, tasks, categories }))
 }
 
 type HomeTaskRowProps = {
   task: TaskWithList
   lists: List[]
+  categories: Category[]
   deadlineLabel?: string | null
   deadlineTime?: string | null
   onComplete: (taskId: string, completed: boolean) => void
@@ -128,6 +134,7 @@ type HomeTaskRowProps = {
 function HomeTaskRow({
   task,
   lists,
+  categories,
   deadlineLabel,
   deadlineTime,
   onComplete,
@@ -145,6 +152,7 @@ function HomeTaskRow({
     <TaskItem
       task={task}
       lists={lists}
+      categories={categories}
       currentListId={null}
       highlighted={false}
       shouldHideCompleted
@@ -294,6 +302,7 @@ export default function HomePlanner({
   const dayRef = useRef(day)
   const [tasks, setTasks] = useState<TaskWithList[] | null>(null)
   const [lists, setLists] = useState<List[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [sortOption, setSortOption] = useState<TaskSortOption>('manual')
   const [exitingTaskIds, setExitingTaskIds] = useState<Set<string>>(
@@ -307,6 +316,7 @@ export default function HomePlanner({
     const decryptedData = await decryptHomeData(data, key)
     setLists(decryptedData.lists)
     setTasks(decryptedData.tasks)
+    setCategories(decryptedData.categories)
   }, [])
 
   const load = useCallback(async () => {
@@ -595,44 +605,13 @@ export default function HomePlanner({
     }
   }
 
-  async function handleCreate(
-    title: string,
-    dueDate: string,
-    notes: string,
-    listId: string | null,
-  ) {
-    if (!masterKey) return
-
-    try {
-      const saved = await createTaskAction(
-        await encryptString(title, masterKey),
-        dueDate,
-        notes ? await encryptString(notes, masterKey) : '',
-        listId,
-      )
-
-      if (!saved) throw new Error('Task was not created.')
-
-      const selectedList = lists.find((list) => list.id === listId) ?? null
-      setTasks((current) =>
-        current
-          ? [{ ...saved, title, notes, list: selectedList }, ...current]
-          : current,
-      )
-      notifyTasksChanged()
-    } catch (cause) {
-      toast.error(
-        cause instanceof Error ? cause.message : 'Task was not created.',
-      )
-    }
-  }
-
   function renderTask(task: TaskWithList, includeDeadline = false) {
     return (
       <HomeTaskRow
         key={task.id}
         task={task}
         lists={lists}
+        categories={categories}
         deadlineLabel={
           includeDeadline ? getDeadlineLabel(task.due_date, day) : null
         }
@@ -685,8 +664,8 @@ export default function HomePlanner({
               </label>
               <CreateTaskDialog
                 lists={lists}
+                categories={categories}
                 listId={null}
-                handleOnCreate={handleCreate}
               >
                 <Button className="h-10 shrink-0 rounded-xl bg-blue-500 px-4 shadow-[0_8px_18px_rgba(37,99,235,0.22)] hover:bg-blue-600">
                   <Plus />

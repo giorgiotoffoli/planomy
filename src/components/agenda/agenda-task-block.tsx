@@ -1,21 +1,17 @@
 'use client'
 
 import { useDraggable } from '@dnd-kit/core'
-import { Clock, GripVertical } from 'lucide-react'
-import { DialogTrigger } from '@/components/ui/dialog'
+import { GripVertical } from 'lucide-react'
 import { TaskEditDialog } from '@/components/tasks/task-item/task-edit/task-edit-dialog'
 import { TaskCheckbox } from '@/components/tasks/task-item/task-checkbox'
-import { renameTask, updateTaskCompleted, updateTaskDueDate, updateTaskNotes } from '@/components/tasks/mutations'
-import { useE2EE } from '@/components/e2ee/e2ee-provider'
-import { encryptString } from '@/lib/crypto/e2ee'
+import { updateTaskCompleted } from '@/components/tasks/mutations'
 import { MINUTE, PIXELS_PER_MINUTE, timeLabel } from '@/lib/agenda'
 import type { AgendaBlock } from '@/types'
 import { toast } from 'sonner'
 import { useAgenda } from './agenda-provider'
 
 export default function AgendaTaskBlock({ item, dayStart }: { item: { block: AgendaBlock; start: number; end: number; column: number; columns: number }; dayStart: number }) {
-  const { lists, edit, busy } = useAgenda()
-  const { masterKey } = useE2EE()
+  const { lists, categories, busy } = useAgenda()
   const { block } = item
   const { task } = block
   const { setNodeRef: setMoveRef, setActivatorNodeRef, attributes: moveAttributes, listeners: moveListeners, isDragging: isMoving } = useDraggable({ id: `agenda-block:${task.id}`, data: { kind: 'agenda-block', task, block }, disabled: busy.has(task.id) })
@@ -29,13 +25,9 @@ export default function AgendaTaskBlock({ item, dayStart }: { item: { block: Age
     <div className="flex min-w-0 items-center gap-1 px-1 pt-0.5">
       <button ref={setActivatorNodeRef} {...moveAttributes} {...moveListeners} aria-label={`Move scheduled time for ${task.title}`} className="shrink-0 touch-none cursor-grab rounded focus-visible:ring-2"><GripVertical className="size-3" /></button>
       <TaskCheckbox task={task} handleOnComplete={(id, completed) => void change(() => updateTaskCompleted(id, completed))} />
-      <TaskEditDialog task={task} lists={lists} currentListId={task.list_id}
-        handleOnRename={(id, title) => void change(async () => { if (!masterKey) throw new Error('Unlock your vault first.'); await renameTask(id, await encryptString(title, masterKey)) })}
-        handleOnNotesChange={(id, notes) => void change(async () => { if (!masterKey) throw new Error('Unlock your vault first.'); await updateTaskNotes(id, await encryptString(notes, masterKey)) })}
-        handleOnDueDateChange={(id, date) => void change(() => updateTaskDueDate(id, date))}>
-        <DialogTrigger asChild><button className={`min-w-0 flex-1 truncate text-left text-xs font-medium hover:underline ${task.completed ? 'line-through' : ''}`} aria-label={`Edit task: ${task.title}`}>{task.title}</button></DialogTrigger>
+      <TaskEditDialog task={task} lists={lists} categories={categories} currentListId={task.list_id}>
+        <button className={`min-w-0 flex-1 truncate text-left text-xs font-medium hover:underline ${task.completed ? 'line-through' : ''}`} aria-label={`Edit task: ${task.title}`}>{task.title}</button>
       </TaskEditDialog>
-      <button className="shrink-0 rounded focus-visible:ring-2" aria-label={`Edit scheduled time for ${task.title}`} onClick={() => edit(task)}><Clock className="size-3.5" /></button>
     </div>
     {height >= 45 && <p className="truncate px-2 text-[10px] opacity-75">{timeLabel(Date.parse(block.starts_at))} · {task.list?.title ?? 'Inbox'}</p>}
     {height >= 70 && task.notes && <p className="line-clamp-2 px-2 text-xs opacity-75">{task.notes}</p>}

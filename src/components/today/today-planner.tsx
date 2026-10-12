@@ -9,7 +9,6 @@ import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
 import { clearTaskFocusOnCompletion, localDateKey, previousDateKey } from '@/lib/today'
 import { getTodayData, removeTaskFromDay, selectTaskForDay, setTaskFocused } from './actions'
-import { createTask as createTaskAction } from '@/components/tasks/actions'
 import { TASKS_CHANGED, deleteTask, notifyTasksChanged, renameTask, updateTaskCompleted, updateTaskDueDate, updateTaskNotes } from '@/components/tasks/mutations'
 import Header from '@/components/layout/header/app-header'
 import { TaskItem } from '@/components/tasks/task-item/task-item'
@@ -161,28 +160,8 @@ export default function TodayPlanner({ encryptedLists }: { encryptedLists: List[
     />
   }
 
-  async function createAndSelect(title: string, dueDate: string, notes: string, listId: string | null) {
-    if (!masterKey) return
-    try {
-      // Quick Capture is a composite mutation. Do not broadcast task creation
-      // until its Today selection has either completed or failed.
-      const saved = await createTaskAction(await encryptString(title, masterKey), dueDate, notes ? await encryptString(notes, masterKey) : '', listId)
-      if (!saved) throw new Error('Task was not created')
-      const list = lists.find(item => item.id === listId) ?? null
-      const decryptedTask = { ...saved, title, notes, list } as TaskWithList
-      setData(current => current && ({ ...current, tasks: [decryptedTask, ...current.tasks] }))
-      try {
-        await selectTaskForDay(saved.id, day)
-        setData(current => current && ({ ...current, selections: [...current.selections, { task_id: saved.id, selected_date: day, focused: false }] }))
-        setRetrySelection(null)
-      } catch { setRetrySelection(saved.id) }
-      // This refresh is now guaranteed to observe the final composite state.
-      notifyTasksChanged()
-    } catch (cause) { toast.error(cause instanceof Error ? cause.message : 'Task was not created') }
-  }
-
   return <>
-    <Header headerTitle="Today" taskCount={chosen.length} rightSlot={<CreateTaskDialog lists={lists} listId={null} handleOnCreate={createAndSelect}><Button size="sm"><Plus /> Quick capture</Button></CreateTaskDialog>} />
+    <Header headerTitle="Today" taskCount={chosen.length} rightSlot={<CreateTaskDialog lists={lists} listId={null}><Button size="sm"><Plus /> Quick capture</Button></CreateTaskDialog>} />
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 overflow-y-auto pb-20">
       <div><h1 className="text-2xl font-semibold">{format(new Date(`${day}T12:00:00`), 'EEEE, MMMM d')}</h1><p className="text-sm text-muted-foreground">Your personal workspace for today</p></div>
       {retrySelection && <div role="alert" className="flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"><span>The task was created, but could not be added to Today.</span><Button size="sm" onClick={() => retryAdd(retrySelection)}>Retry</Button></div>}

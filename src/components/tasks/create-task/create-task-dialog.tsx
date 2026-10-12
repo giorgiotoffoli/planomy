@@ -1,75 +1,33 @@
 'use client'
 
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogFooter,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { ReactNode, useState } from 'react'
-import CreateTaskForm from './create-task-form'
-import { List } from '@/types'
+import type { ReactNode } from 'react'
+import type { Category, List } from '@/types'
+import { TaskDialog } from '../task-form/task-dialog'
 
 interface CreateTaskDialogProps {
   children: ReactNode
   lists: List[]
-  handleOnCreate: (
-    title: string,
-    dueDate: string,
-    notes: string,
-    listId: string | null,
-  ) => void
+  categories?: Category[]
   listId: string | null
+  categoryId?: string | null
 }
 
 export default function CreateTaskDialog({
   children,
   lists,
-  handleOnCreate,
+  categories = [],
   listId,
+  categoryId = null,
 }: CreateTaskDialogProps) {
-  const [open, setOpen] = useState(false)
-
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-sm">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-
-            const formData = new FormData(e.currentTarget)
-
-            const title = formData.get('title') as string
-            const dueDate = formData.get('due_date') as string
-            const notes = formData.get('notes') as string
-
-            // Lists
-            const selectedValue = formData.get('list_id') as string
-            const selectedListId =
-              selectedValue === 'inbox' ? null : selectedValue
-
-            handleOnCreate(title, dueDate, notes, selectedListId)
-
-            setOpen(false)
-          }}
-        >
-          {/* Task form */}
-          <CreateTaskForm lists={lists} currentListId={listId} />
-          <br />
-          {/* Rest of dialog styling */}
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button type="submit" className="bg-blue-500 hover:bg-blue-700">
-              Add Task
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <TaskDialog
+      mode="create"
+      lists={lists}
+      categories={categories}
+      listId={listId}
+      categoryId={categoryId}
+    >
+      {children}
+    </TaskDialog>
   )
 }

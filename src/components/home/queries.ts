@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { toList, toTaskWithList } from '@/lib/supabase/domain-mappers'
+import { getUserCategories } from '@/components/categories/queries'
 
 export async function getHomeData() {
   const supabase = await createClient()
@@ -12,8 +13,11 @@ export async function getHomeData() {
 
   if (!user) redirect('/auth')
 
-  const [{ data: tasks, error: tasksError }, { data: lists, error: listsError }] =
-    await Promise.all([
+  const [
+    { data: tasks, error: tasksError },
+    { data: lists, error: listsError },
+    categories,
+  ] = await Promise.all([
       supabase
         .from('tasks')
         .select('*, list:lists (title, id, emoji, default_view)')
@@ -26,6 +30,7 @@ export async function getHomeData() {
         .select('*')
         .eq('user_id', user.id)
         .order('title', { ascending: true }),
+      getUserCategories(),
     ])
 
   if (tasksError) throw new Error(tasksError.message)
@@ -34,5 +39,6 @@ export async function getHomeData() {
   return {
     tasks: tasks.map(toTaskWithList),
     lists: lists.map(toList),
+    categories,
   }
 }

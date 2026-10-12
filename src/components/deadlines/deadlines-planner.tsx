@@ -33,7 +33,6 @@ import {
   updateTaskNotes,
 } from '@/components/tasks/mutations'
 import {
-  createTask as createTaskAction,
   updateTaskCompleted,
 } from '@/components/tasks/actions'
 import { setTaskFocused, setTaskStashed } from '@/components/home/actions'
@@ -448,46 +447,11 @@ export default function DeadlinesPlanner({
     }
   }
 
-  async function handleCreate(
-    title: string,
-    dueDate: string,
-    notes: string,
-    listId: string | null,
-  ) {
-    if (!masterKey) return
-
-    try {
-      const saved = await createTaskAction(
-        await encryptString(title, masterKey),
-        dueDate,
-        notes ? await encryptString(notes, masterKey) : '',
-        listId,
-      )
-      if (!saved) throw new Error('Task was not created.')
-
-      if (dueDate) {
-        const selectedList = lists.find((list) => list.id === listId) ?? null
-        const createdTask: TaskWithList = {
-          ...saved,
-          title,
-          notes,
-          list: selectedList,
-        }
-        setTasks((current) => (current ? [createdTask, ...current] : [createdTask]))
-      }
-      notifyTasksChanged()
-    } catch (cause) {
-      toast.error(
-        cause instanceof Error ? cause.message : 'Task was not created.',
-      )
-    }
-  }
-
   const taskDialog = (
     <CreateTaskDialog
       lists={lists}
+      categories={categories}
       listId={null}
-      handleOnCreate={handleCreate}
     >
       <Button className="h-10 shrink-0 rounded-xl bg-blue-500 px-4 shadow-[0_8px_18px_rgba(37,99,235,0.22)] hover:bg-blue-600">
         <Plus />
@@ -555,8 +519,8 @@ export default function DeadlinesPlanner({
                 </Button>
                 <CreateTaskDialog
                   lists={lists}
+                  categories={categories}
                   listId={null}
-                  handleOnCreate={handleCreate}
                 >
                   <Button variant="outline" className="rounded-xl">
                     <Plus /> Add task

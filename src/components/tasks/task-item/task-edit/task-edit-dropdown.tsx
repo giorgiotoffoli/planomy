@@ -11,12 +11,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Category, List, TaskWithList } from '@/types'
 import { ReactNode } from 'react'
+import { useState } from 'react'
 import { TaskEditDialog } from './task-edit-dialog'
-import { Archive, ArchiveRestore, Check, Clock, Edit, ListEnd, Tag, Star } from 'lucide-react'
+import { Archive, ArchiveRestore, Check, Edit, ListEnd, Tag, Star } from 'lucide-react'
 import { TaskEditMoveList } from './task-edit-move-list'
 import { TaskDeleteButton } from './task-delete-button'
-import { DialogTrigger } from '@radix-ui/react-dialog'
-import { useAgenda } from '@/components/agenda/agenda-provider'
 import { toast } from 'sonner'
 
 interface TaskEditDropdownProps {
@@ -51,28 +50,31 @@ export function TaskEditDropdown({
   categories,
   handleOnChangeCategory,
 }: TaskEditDropdownProps) {
-  const agenda = useAgenda()
+  const [editOpen, setEditOpen] = useState(false)
+  const listCategories = categories?.filter((category) => category.list_id === task.list_id)
+
   return (
     <>
       <TaskEditDialog
         task={task}
         lists={lists}
+        categories={categories}
         currentListId={currentListId}
+        open={editOpen}
+        onOpenChange={setEditOpen}
         handleOnDueDateChange={handleOnDueDateChange}
         handleOnNotesChange={handleOnNotesChange}
         handleOnRename={handleOnRename}
-      >
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DialogTrigger asChild>
-              <DropdownMenuItem>
-                <Edit />
-                Edit
-              </DropdownMenuItem>
-            </DialogTrigger>
+      />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+            <Edit />
+            Edit
+          </DropdownMenuItem>
 
-            <DropdownMenuSub>
+          <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <ListEnd />
                 Move
@@ -86,10 +88,10 @@ export function TaskEditDropdown({
                   taskListId={task.list_id}
                 />
               </DropdownMenuSubContent>
-            </DropdownMenuSub>
+          </DropdownMenuSub>
 
-            {categories &&
-              categories.length > 0 &&
+          {listCategories &&
+              listCategories.length > 0 &&
               handleOnChangeCategory &&
               task.list_id && (
               <DropdownMenuSub>
@@ -112,7 +114,7 @@ export function TaskEditDropdown({
                     {task.category_id === null && <Check />}
                     Uncategorized
                   </DropdownMenuItem>
-                  {categories.map((category) => (
+                  {listCategories.map((category) => (
                     <DropdownMenuItem
                       key={category.id}
                       onSelect={() =>
@@ -132,37 +134,34 @@ export function TaskEditDropdown({
                   ))}
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
-            )}
+          )}
 
-            {!task.completed && handleOnFocus && (
+          {!task.completed && handleOnFocus && (
               <DropdownMenuItem
                 onSelect={() => handleOnFocus(task.id, !task.focused)}
               >
                 <Star />
                 {task.focused ? 'Remove from Focus' : 'Add to Focus'}
               </DropdownMenuItem>
-            )}
+          )}
 
-            {!task.completed && handleOnStash && (
+          {!task.completed && handleOnStash && (
               <DropdownMenuItem
                 onSelect={() => handleOnStash(task.id, !task.stashed)}
               >
                 {task.stashed ? <ArchiveRestore /> : <Archive />}
                 {task.stashed ? 'Return to Home' : 'Stash'}
               </DropdownMenuItem>
-            )}
+          )}
 
-            <DropdownMenuItem disabled={task.id.startsWith('temp-')} onSelect={() => setTimeout(() => agenda.edit(task), 0)}><Clock /> Schedule time</DropdownMenuItem>
+          <DropdownMenuSeparator />
 
-            <DropdownMenuSeparator />
-
-            <TaskDeleteButton
-              taskId={task.id}
-              handleOnDelete={handleOnDelete}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </TaskEditDialog>
+          <TaskDeleteButton
+            taskId={task.id}
+            handleOnDelete={handleOnDelete}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
   )
 }

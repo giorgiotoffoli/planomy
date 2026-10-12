@@ -68,7 +68,7 @@ function Timeline() {
       <p className="text-xs text-muted-foreground">{Intl.DateTimeFormat().resolvedOptions().timeZone} · All plans & Inbox</p>
       {loading && <p role="status" className="text-xs text-muted-foreground">Loading agenda…</p>}
       {error && <div role="alert" className="text-sm text-destructive">{error}<Button size="sm" variant="outline" onClick={() => void reload()}>Retry</Button></div>}
-      {!loading && !error && blocks.length === 0 && <p className="text-xs text-muted-foreground">Drag a task here, or choose “Schedule time” in its menu.</p>}
+      {!loading && !error && blocks.length === 0 && <p className="text-xs text-muted-foreground">Drag a task here, or open Edit on a task to add Plan time.</p>}
     </div>
     <div ref={scroll} className="min-h-0 flex-1 overflow-y-auto overscroll-contain" tabIndex={0} aria-label="Daily timeline">
       <div className="relative mr-2" style={{ height: minutes * PIXELS_PER_MINUTE }}>

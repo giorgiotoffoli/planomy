@@ -55,3 +55,17 @@ export interface TimeBlock {
 export interface AgendaBlock extends TimeBlock {
   task: TaskWithList
 }
+
+export interface CreateTaskInput {
+  title: string
+  notes: string
+  listId: string | null
+  categoryId: string | null
+  dueDate: string | null
+  dueTime: string | null
+  focused: boolean
+}
+
+export interface UpdateTaskInput extends CreateTaskInput {
+  taskId: string
+}

@@ -17,6 +17,7 @@ function notifying<Args extends unknown[], Result>(operation: (...args: Args) =>
   }
 }
 export const createTask = notifying(actions.createTask)
+export const updateTask = notifying(actions.updateTask)
 export const updateTaskCompleted = notifying(actions.updateTaskCompleted)
 export const renameTask = notifying(actions.renameTask)
 export const updateTaskDueDate = notifying(actions.updateTaskDueDate)

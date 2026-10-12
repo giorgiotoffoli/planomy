@@ -8,11 +8,10 @@ import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString } from '@/lib/crypto/e2ee'
 import { dayBounds, dragIntent, MINUTE, snapInstant, timeLabel } from '@/lib/agenda'
 import { localDateKey } from '@/lib/today'
-import type { AgendaBlock, List, TaskWithList, TimeBlock } from '@/types'
+import type { AgendaBlock, Category, List, TaskWithList, TimeBlock } from '@/types'
 import { getAgendaData, removeTimeBlock, saveTimeBlock } from './actions'
 import { TASKS_CHANGED } from '@/components/tasks/mutations'
 import AgendaPanel from './agenda-panel'
-import ScheduleDialog from './schedule-dialog'
 
 export type AgendaDrag = {
   kind: 'task' | 'agenda-block' | 'agenda-resize'
@@ -28,7 +27,7 @@ type AgendaContextValue = {
   reload: () => Promise<void>
   save: (task: TaskWithList, start: number, end: number) => Promise<boolean>
   remove: (taskId: string) => Promise<boolean>
-  edit: (task: TaskWithList) => void
+  categories: Category[]
   busy: Set<string>
   preview: { task: TaskWithList; start: number; end: number } | null
 }
@@ -44,11 +43,9 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const [open, setOpenState] = useState(false)
   const [day, setDay] = useState(() => localDateKey())
-  const [loaded, setLoaded] = useState<{ day: string; blocks: AgendaBlock[]; lists: List[] }>({ day: '', blocks: [], lists: [] })
+  const [loaded, setLoaded] = useState<{ day: string; blocks: AgendaBlock[]; lists: List[]; categories: Category[] }>({ day: '', blocks: [], lists: [], categories: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [editing, setEditing] = useState<TaskWithList | null>(null)
-  const returnFocus = useRef<HTMLElement | null>(null)
   const [busy, setBusy] = useState(new Set<string>())
   const pending = useRef(new Set<string>())
   const generation = useRef(0)
@@ -87,15 +84,19 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
             : block.task.list.emoji,
         } : null,
       } })))
-      const lists = await Promise.all(result.lists.map(async list => ({
+        const lists = await Promise.all(result.lists.map(async list => ({
         ...list,
         title: await decryptString(list.title, masterKey),
         emoji: list.emoji ? await decryptString(list.emoji, masterKey) : list.emoji,
-      })))
+        })))
+        const categories = await Promise.all(result.categories.map(async category => ({
+          ...category,
+          title: await decryptString(category.title, masterKey),
+        })))
       if (request === generation.current) {
         setLoaded(current => ({ day, lists, blocks: current.day === day
           ? [...blocks.filter(block => !pending.current.has(block.task_id)), ...current.blocks.filter(block => pending.current.has(block.task_id))]
-          : blocks }))
+          : blocks, categories }))
         setError(null)
       }
     } catch (cause) {
@@ -163,11 +164,7 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
     setDrag(null); setPreview(null)
   }
 
-  function edit(task: TaskWithList) {
-    returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    setEditing(task)
-  }
-  return <AgendaContext.Provider value={{ open, setOpen, day, setDay, blocks: loaded.day === day ? loaded.blocks : [], lists: loaded.lists, loading: loading || (loaded.day !== day && !error), error, reload, save, remove, edit, busy, preview }}>
+  return <AgendaContext.Provider value={{ open, setOpen, day, setDay, blocks: loaded.day === day ? loaded.blocks : [], lists: loaded.lists, categories: loaded.categories, loading: loading || (loaded.day !== day && !error), error, reload, save, remove, busy, preview }}>
     <DndContext sensors={sensors} collisionDetection={args => {
       // Pointer drags must actually enter a target; keyboard drags use nearest target.
       const candidates = args.droppableContainers.filter(container => dragIntent(args.active.data.current ?? {}, container.data.current) !== 'none')
@@ -179,9 +176,5 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
       </div>
       <DragOverlay dropAnimation={null}>{drag && <div className="max-w-60 rounded-lg border bg-background p-3 text-sm shadow-lg"><p className="truncate font-medium">{drag.task.title}</p>{preview && <p className="text-xs text-muted-foreground">{timeLabel(preview.start)} – {timeLabel(preview.end)}</p>}</div>}</DragOverlay>
     </DndContext>
-    {editing && <ScheduleDialog key={editing.id} task={editing} onClose={() => setEditing(null)} restoreFocus={() => {
-      if (returnFocus.current?.isConnected) returnFocus.current.focus()
-      document.querySelector<HTMLButtonElement>('[data-agenda-toggle]')?.focus()
-    }} />}
   </AgendaContext.Provider>
 }

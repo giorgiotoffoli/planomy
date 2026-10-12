@@ -1,117 +1,46 @@
 'use client'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { List, TaskWithList } from '../../../../types'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { TaskDatePicker } from '../../task-date-picker'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { ReactNode } from 'react'
-import { TaskTitle } from '../task-title'
-import { toast } from 'sonner'
-import TaskListDropdown from '../../task-list-dropdown'
-import { moveTask } from '../../mutations'
+
+import type { ReactNode } from 'react'
+import type { Category, List, TaskWithList } from '@/types'
+import { TaskDialog } from '../../task-form/task-dialog'
 
 interface TaskEditDialogProps {
   task: TaskWithList
   lists: List[]
-  currentListId: string | null
-  children: ReactNode
-  handleOnDueDateChange: (taskId: string, newDueDate: string) => void
-  handleOnNotesChange: (taskId: string, notes: string) => void
-  handleOnRename: (taskId: string, newName: string) => void
+  currentListId?: string | null
+  categories?: Category[]
+  children?: ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  focusPlanTime?: boolean
+  // Optional compatibility props for callers that still perform their own
+  // optimistic row updates. The unified dialog persists all fields itself.
+  handleOnDueDateChange?: (taskId: string, newDueDate: string) => void
+  handleOnNotesChange?: (taskId: string, notes: string) => void
+  handleOnRename?: (taskId: string, newName: string) => void
 }
 
 export function TaskEditDialog({
   task,
   lists,
-  currentListId,
+  categories = [],
   children,
-  handleOnDueDateChange,
-  handleOnNotesChange,
-  handleOnRename,
+  open,
+  onOpenChange,
+  focusPlanTime = false,
 }: TaskEditDialogProps) {
   return (
-    <Dialog>
+    <TaskDialog
+      mode="edit"
+      task={task}
+      lists={lists}
+      categories={categories}
+      listId={task.list_id}
+      focusPlanTime={focusPlanTime}
+      open={open}
+      onOpenChange={onOpenChange}
+    >
       {children}
-      <DialogContent className="sm:max-w-md">
-        <form
-          onSubmit={async (e) => {
-            e.preventDefault()
-            const formData = new FormData(e.currentTarget)
-
-            const taskId = formData.get('id') as string
-            const newDueDate = formData.get('due_date') as string
-            const notes = formData.get('notes') as string
-            const selectedValue = formData.get('list_id') as string
-            const newListId = selectedValue === 'inbox' ? null : selectedValue
-
-            if (newListId !== task.list_id) {
-              try { await moveTask(task.id, newListId) }
-              catch (error) { toast.error(error instanceof Error ? error.message : 'Task was not moved.'); return }
-            }
-
-            if (newDueDate !== (task.due_date ?? '')) {
-              handleOnDueDateChange(taskId, newDueDate)
-            }
-            if (notes !== (task.notes ?? '')) {
-              handleOnNotesChange(taskId, notes)
-            }
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-1">
-              <span className="shrink-0">Editing</span>
-              <TaskTitle task={task} handleOnRename={handleOnRename} />
-            </DialogTitle>
-            <DialogDescription className="opacity-75 text-sm">
-              {task.notes}
-            </DialogDescription>
-          </DialogHeader>
-          <FieldGroup className="gap-4">
-            <input type="hidden" name="id" value={task.id} />
-            <Field orientation="horizontal">
-              <TaskDatePicker taskDate={task.due_date} />
-            </Field>
-            <Field orientation="horizontal">
-              <FieldLabel htmlFor="notes" className="w-1/2">
-                Notes
-              </FieldLabel>
-              <Textarea
-                id="notes"
-                name="notes"
-                placeholder="Task notes..."
-                defaultValue={task.notes}
-              />
-            </Field>
-          </FieldGroup>
-          <FieldGroup>
-            <Field>
-              <FieldLabel>List</FieldLabel>
-              <TaskListDropdown
-                lists={lists}
-                currentListId={currentListId}
-                task={task}
-              />
-            </Field>
-          </FieldGroup>
-          <DialogFooter>
-            <Button
-              variant="default"
-              type="submit"
-              className="bg-blue-500 hover:bg-sky-500 mt-3"
-            >
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    </TaskDialog>
   )
 }

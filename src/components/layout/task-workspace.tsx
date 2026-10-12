@@ -13,7 +13,6 @@ import TaskList from '../lists/task-list'
 import TaskBoard from '../boards/task-board'
 import {
   TASKS_CHANGED,
-  createTask,
   deleteTask,
   notifyTasksChanged,
   renameTask,
@@ -226,89 +225,6 @@ export default function TaskWorkspace({
     }
   }, [masterKey, tasks, lists, categories, headerTitle, headerEmoji])
 
-  async function handleOnCreate(
-    title: string,
-    dueDate: string,
-    notes: string,
-    selectedListId: string | null,
-  ) {
-    const tempId = `temp-${crypto.randomUUID()}`
-
-    const shouldShowOnCurrentPage =
-      pathName === '/all' ||
-      (pathName === '/inbox' && selectedListId === null) ||
-      (pathName.includes('/lists/') && selectedListId === listId) ||
-      (pathName === '/deadlines' && Boolean(dueDate))
-
-    const selectedList =
-      localLists.find((list) => list.id === selectedListId) ?? null
-
-    const tempTask: TaskWithList = {
-      id: tempId,
-      title,
-      due_date: dueDate,
-      due_time: null,
-      notes,
-      list_id: selectedListId,
-      user_id: 'temp',
-      completed: false,
-      focused: false,
-      stashed: false,
-      category_id: null,
-      list: selectedList,
-      position: 0,
-      created_at: null,
-    }
-
-    if (shouldShowOnCurrentPage) {
-      setLocalTasks((previousTasks) => [tempTask, ...previousTasks])
-    }
-
-    try {
-      if (!masterKey) {
-        throw new Error('Encryption key is locked.')
-      }
-
-      const encryptedTitle = await encryptString(title, masterKey)
-      const encryptedNotes = notes ? await encryptString(notes, masterKey) : ''
-
-      const savedTask = await createTask(
-        encryptedTitle,
-        dueDate,
-        encryptedNotes,
-        selectedListId,
-      )
-
-      if (!savedTask) {
-        throw new Error('Task was not created')
-      }
-
-      // Only replace the optimistic task if one was displayed.
-      if (shouldShowOnCurrentPage) {
-        setLocalTasks((previousTasks) =>
-          previousTasks.map((task) =>
-            task.id === tempId
-              ? {
-                  ...savedTask,
-                  title,
-                  notes,
-                  list_id: selectedListId,
-                  list: selectedList,
-                }
-              : task,
-          ),
-        )
-      }
-    } catch (error) {
-      if (shouldShowOnCurrentPage) {
-        setLocalTasks((previousTasks) =>
-          previousTasks.filter((task) => task.id !== tempId),
-        )
-      }
-
-      console.error(error)
-    }
-  }
   async function handleOnComplete(taskId: string, isCompleted: boolean) {
     const previousTasks = localTasks
 
@@ -671,9 +587,9 @@ export default function TaskWorkspace({
         </div>
       </div>
       <CreateTaskButton
-        handleOnCreate={handleOnCreate}
         listId={listId}
         lists={localLists}
+        categories={localCategories}
       />
     </>
   )
