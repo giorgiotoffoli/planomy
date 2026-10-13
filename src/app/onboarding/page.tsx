@@ -11,15 +11,15 @@ export default async function OnboardingPage() {
 
   return (
     <E2EEProvider userId={state.userId}>
-      <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-50 p-4">
+      <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4 text-foreground">
         <div className="pointer-events-none absolute left-[-10%] top-[-10%] size-[40vw] rounded-full bg-blue-400/15 blur-[100px]" />
         <div className="pointer-events-none absolute bottom-[-10%] right-[-10%] size-[40vw] rounded-full bg-blue-600/10 blur-[100px]" />
         <div className="relative z-10 w-full max-w-xl">
-          <div className="mb-6 flex items-center justify-center gap-2 text-xl font-semibold text-slate-950">
+          <div className="mb-6 flex items-center justify-center gap-2 text-xl font-semibold text-foreground">
             <PlanomyIcon size={26} />
             <span>planomy</span>
           </div>
-          <section className="rounded-3xl border border-white bg-white/90 p-6 shadow-xl shadow-slate-200/60 backdrop-blur-xl sm:p-8">
+          <section className="rounded-3xl border border-border bg-surface-elevated/90 p-6 shadow-xl shadow-black/20 backdrop-blur-xl sm:p-8">
             <OnboardingFlow
               initialStep={state.step}
               initialKeychain={state.keychain}

@@ -152,7 +152,7 @@ export default function TodayPlanner({ encryptedLists }: { encryptedLists: List[
       handleOnDueDateChange={(id, due_date) => optimisticTask(id, { due_date }, () => updateTaskDueDate(id, due_date))}
       handleOnNotesChange={(id, notes) => { if (!masterKey) return; optimisticTask(id, { notes }, async () => updateTaskNotes(id, await encryptString(notes, masterKey))) }}
       handleOnDelete={(id) => optimisticTask(id, {}, async () => { await deleteTask(id); setData(current => current && ({ ...current, tasks: current.tasks.filter(t => t.id !== id) })) })}
-      leadingBadge={focused ? <span className="mb-1 inline-flex items-center gap-1 text-xs font-medium text-amber-600"><Star className="size-3 fill-current" /> Focus</span> : undefined}
+      leadingBadge={focused ? <span className="mb-1 inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-accent"><Star className="size-3 fill-current" /> Focus</span> : undefined}
       trailingActions={section === 'chosen' ? <div className="flex gap-1">
         <Button variant="ghost" size="icon" className="size-8" aria-label={focused ? 'Unpin from focus' : 'Pin to focus'} onClick={() => focus(task.id, !focused)}>{focused ? <StarOff /> : <Star />}</Button>
         <Button variant="outline" size="sm" onClick={() => remove(task.id)}>Remove</Button>
@@ -164,8 +164,8 @@ export default function TodayPlanner({ encryptedLists }: { encryptedLists: List[
     <Header headerTitle="Today" taskCount={chosen.length} rightSlot={<CreateTaskDialog lists={lists} listId={null}><Button size="sm"><Plus /> Quick capture</Button></CreateTaskDialog>} />
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 overflow-y-auto pb-20">
       <div><h1 className="text-2xl font-semibold">{format(new Date(`${day}T12:00:00`), 'EEEE, MMMM d')}</h1><p className="text-sm text-muted-foreground">Your personal workspace for today</p></div>
-      {retrySelection && <div role="alert" className="flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"><span>The task was created, but could not be added to Today.</span><Button size="sm" onClick={() => retryAdd(retrySelection)}>Retry</Button></div>}
-      {error && <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-4"><p>{error}</p><Button className="mt-2" variant="outline" onClick={() => load(day)}>Try again</Button></div>}
+      {retrySelection && <div role="alert" className="flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-400/25 dark:bg-amber-500/10 dark:text-amber-200"><span>The task was created, but could not be added to Today.</span><Button size="sm" onClick={() => retryAdd(retrySelection)}>Retry</Button></div>}
+      {error && <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-4 dark:border-red-400/25 dark:bg-red-500/10 dark:text-red-200"><p>{error}</p><Button className="mt-2" variant="outline" onClick={() => load(day)}>Try again</Button></div>}
       {!data && !error && <div className="space-y-3" aria-label="Loading Today"><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-3/4" /></div>}
       {data && <>
         <section className="rounded-2xl border bg-card p-3 shadow-sm sm:p-5"><div className="mb-3 flex items-center justify-between gap-2"><div><h2 className="font-semibold">Chosen for today</h2><p className="text-xs text-muted-foreground">Pin up to three tasks to focus.</p></div><Button variant="outline" size="sm" onClick={() => setPickerOpen(true)}><Plus /> Add existing task</Button></div>

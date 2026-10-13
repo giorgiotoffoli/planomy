@@ -26,7 +26,7 @@ export default async function SettingsPage() {
 
   return (
     <E2EEProvider userId={user.id}>
-      <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-950 sm:py-12">
+      <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:py-12">
         <div className="mx-auto w-full max-w-2xl">
           <header className="mb-8 flex items-center justify-between gap-4">
             <Link
@@ -44,11 +44,11 @@ export default async function SettingsPage() {
           </header>
 
           <div className="mb-7">
-            <p className="text-sm font-medium text-blue-600">Your account</p>
+            <p className="text-sm font-medium text-primary">Your account</p>
             <h1 className="mt-1 font-heading text-3xl font-semibold tracking-tight">
               Settings
             </h1>
-            <p className="mt-2 text-sm text-slate-600">{user.email}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{user.email}</p>
           </div>
 
           <SettingsClient initialKeychain={keychain} />

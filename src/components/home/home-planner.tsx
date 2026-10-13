@@ -194,12 +194,12 @@ function HomeTaskRow({
             <span
               className={`inline-flex max-w-28 truncate rounded-full px-2.5 py-1 text-[11px] font-medium sm:max-w-none sm:text-xs ${
                 deadlineIsOverdue
-                  ? 'bg-rose-100 text-rose-700'
+                  ? 'bg-rose-100 text-rose-700 dark:border dark:border-urgency-today-border dark:bg-urgency-today-bg dark:text-urgency-today'
                   : deadlineLabel === 'Today'
-                    ? 'bg-orange-100 text-orange-700'
+                    ? 'bg-orange-100 text-orange-700 dark:border dark:border-urgency-today-border dark:bg-urgency-today-bg dark:text-urgency-today'
                     : deadlineLabel === 'Tomorrow'
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'bg-slate-100 text-slate-600'
+                      ? 'bg-blue-100 text-blue-700 dark:border dark:border-urgency-tomorrow-border dark:bg-urgency-tomorrow-bg dark:text-urgency-tomorrow'
+                      : 'bg-slate-100 text-slate-600 dark:border dark:border-urgency-later-border dark:bg-urgency-later-bg dark:text-urgency-later'
               }`}
             >
               {deadlineLabel}
@@ -217,8 +217,8 @@ function HomeTaskRow({
               onClick={() => onFocus(task.id, !task.focused)}
               className={
                 task.focused
-                  ? 'text-amber-500 hover:text-amber-600'
-                  : 'text-slate-400'
+                  ? 'text-yellow-400 hover:text-yellow-500 dark:text-accent dark:hover:text-accent-hover'
+                  : 'text-slate-400 dark:text-muted-foreground'
               }
             >
               <Star className={task.focused ? 'fill-current' : undefined} />
@@ -253,9 +253,9 @@ function SectionShell({
 }: SectionShellProps) {
   const [open, setOpen] = useState(true)
   const toneClasses = {
-    focus: 'border-blue-100/80 bg-[#eef3ff]',
-    due: 'border-amber-100/80 bg-[#fff8e9]',
-    tasks: 'border-slate-200/80 bg-white/80',
+    focus: 'border-blue-100/80 bg-[#eef3ff] dark:border-border dark:bg-surface',
+    due: 'border-yellow-100/80 bg-yellow-50/75 dark:border-border dark:bg-surface',
+    tasks: 'border-slate-200/80 bg-white/80 dark:border-border dark:bg-surface',
   }
   const compactEmpty = count === 0 && compactWhenEmpty
 
@@ -263,7 +263,7 @@ function SectionShell({
     <Collapsible
       open={open}
       onOpenChange={setOpen}
-      className={`rounded-2xl border shadow-[0_6px_18px_rgba(62,84,120,0.04)] ${compactEmpty ? 'px-2.5 py-2 sm:px-3 sm:py-2.5' : 'p-2.5 sm:p-3'} ${toneClasses[tone]}`}
+      className={`rounded-2xl border shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:shadow-none ${compactEmpty ? 'px-2.5 py-2 sm:px-3 sm:py-2.5' : 'p-2.5 sm:p-3'} ${toneClasses[tone]}`}
     >
       <h2
         className={`${compactEmpty ? '' : 'mb-1.5'} flex items-center px-1 py-0.5`}
@@ -272,28 +272,28 @@ function SectionShell({
           <button
             type="button"
             aria-label={`${open ? 'Collapse' : 'Expand'} ${title}`}
-            className="group flex w-full items-center gap-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+            className="group flex w-full items-center gap-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           >
             <span
               className={
                 tone === 'focus'
-                  ? 'text-blue-600'
+                  ? 'text-blue-600 dark:text-accent'
                   : tone === 'due'
-                    ? 'text-amber-600'
-                    : 'text-blue-700'
+                    ? 'text-yellow-600 dark:text-yellow-200'
+                    : 'text-blue-700 dark:text-text-secondary'
               }
             >
               {icon}
             </span>
-            <span className="font-heading text-base font-semibold tracking-[-0.02em] text-slate-950 sm:text-lg">
+            <span className="font-heading text-base font-semibold tracking-[-0.02em] text-foreground sm:text-lg">
               {title}
             </span>
-            <span className="flex size-6 items-center justify-center rounded-full bg-slate-900/[0.06] text-[11px] font-semibold text-slate-600">
+            <span className="flex size-6 items-center justify-center rounded-full bg-slate-900/[0.06] text-[11px] font-semibold text-slate-600 dark:border dark:border-border-subtle dark:bg-surface-hover dark:text-text-secondary">
               {count}
             </span>
             {compactEmpty && (
               <span
-                className="ml-auto min-w-0 truncate text-right text-xs text-slate-500"
+                className="ml-auto min-w-0 truncate text-right text-xs text-slate-500 dark:text-muted-foreground"
                 title={compactEmptyLabel}
               >
                 {compactEmptyLabel}
@@ -301,20 +301,20 @@ function SectionShell({
             )}
             <ChevronDown
               aria-hidden="true"
-              className={`${compactEmpty ? '' : 'ml-auto'} size-4 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+              className={`${compactEmpty ? '' : 'ml-auto'} size-4 text-slate-400 transition-transform duration-200 dark:text-muted-foreground ${open ? 'rotate-180' : ''}`}
             />
           </button>
         </CollapsibleTrigger>
       </h2>
       <CollapsibleContent>
         {count > 0 ? (
-          <ul className="divide-y divide-slate-200/70">{children}</ul>
+          <ul className="divide-y divide-slate-200/70 dark:divide-border/70">{children}</ul>
         ) : compactEmpty ? (
-          <p className="hidden px-1.5 pt-0.5 text-xs leading-5 text-slate-500 lg:block">
+          <p className="hidden px-1.5 pt-0.5 text-xs leading-5 text-slate-500 dark:text-muted-foreground lg:block">
             {empty}
           </p>
         ) : (
-          <div className="rounded-xl border border-dashed border-slate-300/70 bg-white/55 px-4 py-5 text-center text-sm text-slate-500">
+          <div className="rounded-xl border border-dashed border-slate-300/70 bg-white/55 px-4 py-5 text-center text-sm text-slate-500 dark:border-border dark:bg-surface/60 dark:text-muted-foreground">
             {empty}
           </div>
         )}
@@ -818,10 +818,10 @@ export default function HomePlanner({
         <div className="mx-auto w-full max-w-360">
           <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h1 className="font-heading text-[clamp(2rem,4vw,3.25rem)] font-semibold leading-none tracking-[-0.055em] text-[#10172c]">
+              <h1 className="font-heading text-[clamp(2rem,4vw,3.25rem)] font-semibold leading-none tracking-[-0.055em] text-foreground">
                 {formattedDay}
               </h1>
-              <p className="mt-2 text-base text-slate-500 sm:text-lg">
+              <p className="mt-2 text-base text-slate-500 dark:text-muted-foreground sm:text-lg">
                 {message}
               </p>
             </div>
@@ -848,12 +848,12 @@ export default function HomePlanner({
                 className="relative col-span-4 row-start-2 min-w-0 w-full sm:order-3 sm:col-auto sm:row-auto sm:w-64"
                 aria-label="Search tasks"
               >
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-muted-foreground" />
                 <Input
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search tasks..."
-                  className="h-10 rounded-xl border-slate-200/90 bg-white/80 pl-9 shadow-[0_6px_20px_rgba(62,84,120,0.05)]"
+                  className="h-10 rounded-xl border-slate-200/90 bg-white/80 pl-9 shadow-[0_6px_20px_rgba(62,84,120,0.05)] dark:border-input dark:bg-surface dark:shadow-none"
                 />
               </label>
               <CreateTaskDialog
@@ -861,7 +861,7 @@ export default function HomePlanner({
                 categories={categories}
                 listId={null}
               >
-                <Button className="col-start-4 row-start-1 h-10 shrink-0 rounded-xl bg-blue-500 px-3 shadow-[0_8px_18px_rgba(37,99,235,0.22)] hover:bg-blue-600 sm:order-4 sm:col-auto sm:row-auto sm:px-4">
+                <Button className="col-start-4 row-start-1 h-10 shrink-0 rounded-xl bg-primary px-3 hover:bg-accent-hover active:bg-accent-active sm:order-4 sm:col-auto sm:row-auto sm:px-4">
                   <Plus />
                   <span className="hidden sm:inline">Add task</span>
                   <span className="sm:hidden">Add</span>
@@ -873,7 +873,7 @@ export default function HomePlanner({
           {error && (
             <div
               role="alert"
-              className="mb-5 flex items-center justify-between gap-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+              className="mb-5 flex items-center justify-between gap-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-400/25 dark:bg-rose-500/10 dark:text-rose-200"
             >
               <span>{error}</span>
               <Button size="sm" variant="outline" onClick={() => void load()}>
@@ -893,11 +893,11 @@ export default function HomePlanner({
           {tasks && (
             <div className="space-y-3">
               {enabledHomeSourceCount === 0 && !hasVisibleHomeTasks ? (
-                <div className="rounded-2xl border border-blue-200 bg-blue-50 px-5 py-6 text-center shadow-[0_6px_18px_rgba(62,84,120,0.04)]">
-                  <h2 className="font-heading text-lg font-semibold text-slate-950">
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 px-5 py-6 text-center shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:border-blue-400/25 dark:bg-blue-500/10 dark:shadow-none">
+                  <h2 className="font-heading text-lg font-semibold text-slate-950 dark:text-foreground">
                     Nothing is shown on Home
                   </h2>
-                  <p className="mx-auto mt-1 max-w-md text-sm text-slate-600">
+                  <p className="mx-auto mt-1 max-w-md text-sm text-slate-600 dark:text-muted-foreground">
                     All Home sources are hidden. Show all sources to bring your
                     incomplete tasks back.
                   </p>
@@ -965,37 +965,37 @@ export default function HomePlanner({
                     <Collapsible
                       open={stashedOpen}
                       onOpenChange={setStashedOpen}
-                      className="mt-3 overflow-hidden rounded-2xl border border-slate-300/70 bg-slate-100/70 shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:border-slate-700/70 dark:bg-slate-800/60"
+                      className="mt-3 overflow-hidden rounded-2xl border border-slate-300/70 bg-slate-100/70 shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:border-border dark:bg-surface dark:shadow-none"
                     >
                       <CollapsibleTrigger asChild>
                         <button
                           type="button"
                           className="flex w-full items-center gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
                         >
-                          <Archive className="size-5 text-slate-600 dark:text-slate-300" />
+                          <Archive className="size-5 text-slate-600 dark:text-text-tertiary" />
                           <span className="font-semibold text-slate-700 dark:text-slate-200">
                             Stashed
                           </span>
-                          <span className="flex size-6 items-center justify-center rounded-full bg-slate-200/80 text-[11px] font-semibold text-slate-600 dark:bg-slate-700/80 dark:text-slate-300">
+                          <span className="flex size-6 items-center justify-center rounded-full bg-slate-200/80 text-[11px] font-semibold text-slate-600 dark:bg-white/8 dark:text-slate-300">
                             {buckets.stashed.length}
                           </span>
                           <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
                             {stashedOpen ? 'Hide' : 'Show'}
                           </span>
                           {stashedOpen ? (
-                            <ArchiveRestore className="size-4 text-slate-500 dark:text-slate-400" />
+                            <ArchiveRestore className="size-4 text-slate-500 dark:text-text-tertiary" />
                           ) : (
-                            <Archive className="size-4 text-slate-500 dark:text-slate-400" />
+                            <Archive className="size-4 text-slate-500 dark:text-text-tertiary" />
                           )}
                         </button>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="px-3 pb-3 sm:px-4 sm:pb-4">
                         {buckets.stashed.length > 0 ? (
-                          <ul className="overflow-hidden rounded-[15px] border border-slate-200/80 bg-white/90 divide-y divide-slate-200/80">
+                          <ul className="overflow-hidden rounded-[15px] border border-slate-200/80 bg-white/90 divide-y divide-slate-200/80 dark:border-border dark:bg-surface-elevated dark:divide-border/80">
                             {buckets.stashed.map((task) => renderTask(task))}
                           </ul>
                         ) : (
-                          <div className="rounded-[15px] border border-dashed border-slate-300/70 bg-white/55 px-5 py-6 text-center text-sm text-slate-500">
+                          <div className="rounded-[15px] border border-dashed border-slate-300/70 bg-white/55 px-5 py-6 text-center text-sm text-slate-500 dark:border-border dark:bg-surface/60 dark:text-muted-foreground">
                             Nothing is stashed right now.
                           </div>
                         )}

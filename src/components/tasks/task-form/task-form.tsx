@@ -120,7 +120,7 @@ function MetadataRow({
     neutral: 'hover:bg-muted/50',
     deadline: 'bg-rose-50/45 hover:bg-rose-50/70 dark:bg-rose-950/10 dark:hover:bg-rose-950/20',
     plan: 'bg-blue-50/45 hover:bg-blue-50/70 dark:bg-blue-950/10 dark:hover:bg-blue-950/20',
-    focus: 'bg-amber-50/60 hover:bg-amber-50/80 dark:bg-amber-950/10 dark:hover:bg-amber-950/20',
+    focus: 'bg-amber-50/60 hover:bg-amber-50/80 dark:bg-accent-soft dark:hover:bg-accent-soft',
   }[tone]
 
   return (
@@ -523,7 +523,7 @@ export function TaskForm({
           />
 
           <MetadataRow
-            icon={<Star className={cn('size-4', focused && 'fill-current text-amber-500')} />}
+            icon={<Star className={cn('size-4', focused && 'fill-current text-amber-500 dark:text-accent')} />}
             label="Focus"
             tone={focused ? 'focus' : 'neutral'}
             summary={
@@ -534,7 +534,7 @@ export function TaskForm({
                 aria-checked={focused}
                 onClick={() => setFocused((value) => !value)}
                 disabled={disabled}
-                className={cn('h-8 justify-start px-2 text-sm', focused && 'text-amber-600 hover:text-amber-700')}
+                className={cn('h-8 justify-start px-2 text-sm', focused && 'text-amber-600 hover:text-amber-700 dark:text-accent dark:hover:text-accent-hover')}
               >
                 {focused
                   ? <Check className="size-4" />
@@ -555,7 +555,7 @@ export function TaskForm({
         <Button
           type="submit"
           disabled={disabled || !title.trim()}
-          className="bg-blue-500 text-white shadow-[0_8px_18px_rgba(37,99,235,0.22)] hover:bg-blue-600 focus-visible:ring-blue-500/40"
+          className="bg-primary text-primary-foreground hover:bg-accent-hover active:bg-accent-active focus-visible:ring-primary/40"
         >
           {mode === 'create' ? 'Add task' : 'Save changes'}
         </Button>

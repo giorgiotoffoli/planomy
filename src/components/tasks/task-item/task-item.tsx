@@ -103,7 +103,7 @@ export function TaskItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'group rounded-xl hover:bg-slate-50',
+        'group border-b border-border/80 hover:bg-surface-hover',
         isDragging && 'cursor-grabbing opacity-50',
         highlighted && 'animate-pulse border-2 border-blue-400',
       )}
