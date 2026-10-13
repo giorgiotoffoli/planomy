@@ -135,6 +135,22 @@ function decryptHomeData(data: HomeData, masterKey: Uint8Array) {
   }))
 }
 
+function getDeadlineBadgeClassName(deadlineLabel?: string | null) {
+  if (deadlineLabel?.includes('overdue')) {
+    return 'border-destructive/15 bg-destructive/8 text-destructive'
+  }
+
+  if (deadlineLabel === 'Today') {
+    return 'border-urgency-today-border bg-urgency-today-bg text-urgency-today'
+  }
+
+  if (deadlineLabel === 'Tomorrow') {
+    return 'border-urgency-tomorrow-border bg-urgency-tomorrow-bg text-urgency-tomorrow'
+  }
+
+  return 'border-urgency-later-border bg-urgency-later-bg text-urgency-later'
+}
+
 type HomeTaskRowProps = {
   task: TaskWithList
   lists: List[]
@@ -166,8 +182,6 @@ function HomeTaskRow({
   onStash,
   isExiting,
 }: HomeTaskRowProps) {
-  const deadlineIsOverdue = deadlineLabel?.includes('overdue')
-
   return (
     <TaskItem
       task={task}
@@ -192,15 +206,7 @@ function HomeTaskRow({
         <div className="flex items-center gap-1.5">
           {deadlineLabel && (
             <span
-              className={`inline-flex max-w-28 truncate rounded-full px-2.5 py-1 text-[11px] font-medium sm:max-w-none sm:text-xs ${
-                deadlineIsOverdue
-                  ? 'bg-rose-100 text-rose-700 dark:border dark:border-urgency-today-border dark:bg-urgency-today-bg dark:text-urgency-today'
-                  : deadlineLabel === 'Today'
-                    ? 'bg-orange-100 text-orange-700 dark:border dark:border-urgency-today-border dark:bg-urgency-today-bg dark:text-urgency-today'
-                    : deadlineLabel === 'Tomorrow'
-                      ? 'bg-blue-100 text-blue-700 dark:border dark:border-urgency-tomorrow-border dark:bg-urgency-tomorrow-bg dark:text-urgency-tomorrow'
-                      : 'bg-slate-100 text-slate-600 dark:border dark:border-urgency-later-border dark:bg-urgency-later-bg dark:text-urgency-later'
-              }`}
+              className={`inline-flex max-w-28 truncate rounded-full border px-2.5 py-1 text-[11px] font-medium sm:max-w-none sm:text-xs ${getDeadlineBadgeClassName(deadlineLabel)}`}
             >
               {deadlineLabel}
               {deadlineTime ? ` · ${deadlineTime}` : ''}
@@ -217,7 +223,7 @@ function HomeTaskRow({
               onClick={() => onFocus(task.id, !task.focused)}
               className={
                 task.focused
-                  ? 'text-yellow-400 hover:text-yellow-500 dark:text-accent dark:hover:text-accent-hover'
+                  ? 'text-yellow-400 hover:text-yellow-500 dark:text-kanban-board-circle-yellow dark:hover:text-yellow-300'
                   : 'text-slate-400 dark:text-muted-foreground'
               }
             >
@@ -785,17 +791,15 @@ export default function HomePlanner({
     }
   }
 
-  function renderTask(task: TaskWithList, includeDeadline = false) {
+  function renderTask(task: TaskWithList) {
     return (
       <HomeTaskRow
         key={task.id}
         task={task}
         lists={lists}
         categories={categories}
-        deadlineLabel={
-          includeDeadline ? getDeadlineLabel(task.due_date, day) : null
-        }
-        deadlineTime={includeDeadline ? getDueTimeLabel(task.due_time) : null}
+        deadlineLabel={getDeadlineLabel(task.due_date, day)}
+        deadlineTime={getDueTimeLabel(task.due_time)}
         onComplete={handleComplete}
         onRename={handleRename}
         onDueDateChange={handleDueDateChange}
@@ -942,7 +946,7 @@ export default function HomePlanner({
                         compactWhenEmpty
                         compactEmptyLabel="All clear"
                       >
-                        {buckets.dueSoon.map((task) => renderTask(task, true))}
+                        {buckets.dueSoon.map((task) => renderTask(task))}
                       </SectionShell>
                     </div>
                   </aside>
