@@ -7,7 +7,7 @@ import {
 } from './today.ts'
 
 export const MAX_FOCUS_TASKS = 3
-export const DUE_SOON_DAYS = 7
+export const DUE_SOON_DAYS = 2
 
 export type HomeSource =
   | { type: 'unsorted' }

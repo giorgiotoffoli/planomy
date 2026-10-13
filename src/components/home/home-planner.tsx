@@ -947,7 +947,7 @@ export default function HomePlanner({
                     </div>
                   </aside>
 
-                  <div className="order-3 min-w-0 lg:order-none lg:col-start-1 lg:row-start-1">
+                  <div className="min-w-0 lg:col-start-1 lg:row-start-1">
                     <SectionShell
                       title="Tasks"
                       count={buckets.tasks.length}

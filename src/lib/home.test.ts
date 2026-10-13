@@ -65,8 +65,8 @@ test('due soon sorts by calendar date and then due time', () => {
     [
       task({ id: 'late', due_date: '2026-10-13', due_time: '18:00:00' }),
       task({ id: 'early', due_date: '2026-10-13', due_time: '09:00:00' }),
-      task({ id: 'boundary', due_date: '2026-10-19' }),
-      task({ id: 'outside', due_date: '2026-10-20' }),
+      task({ id: 'boundary', due_date: '2026-10-14' }),
+      task({ id: 'outside', due_date: '2026-10-15' }),
     ],
     '2026-10-12',
   )
