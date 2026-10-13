@@ -104,7 +104,7 @@ export default function TaskDetail({
         <button
           type="button"
           aria-label="Add to list"
-          className="inline-flex max-w-0 cursor-pointer items-center justify-center gap-1 overflow-hidden rounded-sm text-center text-blue-600 opacity-0 outline-none transition-[max-width,opacity] duration-200 ease-out group-hover:max-w-28 group-hover:opacity-100 group-focus-within:max-w-28 group-focus-within:opacity-100 hover:text-blue-700 hover:underline focus-visible:max-w-28 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-blue-500/40 motion-reduce:transition-none"
+          className="inline-flex max-w-0 cursor-pointer items-center justify-center gap-1 overflow-hidden rounded-sm text-center text-primary opacity-0 outline-none transition-[max-width,opacity] duration-200 ease-out group-hover:max-w-28 group-hover:opacity-100 group-focus-within:max-w-28 group-focus-within:opacity-100 hover:text-primary/80 hover:underline focus-visible:max-w-28 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary/40 motion-reduce:transition-none"
         >
           <ListPlus aria-hidden="true" className="size-3.5 shrink-0" />
           <span className="whitespace-nowrap">Add to list</span>
@@ -127,26 +127,26 @@ export default function TaskDetail({
     : '/home'
 
   return (
-    <div className="flex min-w-0 flex-col gap-0.5 text-xs text-gray-600">
+    <div className="flex min-w-0 flex-col gap-0.5 text-xs text-muted-foreground">
       {/* Notes */}
       {task.notes && <p>{task.notes}</p>}
       {/* Metadata */}
       {((showDueDate && dueDateInfo) || (shouldShowTaskList && taskListLabel)) && (
         <div className="flex min-w-0 items-center gap-1.5">
           {showDueDate && dueDateInfo && (
-            <span className={dueDateInfo.isOverdue ? 'text-rose-500' : ''}>
+            <span className={dueDateInfo.isOverdue ? 'text-destructive' : ''}>
               {dueDateInfo.label}
             </span>
           )}
 
           {showDueDate && dueDateInfo && shouldShowTaskList && taskListLabel && (
-            <span className="text-gray-400">·</span>
+            <span className="text-muted-foreground/60">·</span>
           )}
 
           {shouldShowTaskList && taskListLabel && (
             <Link
               href={taskListHref}
-              className="min-w-0 truncate hover:text-blue-500 hover:cursor-pointer"
+              className="min-w-0 truncate hover:text-primary hover:cursor-pointer"
             >
               {taskListLabel}
             </Link>

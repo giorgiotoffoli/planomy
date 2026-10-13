@@ -105,8 +105,8 @@ export default function HomeSourcesPicker({
           }
           className={`h-8 shrink-0 rounded-xl px-3 shadow-[0_6px_20px_rgba(62,84,120,0.05)] ${
             allEnabled
-              ? 'border-slate-200/90 bg-white/80'
-              : 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800'
+              ? 'border-slate-200/90 bg-white/80 dark:border-input dark:bg-surface'
+              : 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 dark:border-blue-400/25 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/15'
           }`}
         >
           <ListFilter aria-hidden="true" />
@@ -135,7 +135,7 @@ export default function HomeSourcesPicker({
               return (
                 <div
                   key={inputId}
-                  className="flex items-start gap-2 rounded-xl px-2 py-2 transition-colors hover:bg-slate-50"
+                  className="flex items-start gap-2 rounded-xl px-2 py-2 transition-colors hover:bg-slate-50 dark:hover:bg-surface-hover"
                 >
                   <Checkbox
                     id={inputId}
@@ -144,7 +144,7 @@ export default function HomeSourcesPicker({
                       onSourceChange(source, value === true)
                     }
                     aria-label={`${checked ? 'Hide' : 'Show'} ${label} on Home`}
-                    className="mt-0.5 border-slate-300 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white focus-visible:ring-blue-500/40"
+                    className="mt-0.5 border-slate-300 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white focus-visible:ring-blue-500/40 dark:border-input"
                   />
                   <label
                     htmlFor={inputId}
@@ -154,17 +154,17 @@ export default function HomeSourcesPicker({
                       <span className="flex size-4 shrink-0 items-center justify-center">
                         <ListX
                           aria-hidden="true"
-                          className="size-4 text-blue-600"
+                          className="size-4 text-blue-600 dark:text-blue-300"
                         />
                       </span>
-                      <span className="min-w-0 truncate text-sm font-medium leading-5 text-slate-800">
+                      <span className="min-w-0 truncate text-sm font-medium leading-5 text-slate-800 dark:text-foreground">
                         {label}
                       </span>
-                      <span className="whitespace-nowrap text-xs leading-5 text-slate-400">
+                      <span className="whitespace-nowrap text-xs leading-5 text-slate-400 dark:text-muted-foreground">
                         No list
                       </span>
                     </span>
-                    <span className="mt-0.5 block pl-6 text-xs text-slate-500">
+                    <span className="mt-0.5 block pl-6 text-xs text-slate-500 dark:text-muted-foreground">
                       Tasks not assigned to a list
                     </span>
                   </label>
@@ -198,7 +198,7 @@ export default function HomeSourcesPicker({
                 key={inputId}
                 open={expanded}
                 onOpenChange={(open) => setListExpanded(source.listId, open)}
-                className="rounded-xl transition-colors hover:bg-slate-50"
+                className="rounded-xl transition-colors hover:bg-slate-50 dark:hover:bg-surface-hover"
               >
                 <div className="flex items-start gap-2 px-2 py-2">
                   <Checkbox
@@ -211,7 +211,7 @@ export default function HomeSourcesPicker({
                       )
                     }
                     aria-label={actionLabel}
-                    className="mt-0.5 border-slate-300 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white data-[state=indeterminate]:border-blue-600 data-[state=indeterminate]:bg-blue-600 data-[state=indeterminate]:text-white focus-visible:ring-blue-500/40"
+                    className="mt-0.5 border-slate-300 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white data-[state=indeterminate]:border-blue-600 data-[state=indeterminate]:bg-blue-600 data-[state=indeterminate]:text-white focus-visible:ring-blue-500/40 dark:border-input"
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-center gap-1.5">
@@ -221,17 +221,17 @@ export default function HomeSourcesPicker({
                             type="button"
                             aria-label={`${expanded ? 'Collapse' : 'Expand'} ${label} categories`}
                             aria-controls={categoryGroupId}
-                            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                           >
                             <span className="flex size-4 shrink-0 items-center justify-center">
                               <ListEmoji emoji={listsById.get(source.listId)?.emoji} />
                             </span>
-                            <span className="min-w-0 truncate font-medium leading-5 text-slate-800">
+                            <span className="min-w-0 truncate font-medium leading-5 text-slate-800 dark:text-foreground">
                               {label}
                             </span>
                             <ChevronRight
                               aria-hidden="true"
-                              className={`ml-auto size-4 shrink-0 text-slate-400 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}
+                              className={`ml-auto size-4 shrink-0 text-slate-400 transition-transform duration-200 dark:text-muted-foreground ${expanded ? 'rotate-90' : ''}`}
                             />
                           </button>
                         </CollapsibleTrigger>
@@ -243,7 +243,7 @@ export default function HomeSourcesPicker({
                           <span className="flex size-4 shrink-0 items-center justify-center">
                             <ListEmoji emoji={listsById.get(source.listId)?.emoji} />
                           </span>
-                          <span className="min-w-0 truncate font-medium leading-5 text-slate-800">
+                          <span className="min-w-0 truncate font-medium leading-5 text-slate-800 dark:text-foreground">
                             {label}
                           </span>
                         </label>
@@ -253,7 +253,7 @@ export default function HomeSourcesPicker({
                       id={categoryGroupId}
                       role="group"
                       aria-label={`${label} categories`}
-                      className="mt-1.5 ml-2.5 space-y-0.5 border-l border-slate-200 pl-3"
+                      className="mt-1.5 ml-2.5 space-y-0.5 border-l border-slate-200 pl-3 dark:border-border"
                     >
                       {listCategories.map((category) => {
                         const categoryId = `home-category-${category.id}`
@@ -266,7 +266,7 @@ export default function HomeSourcesPicker({
                         return (
                           <div
                             key={category.id}
-                            className={`flex items-center gap-2 rounded-lg px-1.5 py-1 transition-colors hover:bg-slate-50 ${state === 'disabled' ? 'opacity-60' : ''}`}
+                            className={`flex items-center gap-2 rounded-lg px-1.5 py-1 transition-colors hover:bg-slate-50 dark:hover:bg-surface-hover ${state === 'disabled' ? 'opacity-60' : ''}`}
                           >
                             <Checkbox
                               id={categoryId}
@@ -275,11 +275,11 @@ export default function HomeSourcesPicker({
                                 onCategoryChange(category.id, value === true)
                               }
                               aria-label={`${categoryChecked ? 'Hide' : 'Show'} ${category.title} on Home`}
-                              className="cursor-pointer border-slate-300 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white focus-visible:ring-blue-500/40"
+                              className="cursor-pointer border-slate-300 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white focus-visible:ring-blue-500/40 dark:border-input"
                             />
                             <label
                               htmlFor={categoryId}
-                              className="min-w-0 flex-1 cursor-pointer truncate text-xs leading-5 text-slate-600"
+                              className="min-w-0 flex-1 cursor-pointer truncate text-xs leading-5 text-slate-600 dark:text-muted-foreground"
                             >
                               {category.title}
                             </label>
@@ -294,8 +294,8 @@ export default function HomeSourcesPicker({
           })}
         </div>
 
-        <div className="mt-2 flex items-center justify-between gap-3 border-t border-slate-200/80 px-1.5 pt-2">
-          <span className="text-xs text-slate-500">
+        <div className="mt-2 flex items-center justify-between gap-3 border-t border-slate-200/80 px-1.5 pt-2 dark:border-border">
+          <span className="text-xs text-slate-500 dark:text-muted-foreground">
             {enabledCount} of {sources.length} sources shown
           </span>
           <Button

@@ -24,13 +24,13 @@ export default function E2EEGate({ children, initialKeychain }: E2EEGateProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-surface-elevated p-6 shadow-xl shadow-black/20">
         <VaultPasswordForm initialKeychain={initialKeychain} />
-        <p className="mt-5 text-center text-sm text-slate-600">
+        <p className="mt-5 text-center text-sm text-muted-foreground">
           Cannot unlock your vault?{' '}
           <Link
             href="/settings"
-            className="font-medium text-blue-600 hover:text-blue-700"
+            className="font-medium text-primary hover:text-primary/80"
           >
             Manage your account
           </Link>

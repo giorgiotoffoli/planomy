@@ -67,20 +67,20 @@ export default function VaultPasswordForm({
 
   return (
     <form onSubmit={handleSubmit}>
-      <p className="text-sm font-medium text-blue-600">
+      <p className="text-sm font-medium text-primary">
         End-to-end encryption
       </p>
-      <h2 className="mt-2 text-2xl font-semibold text-slate-900">
+      <h2 className="mt-2 text-2xl font-semibold text-foreground">
         {hasKeychain ? 'Unlock your data' : 'Protect your plans'}
       </h2>
-      <p className="mt-2 text-sm leading-6 text-slate-600">
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">
         {hasKeychain
           ? 'Enter your master password to continue on this device.'
           : 'Create a separate master password that protects your encrypted tasks and lists.'}
       </p>
 
       {!hasKeychain && (
-        <div className="mt-5 rounded-2xl border border-rose-300 bg-rose-50 p-4 text-rose-950">
+        <div className="mt-5 rounded-2xl border border-rose-300 bg-rose-50 p-4 text-rose-950 dark:border-rose-400/25 dark:bg-rose-500/10 dark:text-rose-200">
           <div className="flex gap-3">
             <AlertTriangle className="mt-0.5 size-5 shrink-0 text-rose-600" />
             <div>
@@ -95,7 +95,7 @@ export default function VaultPasswordForm({
       )}
 
       <label
-        className="mt-5 block text-sm font-medium text-slate-700"
+        className="mt-5 block text-sm font-medium text-foreground"
         htmlFor="master-password"
       >
         Master password
@@ -114,7 +114,7 @@ export default function VaultPasswordForm({
       {!hasKeychain && (
         <>
           <label
-            className="mt-4 block text-sm font-medium text-slate-700"
+            className="mt-4 block text-sm font-medium text-foreground"
             htmlFor="confirm-master-password"
           >
             Confirm master password

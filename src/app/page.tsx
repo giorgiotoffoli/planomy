@@ -18,7 +18,7 @@ import { PlanomyIcon } from '@/icons/planomy-icon'
 
 export default function Page() {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#f4f3ee] text-[#121316] selection:bg-blue-200">
+    <main className="min-h-screen overflow-hidden bg-[#f4f3ee] text-[#121316] selection:bg-blue-200 dark:bg-background dark:text-foreground dark:selection:bg-primary/30">
       <nav className="relative z-50 mx-auto flex h-16 max-w-330 items-center justify-between px-5 sm:px-8">
         <Link
           href="/"
@@ -31,7 +31,7 @@ export default function Page() {
           href="https://github.com/giorgiotoffoli/planomy"
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-2 rounded-full border border-black/10 bg-white/55 px-3.5 py-2 text-sm font-medium shadow-sm backdrop-blur transition hover:bg-white"
+          className="flex items-center gap-2 rounded-full border border-black/10 bg-white/55 px-3.5 py-2 text-sm font-medium shadow-sm backdrop-blur transition hover:bg-white dark:border-border dark:bg-surface/80 dark:hover:bg-surface-hover"
         >
           <Star className="size-4 fill-blue-600 text-blue-600" />
           <span className="hidden sm:inline">Give us a star</span>
@@ -78,7 +78,7 @@ export default function Page() {
           ].map(({ icon: Icon, label, position, delay }) => (
             <motion.div
               key={label}
-              className={`absolute ${position} flex items-center gap-2 rounded-xl border border-black/10 bg-[#faf9f4]/90 px-3 py-2 text-xs font-medium text-slate-600 shadow-[0_10px_30px_rgba(40,50,70,.08)] backdrop-blur`}
+              className={`absolute ${position} flex items-center gap-2 rounded-xl border border-black/10 bg-[#faf9f4]/90 px-3 py-2 text-xs font-medium text-slate-600 shadow-[0_10px_30px_rgba(40,50,70,.08)] backdrop-blur dark:border-border dark:bg-surface-elevated/90 dark:text-muted-foreground dark:shadow-black/20`}
               animate={{ y: [0, -8, 0], rotate: [-1, 1, -1] }}
               transition={{
                 duration: 5,
@@ -115,7 +115,7 @@ export default function Page() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="mx-auto mt-8 max-w-155 text-base leading-7 text-slate-600 sm:text-lg"
+            className="mx-auto mt-8 max-w-155 text-base leading-7 text-slate-600 dark:text-muted-foreground sm:text-lg"
           >
             Tasks, lists, and boards in one private space. Your sensitive data
             is encrypted on your device before it ever reaches the cloud.
@@ -129,7 +129,7 @@ export default function Page() {
           >
             <Link
               href="/auth"
-              className="group inline-flex h-12 items-center gap-2 rounded-lg bg-blue-600 px-6 text-sm font-semibold text-white shadow-[0_8px_30px_rgba(37,99,235,.24)] transition hover:-translate-y-0.5 hover:bg-blue-700"
+              className="group inline-flex h-12 items-center gap-2 rounded-lg bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_8px_30px_rgba(37,99,235,.24)] transition hover:-translate-y-0.5 hover:bg-primary/90"
             >
               Start planning privately
             </Link>
@@ -137,7 +137,7 @@ export default function Page() {
               href="https://github.com/giorgiotoffoli/planomy"
               target="_blank"
               rel="noreferrer"
-              className="group flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-900"
+              className="group flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
             >
               <Github className="size-3.5" />
               Inspect every line yourself
@@ -149,7 +149,7 @@ export default function Page() {
             initial={{ opacity: 0, y: 60, rotateX: 9 }}
             animate={{ opacity: 1, y: 0, rotateX: 0 }}
             transition={{ duration: 1, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="relative mx-auto mt-16 max-w-245 rounded-t-[22px] border border-black/15 border-b-0 bg-[#131722] p-1.5 pb-0 shadow-[0_35px_100px_rgba(37,99,235,.22)] sm:mt-12 sm:rounded-t-[30px] sm:p-2.5 sm:pb-0"
+            className="relative mx-auto mt-16 max-w-245 rounded-t-[22px] border border-black/15 border-b-0 bg-[#131722] p-1.5 pb-0 shadow-[0_35px_100px_rgba(37,99,235,.22)] dark:border-border sm:mt-12 sm:rounded-t-[30px] sm:p-2.5 sm:pb-0"
             style={{ perspective: 1200 }}
           >
             <div className="h-100 overflow-hidden sm:h-120 md:h-80 lg:h-112">
@@ -199,8 +199,8 @@ export default function Page() {
         </div>
       </section>
 
-      <footer className="mx-auto flex max-w-280 flex-col gap-5 px-5 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-        <div className="flex items-center gap-2 font-medium  text-slate-700">
+      <footer className="mx-auto flex max-w-280 flex-col gap-5 px-5 py-8 text-sm text-slate-500 dark:text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8">
+        <div className="flex items-center gap-2 font-medium text-slate-700 dark:text-foreground">
           <PlanomyIcon size={16} /> Planomy
         </div>
         <div className="flex gap-5">

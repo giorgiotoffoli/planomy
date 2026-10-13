@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/sidebar'
 import { MoreHorizontal } from 'lucide-react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +24,7 @@ import { ListEmoji } from '@/components/lists/list-emoji'
 
 export function NavLists({ lists }: { lists: List[] }) {
   const { masterKey } = useE2EE()
+  const pathname = usePathname()
   const [localLists, setLocalLists] = useState(lists)
 
   useEffect(() => {
@@ -60,7 +62,11 @@ export function NavLists({ lists }: { lists: List[] }) {
       {localLists.map((list) => {
         return (
           <SidebarMenuItem key={list.id}>
-            <SidebarMenuButton asChild tooltip={list.title}>
+            <SidebarMenuButton
+              asChild
+              tooltip={list.title}
+              isActive={pathname === `/lists/${list.id}`}
+            >
               <Link
                 href={`/lists/${list.id}?view=${list.default_view ?? 'list'}`}
                 prefetch

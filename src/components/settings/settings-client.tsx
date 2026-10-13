@@ -31,6 +31,7 @@ import {
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { unwrapMasterKey, wrapMasterKey } from '@/lib/crypto/e2ee'
 import { changeAccountPassword, deleteAccount } from './actions'
+import { ThemeSelector } from './theme-selector'
 
 type PasswordFieldProps = {
   id: string
@@ -105,7 +106,7 @@ function AccountPasswordCard() {
   return (
     <Card>
       <CardHeader>
-        <div className="mb-1 flex size-9 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+        <div className="mb-1 flex size-9 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-primary/10 dark:text-primary">
           <KeyRound className="size-5" />
         </div>
         <CardTitle>Account password</CardTitle>
@@ -209,7 +210,7 @@ function MasterPasswordCard({
   return (
     <Card>
       <CardHeader>
-        <div className="mb-1 flex size-9 items-center justify-center rounded-lg bg-violet-50 text-violet-700">
+        <div className="mb-1 flex size-9 items-center justify-center rounded-lg bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300">
           <LockKeyhole className="size-5" />
         </div>
         <CardTitle>Master password</CardTitle>
@@ -301,7 +302,7 @@ function DeleteAccountCard() {
   return (
     <Card className="border-destructive/40">
       <CardHeader>
-        <div className="mb-1 flex size-9 items-center justify-center rounded-lg bg-red-50 text-destructive">
+        <div className="mb-1 flex size-9 items-center justify-center rounded-lg bg-red-50 text-destructive dark:bg-destructive/10">
           <ShieldAlert className="size-5" />
         </div>
         <CardTitle>Delete account</CardTitle>
@@ -388,6 +389,17 @@ export default function SettingsClient({
 }) {
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Appearance</CardTitle>
+          <CardDescription>
+            Planomy follows your preference across every workspace surface.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ThemeSelector />
+        </CardContent>
+      </Card>
       <AccountPasswordCard />
       <MasterPasswordCard initialKeychain={initialKeychain} />
       <DeleteAccountCard />

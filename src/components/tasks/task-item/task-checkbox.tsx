@@ -25,17 +25,17 @@ export function TaskCheckbox({ task, handleOnComplete }: TaskCheckboxProps) {
         flex h-4 w-4 shrink-0
         items-center justify-center
         rounded-full
-        border border-gray-400
+        border border-border
         bg-transparent
         transition-all duration-200
-        hover:border-blue-500
-        hover:bg-blue-500/10
+        hover:border-primary
+        hover:bg-primary/10
         focus-visible:outline-none
         focus-visible:ring-2
-        focus-visible:ring-blue-500/30
+        focus-visible:ring-primary/30
 
-        data-[state=checked]:border-blue-500
-        data-[state=checked]:bg-blue-500
+        data-[state=checked]:border-primary
+        data-[state=checked]:bg-primary
         data-[state=checked]:scale-105
         `,
       )}

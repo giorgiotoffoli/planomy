@@ -19,7 +19,7 @@ export default function BoardTaskCard({ task }: { task: TaskWithList }) {
         <CardContent>
           <div className="flex justify-between">{task.title}</div>
           <CardDescription>
-            <span className="text-xs text-gray-600 block">
+            <span className="text-xs text-muted-foreground block">
               {/* Date */}
               {task.due_date === today ? (
                 <span>Today</span>

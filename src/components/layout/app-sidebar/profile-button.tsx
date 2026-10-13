@@ -19,7 +19,11 @@ export function ProfileButton() {
     <SidebarMenuItem>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <SidebarMenuButton tooltip="Profile" className="[&>svg]:!size-5">
+          <SidebarMenuButton
+            tooltip="Profile"
+            variant="outline"
+            className="border-sidebar-border bg-sidebar/40 [&>svg]:!size-5"
+          >
             <User />
             <span>Profile</span>
           </SidebarMenuButton>

@@ -142,34 +142,34 @@ export default function OnboardingFlow({
   if (step === 'welcome') {
     return (
       <div>
-        <p className="text-sm font-medium text-blue-600">Welcome to Planomy</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
+        <p className="text-sm font-medium text-primary">Welcome to Planomy</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">
           Capture everything. Choose what matters today.
         </h1>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
           Planomy separates collecting work from committing to it, so a busy
           Home keeps attention visible without asking you to manually build a day.
         </p>
 
         <div className="mt-7 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border bg-slate-50 p-4">
-            <Home className="size-5 text-blue-600" />
-            <h2 className="mt-3 font-semibold text-slate-900">Home</h2>
-            <p className="mt-1 text-sm leading-5 text-slate-600">
+          <div className="rounded-2xl border border-border bg-surface p-4">
+            <Home className="size-5 text-primary" />
+            <h2 className="mt-3 font-semibold text-foreground">Home</h2>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">
               See active work from every list in one calm workspace.
             </p>
           </div>
-          <div className="rounded-2xl border bg-slate-50 p-4">
+          <div className="rounded-2xl border border-border bg-surface p-4">
             <Sun className="size-5 text-amber-500" />
-            <h2 className="mt-3 font-semibold text-slate-900">Focus</h2>
-            <p className="mt-1 text-sm leading-5 text-slate-600">
+            <h2 className="mt-3 font-semibold text-foreground">Focus</h2>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">
               Keep up to three priorities close while deadlines stay visible automatically.
             </p>
           </div>
         </div>
 
         {completionError && (
-          <p role="alert" className="mt-4 text-sm text-red-600">
+          <p role="alert" className="mt-4 text-sm text-destructive">
             {completionError}
           </p>
         )}
@@ -189,7 +189,7 @@ export default function OnboardingFlow({
   if (step === 'security' || !isUnlocked) {
     return (
       <div>
-        <div className="mb-5 flex items-center gap-2 text-xs font-medium text-slate-500">
+        <div className="mb-5 flex items-center gap-2 text-xs font-medium text-muted-foreground">
           <ShieldCheck className="size-4" /> Step 2 of 3
         </div>
         <VaultPasswordForm
@@ -203,18 +203,18 @@ export default function OnboardingFlow({
   if (taskSaved) {
     return (
       <div className="text-center">
-        <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
           <Sun className="size-6" />
         </div>
-        <h1 className="mt-5 text-3xl font-semibold tracking-tight text-slate-950">
+        <h1 className="mt-5 text-3xl font-semibold tracking-tight text-foreground">
           Your day is ready.
         </h1>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
           Your first task is safely captured on Home
           {focused ? ' as a Focus task.' : '.'}
         </p>
         {completionError && (
-          <p role="alert" className="mt-4 text-sm text-red-600">
+          <p role="alert" className="mt-4 text-sm text-destructive">
             {completionError}
           </p>
         )}
@@ -227,19 +227,19 @@ export default function OnboardingFlow({
 
   return (
     <div>
-      <div className="mb-5 flex items-center gap-2 text-xs font-medium text-slate-500">
+      <div className="mb-5 flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <Sun className="size-4" /> Step 3 of 3
       </div>
-      <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
+      <h1 className="text-3xl font-semibold tracking-tight text-foreground">
         Choose your first task.
       </h1>
-      <p className="mt-3 text-sm leading-6 text-slate-600">
+      <p className="mt-3 text-sm leading-6 text-muted-foreground">
         It will appear on Home whether you organize it into a list now or later.
       </p>
 
       <form onSubmit={saveFirstTask} className="mt-6">
         {taskExists ? (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-400/25 dark:bg-amber-500/10 dark:text-amber-200">
             Your first task was already saved. Continue to finish setting up
             its Home state without creating a duplicate.
           </div>
@@ -247,7 +247,7 @@ export default function OnboardingFlow({
           <>
             <label
               htmlFor="first-task-title"
-              className="text-sm font-medium text-slate-700"
+              className="text-sm font-medium text-foreground"
             >
               Task title
             </label>
@@ -268,28 +268,28 @@ export default function OnboardingFlow({
           type="button"
           aria-pressed={focused}
           onClick={() => setFocused((current) => !current)}
-          className="mt-4 flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition hover:bg-slate-50"
+          className="mt-4 flex w-full items-start gap-3 rounded-2xl border border-border p-4 text-left transition hover:bg-surface-hover"
         >
           <Star
-            className={`mt-0.5 size-5 ${focused ? 'fill-amber-400 text-amber-500' : 'text-slate-400'}`}
+            className={`mt-0.5 size-5 ${focused ? 'fill-amber-400 text-amber-500' : 'text-muted-foreground'}`}
           />
           <span>
-            <span className="block font-medium text-slate-900">
+            <span className="block font-medium text-foreground">
               Make this my Focus
             </span>
-            <span className="mt-1 block text-sm text-slate-600">
+            <span className="mt-1 block text-sm text-muted-foreground">
               Focus highlights up to three priorities on Home.
             </span>
           </span>
         </button>
 
         {taskError && (
-          <p role="alert" className="mt-4 text-sm text-red-600">
+          <p role="alert" className="mt-4 text-sm text-destructive">
             {taskError}
           </p>
         )}
         {completionError && (
-          <p role="alert" className="mt-4 text-sm text-red-600">
+          <p role="alert" className="mt-4 text-sm text-destructive">
             {completionError}
           </p>
         )}

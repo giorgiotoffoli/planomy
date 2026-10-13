@@ -126,7 +126,7 @@ function DeadlineTaskMeta({
   return (
     <div className="flex max-w-40 items-center justify-end gap-1.5 sm:max-w-none">
       {task.stashed && (
-        <span className="hidden rounded-full bg-slate-900/[0.06] px-2 py-1 text-[11px] font-medium text-slate-500 sm:inline-flex">
+        <span className="hidden rounded-full bg-slate-900/[0.06] px-2 py-1 text-[11px] font-medium text-slate-500 dark:bg-white/5 dark:text-muted-foreground sm:inline-flex">
           Stashed
         </span>
       )}
@@ -134,14 +134,14 @@ function DeadlineTaskMeta({
         <span
           className={`truncate rounded-full px-2.5 py-1 text-[11px] font-medium sm:text-xs ${
             bucket === 'pastDue'
-              ? 'bg-rose-100 text-rose-700'
+              ? 'bg-rose-100 text-rose-700 dark:border dark:border-urgency-today-border dark:bg-urgency-today-bg dark:text-urgency-today'
               : bucket === 'today'
-                ? 'bg-blue-100 text-blue-700'
+                ? 'bg-blue-100 text-blue-700 dark:border dark:border-urgency-today-border dark:bg-urgency-today-bg dark:text-urgency-today'
                 : bucket === 'tomorrow'
-                  ? 'bg-violet-100 text-violet-700'
-                  : bucket === 'thisWeek'
-                    ? 'bg-amber-100 text-amber-700'
-                    : 'bg-slate-100 text-slate-600'
+                  ? 'bg-violet-100 text-violet-700 dark:border dark:border-urgency-tomorrow-border dark:bg-urgency-tomorrow-bg dark:text-urgency-tomorrow'
+                : bucket === 'thisWeek'
+                    ? 'bg-yellow-100 text-yellow-700 dark:border dark:border-urgency-week-border dark:bg-urgency-week-bg dark:text-urgency-week'
+                    : 'bg-slate-100 text-slate-600 dark:border dark:border-urgency-later-border dark:bg-urgency-later-bg dark:text-urgency-later'
           }`}
         >
           {label}
@@ -453,7 +453,7 @@ export default function DeadlinesPlanner({
       categories={categories}
       listId={null}
     >
-      <Button className="h-10 shrink-0 rounded-xl bg-blue-500 px-4 shadow-[0_8px_18px_rgba(37,99,235,0.22)] hover:bg-blue-600">
+      <Button className="h-10 shrink-0 rounded-xl bg-primary px-4 hover:bg-accent-hover active:bg-accent-active">
         <Plus />
         <span className="hidden sm:inline">Add task</span>
         <span className="sm:hidden">Add</span>
@@ -471,10 +471,10 @@ export default function DeadlinesPlanner({
         <div className="mx-auto w-full max-w-5xl">
           <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h1 className="font-heading text-[clamp(2rem,4vw,3.25rem)] font-semibold leading-none tracking-[-0.055em] text-[#10172c]">
+              <h1 className="font-heading text-[clamp(2rem,4vw,3.25rem)] font-semibold leading-none tracking-[-0.055em] text-foreground">
                 Deadlines
               </h1>
-              <p className="mt-2 text-base text-slate-500 sm:text-lg">
+              <p className="mt-2 text-base text-slate-500 dark:text-muted-foreground sm:text-lg">
                 Everything with a deadline, ordered by urgency.
               </p>
             </div>
@@ -484,7 +484,7 @@ export default function DeadlinesPlanner({
           {error && (
             <div
               role="alert"
-              className="mb-5 flex items-center justify-between gap-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+              className="mb-5 flex items-center justify-between gap-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-400/25 dark:bg-rose-500/10 dark:text-rose-200"
             >
               <span>{error}</span>
               <Button size="sm" variant="outline" onClick={() => void load()}>
@@ -502,19 +502,19 @@ export default function DeadlinesPlanner({
           )}
 
           {tasks && taskCount === 0 && (
-            <div className="flex min-h-[min(58vh,34rem)] flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-200 bg-white/55 px-6 py-12 text-center shadow-[0_8px_28px_rgba(62,84,120,0.04)]">
-              <span className="mb-5 flex size-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+            <div className="flex min-h-[min(58vh,34rem)] flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-200 bg-white/55 px-6 py-12 text-center shadow-[0_8px_28px_rgba(62,84,120,0.04)] dark:border-border dark:bg-surface/60 dark:shadow-none">
+              <span className="mb-5 flex size-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
                 <CalendarCheck2 className="size-8" aria-hidden="true" />
               </span>
-              <h2 className="font-heading text-2xl font-semibold tracking-[-0.035em] text-slate-950">
+              <h2 className="font-heading text-2xl font-semibold tracking-[-0.035em] text-slate-950 dark:text-foreground">
                 Nothing coming up
               </h2>
-              <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
+              <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500 dark:text-muted-foreground">
                 You&apos;re clear for now. Tasks without deadlines will still
                 stay visible on Home.
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
-                <Button asChild className="rounded-xl bg-blue-500 hover:bg-blue-600">
+                <Button asChild className="rounded-xl bg-primary hover:bg-primary/90">
                   <Link href="/home">Go to Home</Link>
                 </Button>
                 <CreateTaskDialog

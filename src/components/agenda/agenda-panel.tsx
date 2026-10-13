@@ -75,7 +75,7 @@ function Timeline() {
         {slots.map((instant, index) => <Slot key={instant} instant={instant} top={index * 15 * PIXELS_PER_MINUTE} hour={new Date(instant).getMinutes() === 0} />)}
         <div className="pointer-events-none absolute inset-y-0 right-0 left-[72px]">
           {layout.map(item => <AgendaTaskBlock key={item.block.task_id} item={item} dayStart={start} />)}
-          {preview && preview.end > start && preview.start < end && <div className="absolute right-0 left-0 z-20 rounded-md border-2 border-dashed border-blue-500 bg-blue-500/15 p-1 text-xs text-blue-700" style={{ top: (Math.max(start, preview.start) - start) / MINUTE * PIXELS_PER_MINUTE, height: (Math.min(end, preview.end) - Math.max(start, preview.start)) / MINUTE * PIXELS_PER_MINUTE }}>{timeLabel(preview.start)}</div>}
+          {preview && preview.end > start && preview.start < end && <div className="absolute right-0 left-0 z-20 rounded-md border-2 border-dashed border-blue-500 bg-blue-500/15 p-1 text-xs text-blue-700 dark:border-blue-400 dark:bg-blue-500/15 dark:text-blue-200" style={{ top: (Math.max(start, preview.start) - start) / MINUTE * PIXELS_PER_MINUTE, height: (Math.min(end, preview.end) - Math.max(start, preview.start)) / MINUTE * PIXELS_PER_MINUTE }}>{timeLabel(preview.start)}</div>}
           {now >= start && now < end && <div className="absolute right-0 -left-1 z-30 border-t-2 border-red-500" style={{ top: (now - start) / MINUTE * PIXELS_PER_MINUTE }}><span className="absolute -top-1.5 left-0 size-2 rounded-full bg-red-500" /><span className="sr-only">Current time {timeLabel(now)}</span></div>}
         </div>
       </div>

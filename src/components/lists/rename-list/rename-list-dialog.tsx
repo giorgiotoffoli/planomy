@@ -93,7 +93,7 @@ export function RenameListDialog({
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button type="submit" className="bg-blue-500 hover:bg-sky-500">
+            <Button type="submit" className="bg-primary hover:bg-primary/90">
               Rename
             </Button>
           </DialogFooter>
