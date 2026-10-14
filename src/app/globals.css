@@ -768,11 +768,11 @@ html.dark {
 
 .agenda-calendar-slot {
   z-index: 0;
-  border-top-color: var(--border-subtle);
+  border-top-color: transparent;
 }
 
-.agenda-calendar-slot:nth-child(4n + 1) {
-  border-top-color: var(--border-strong);
+.agenda-calendar-slot.agenda-calendar-hour {
+  border-top-color: var(--border-subtle);
 }
 
 .agenda-task-block {

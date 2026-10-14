@@ -36,7 +36,7 @@ export function timeInput(instant: number) {
 }
 
 export function timeLabel(instant: number) {
-  return new Date(instant).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
+  return new Date(instant).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
 export function snapInstant(day: string, offsetMinutes: number) {

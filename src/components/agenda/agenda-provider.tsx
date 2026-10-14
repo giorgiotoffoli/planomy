@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { DndContext, DragOverlay, KeyboardSensor, MouseSensor, TouchSensor, closestCenter, pointerWithin, useSensor, useSensors, type DragEndEvent, type DragOverEvent } from '@dnd-kit/core'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString } from '@/lib/crypto/e2ee'
@@ -97,6 +97,7 @@ export function useAgenda() {
 
 export default function AgendaProvider({ children }: { children: ReactNode }) {
   const { masterKey } = useE2EE()
+  const pathname = usePathname()
   const router = useRouter()
   const [open, setOpenState] = useState(false)
   const [day, setDay] = useState(() => localDateKey())
@@ -116,6 +117,7 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
   const invalidate = useCallback(() => { generation.current++ }, [])
   const [drag, setDrag] = useState<AgendaDrag | null>(null)
   const [preview, setPreview] = useState<AgendaContextValue['preview']>(null)
+  const isCalendarPage = pathname === '/calendar'
   const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }), useSensor(KeyboardSensor))
 
   const setOpen = useCallback((value: boolean) => {
@@ -182,14 +184,14 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
   useEffect(() => { latestReload.current = reload }, [reload])
 
   useEffect(() => {
-    const timeout = setTimeout(() => { if (open) void reload() }, 0)
+    const timeout = setTimeout(() => { if (open && !isCalendarPage) void reload() }, 0)
     return () => { clearTimeout(timeout); invalidate() }
-  }, [open, reload, invalidate])
+  }, [open, isCalendarPage, reload, invalidate])
   useEffect(() => {
-    const changed = () => { router.refresh(); if (open) void reload() }
+    const changed = () => { router.refresh(); if (open && !isCalendarPage) void reload() }
     window.addEventListener(TASKS_CHANGED, changed)
     return () => window.removeEventListener(TASKS_CHANGED, changed)
-  }, [open, reload, router])
+  }, [open, isCalendarPage, reload, router])
 
   async function mutate(taskId: string, operation: () => Promise<unknown>, optimistic: (blocks: AgendaBlock[]) => AgendaBlock[]) {
     if (pending.current.has(taskId)) return false
@@ -252,7 +254,7 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
     setDrag(null); setPreview(null)
   }
 
-  return <AgendaContext.Provider value={{ open, setOpen, day, setDay, blocks: loaded.day === day ? loaded.blocks : [], dueTasks: loaded.day === day ? loaded.dueTasks : [], events: loaded.day === day ? loaded.events : [], lists: loaded.lists, categories: loaded.categories, loading: loading || (loaded.day !== day && !error), error, reload, save, remove, busy, preview }}>
+  return <AgendaContext.Provider value={{ open: !isCalendarPage && open, setOpen, day, setDay, blocks: loaded.day === day ? loaded.blocks : [], dueTasks: loaded.day === day ? loaded.dueTasks : [], events: loaded.day === day ? loaded.events : [], lists: loaded.lists, categories: loaded.categories, loading: loading || (loaded.day !== day && !error), error, reload, save, remove, busy, preview }}>
     <DndContext sensors={sensors} collisionDetection={args => {
       // Pointer drags must actually enter a target; keyboard drags use nearest target.
       const candidates = args.droppableContainers.filter(container => dragIntent(args.active.data.current ?? {}, container.data.current) !== 'none')

@@ -29,7 +29,7 @@ export default function AgendaPanel() {
   if (desktop) return open ? <aside id="daily-agenda" aria-label="Today calendar" className="agenda-calendar planomy-calendar flex h-full w-[352px] shrink-0 flex-col border-l"><Timeline /></aside> : null
   return <Sheet open={open} onOpenChange={setOpen}>
     <SheetContent id="daily-agenda" showCloseButton={false} className="agenda-calendar planomy-calendar w-[min(100vw,380px)] gap-0" onCloseAutoFocus={event => { event.preventDefault(); restoreFocus() }}>
-      <SheetTitle className="sr-only">Today calendar</SheetTitle><SheetDescription className="sr-only">Today’s calendar with drag-and-drop task scheduling.</SheetDescription>
+      <SheetTitle className="sr-only">Today calendar</SheetTitle><SheetDescription className="sr-only">Today’s calendar planner.</SheetDescription>
       <Timeline />
     </SheetContent>
   </Sheet>
@@ -37,7 +37,7 @@ export default function AgendaPanel() {
 
 function Slot({ instant, top, hour }: { instant: number; top: number; hour: boolean }) {
   const { setNodeRef } = useDroppable({ id: `agenda-slot:${instant}`, data: { kind: 'agenda-slot', instant } })
-  return <div ref={setNodeRef} className={`agenda-calendar-slot absolute right-0 left-0 border-t ${hour ? 'border-border' : 'border-border/40'}`} style={{ top, height: 15 * PIXELS_PER_MINUTE }}>
+  return <div ref={setNodeRef} className={`agenda-calendar-slot absolute right-0 left-0 border-t ${hour ? 'agenda-calendar-hour' : ''}`} style={{ top, height: 15 * PIXELS_PER_MINUTE }}>
     {hour && <span className="pointer-events-none absolute left-1 top-1 w-16 text-[11px] leading-tight text-muted-foreground">{timeLabel(instant)}</span>}
   </div>
 }
@@ -141,8 +141,7 @@ function Timeline() {
   const slots = Array.from({ length: Math.ceil(minutes / 15) }, (_, index) => start + index * 15 * MINUTE)
   return <>
     <div className="agenda-calendar-header shrink-0 space-y-2 border-b border-border-subtle p-3">
-      <div className="flex items-center justify-between"><div><h2 className="font-heading text-base font-semibold">Today</h2><p className="text-sm text-muted-foreground">{new Date(`${day}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p></div><Button size="icon" variant="ghost" aria-label="Close Today calendar" onClick={() => { setOpen(false); restoreFocus() }}><X /></Button></div>
-      <p className="text-xs text-muted-foreground">{Intl.DateTimeFormat().resolvedOptions().timeZone} · Drag tasks into a time</p>
+      <div className="flex items-center justify-between"><div><h2 className="font-heading text-base font-semibold">Today</h2><p className="text-sm text-muted-foreground">{new Date(`${day}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })} · {timeLabel(now)}</p></div><Button size="icon" variant="ghost" aria-label="Close Today calendar" onClick={() => { setOpen(false); restoreFocus() }}><X /></Button></div>
       {loading && <p role="status" className="text-xs text-muted-foreground">Loading Today…</p>}
       {error && <div role="alert" className="text-sm text-destructive">{error}<Button size="sm" variant="outline" onClick={() => void reload()}>Retry</Button></div>}
       {!loading && !error && calendarItems.length === 0 && <p className="text-xs text-muted-foreground">Drag a task here, or open Edit on a task to add Plan time.</p>}
