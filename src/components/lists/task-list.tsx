@@ -33,6 +33,7 @@ interface TaskListProps {
     category: Category,
     direction: 'up' | 'down',
   ) => Promise<void>
+  pageScroll?: boolean
 }
 
 export default function TaskList({
@@ -53,6 +54,7 @@ export default function TaskList({
   handleOnRenameCategory,
   handleOnDeleteCategory,
   handleOnMoveCategory,
+  pageScroll = false,
 }: TaskListProps) {
   const scope = useId()
 
@@ -147,8 +149,12 @@ export default function TaskList({
   )
 
   return (
-    <div className="flex flex-col h-full sm:w-full">
-      <div className="flex-1 overflow-y-auto scroll-smooth pb-16">
+    <div className={`flex flex-col sm:w-full ${pageScroll ? '' : 'h-full'}`}>
+      <div
+        className={
+          pageScroll ? 'pb-16' : 'flex-1 overflow-y-auto scroll-smooth pb-16'
+        }
+      >
         <SortableContext
           items={localTasks.map((task) => task.id)}
           strategy={verticalListSortingStrategy}

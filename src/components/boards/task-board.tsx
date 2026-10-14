@@ -24,6 +24,7 @@ interface TaskBoardProps {
     category: Category,
     direction: 'up' | 'down',
   ) => Promise<void>
+  pageScroll?: boolean
 }
 
 export default function TaskBoard({
@@ -34,6 +35,7 @@ export default function TaskBoard({
   onRenameCategory,
   onDeleteCategory,
   onMoveCategory,
+  pageScroll = false,
 }: TaskBoardProps) {
   const [localTasks, setLocalTasks] = useState(tasks)
 
@@ -80,10 +82,23 @@ export default function TaskBoard({
 
   return (
     <DragDropProvider onDragEnd={handleDragEnd}>
-      <div className="min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
-        <div className="flex h-full w-max gap-4 p-4">
+      <div
+        className={
+          pageScroll
+            ? 'min-w-0 overflow-x-auto pb-4'
+            : 'min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-hidden'
+        }
+      >
+        <div
+          className={
+            pageScroll ? 'flex w-max gap-4 p-4' : 'flex h-full w-max gap-4 p-4'
+          }
+        >
           {sortedCategories.map((category, categoryIndex) => (
-            <div key={category.id} className="h-full w-80 shrink-0">
+            <div
+              key={category.id}
+              className={`${pageScroll ? '' : 'h-full'} w-80 shrink-0`}
+            >
               <BoardColumn
                 category={category}
                 categoryIndex={categoryIndex}
@@ -92,13 +107,18 @@ export default function TaskBoard({
                 onRenameCategory={onRenameCategory}
                 onDeleteCategory={onDeleteCategory}
                 onMoveCategory={onMoveCategory}
+                pageScroll={pageScroll}
               />
             </div>
           ))}
 
           {sortedCategories.length > 0 && (
-            <div className="h-full w-80 shrink-0">
-              <BoardColumn category={null} tasks={localTasks} />
+            <div className={`${pageScroll ? '' : 'h-full'} w-80 shrink-0`}>
+              <BoardColumn
+                category={null}
+                tasks={localTasks}
+                pageScroll={pageScroll}
+              />
             </div>
           )}
 

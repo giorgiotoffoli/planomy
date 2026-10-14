@@ -15,6 +15,7 @@ interface BoardColumnProps {
     category: Category,
     direction: 'up' | 'down',
   ) => Promise<void>
+  pageScroll?: boolean
 }
 
 export default function BoardColumn({
@@ -25,6 +26,7 @@ export default function BoardColumn({
   onRenameCategory,
   onDeleteCategory,
   onMoveCategory,
+  pageScroll = false,
 }: BoardColumnProps) {
   const { ref, isDropTarget } = useDroppable({
     id: category?.id ?? 'uncategorized',
@@ -35,8 +37,10 @@ export default function BoardColumn({
   )
 
   return (
-    <div ref={ref} className="h-full">
-      <Card className={`h-full ${isDropTarget ? 'ring-2 ring-blue-500' : ''}`}>
+    <div ref={ref} className={pageScroll ? undefined : 'h-full'}>
+      <Card
+        className={`${pageScroll ? '' : 'h-full'} ${isDropTarget ? 'ring-2 ring-blue-500' : ''}`}
+      >
         <CategoryHeader
           category={category}
           count={filteredTasks.length}
@@ -46,7 +50,11 @@ export default function BoardColumn({
           onDelete={onDeleteCategory}
           onMove={onMoveCategory}
         />
-        <CardContent className="min-h-0 flex-1 overflow-y-auto py-4">
+        <CardContent
+          className={
+            pageScroll ? 'py-4' : 'min-h-0 flex-1 overflow-y-auto py-4'
+          }
+        >
           <ul>
             {filteredTasks.map((task) => (
               <BoardTaskCard

@@ -40,6 +40,7 @@ interface TaskItemProps {
   handleOnStash?: (taskId: string, stashed: boolean) => void
   showDueDate?: boolean
   showAddToList?: boolean
+  compact?: boolean
   isExiting?: boolean
   categories?: Category[]
   handleOnChangeCategory?: (
@@ -69,6 +70,7 @@ export function TaskItem({
   handleOnStash,
   showDueDate = true,
   showAddToList = false,
+  compact = false,
   isExiting = false,
   categories,
   handleOnChangeCategory,
@@ -117,7 +119,12 @@ export function TaskItem({
         )}
       >
         <div className="min-h-0 overflow-hidden">
-          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 px-3 py-3">
+          <div
+            className={cn(
+              'grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 px-3',
+              compact ? 'py-2.5' : 'py-3',
+            )}
+          >
             {/* Checkbox */}
             <div className="flex h-6 items-center gap-2">
               {canReorder && (

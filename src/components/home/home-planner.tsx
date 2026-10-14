@@ -15,7 +15,6 @@ import {
   ChevronDown,
   Clock3,
   ListTodo,
-  Plus,
   Search,
   Star,
 } from 'lucide-react'
@@ -64,8 +63,9 @@ import {
   updateTaskDueDate,
   updateTaskNotes,
 } from '@/components/tasks/mutations'
-import Header from '@/components/layout/header/app-header'
-import CreateTaskDialog from '@/components/tasks/create-task/create-task-dialog'
+import CreateTaskAction from '@/components/tasks/create-task/create-task-action'
+import CollapsiblePageHeader from '@/components/layout/header/collapsible-page-header'
+import AgendaToggle from '@/components/agenda/agenda-toggle'
 import {
   TaskItem,
   waitForTaskExit,
@@ -73,6 +73,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { SidebarTrigger } from '@/components/ui/sidebar'
 import {
   Collapsible,
   CollapsibleContent,
@@ -202,6 +203,7 @@ function HomeTaskRow({
       handleOnFocus={onFocus}
       handleOnStash={onStash}
       showDueDate={false}
+      compact
       trailingActions={
         <div className="flex items-center gap-1.5">
           {deadlineLabel && (
@@ -264,12 +266,20 @@ function SectionShell({
     tasks: 'border-slate-200/80 bg-white/80 dark:border-border dark:bg-surface',
   }
   const compactEmpty = count === 0 && compactWhenEmpty
+  const attentionWidget = tone === 'focus' || tone === 'due'
+  const paddingClasses = compactEmpty
+    ? attentionWidget
+      ? 'px-3 py-2.5 sm:px-3.5 sm:py-3'
+      : 'px-2.5 py-2 sm:px-3 sm:py-2.5'
+    : attentionWidget
+      ? 'p-3 sm:p-3.5'
+      : 'p-2.5 sm:p-3'
 
   return (
     <Collapsible
       open={open}
       onOpenChange={setOpen}
-      className={`rounded-2xl border shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:shadow-none ${compactEmpty ? 'px-2.5 py-2 sm:px-3 sm:py-2.5' : 'p-2.5 sm:p-3'} ${toneClasses[tone]}`}
+      className={`rounded-2xl border shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:shadow-none ${paddingClasses} ${toneClasses[tone]}`}
     >
       <h2
         className={`${compactEmpty ? '' : 'mb-1.5'} flex items-center px-1 py-0.5`}
@@ -314,7 +324,9 @@ function SectionShell({
       </h2>
       <CollapsibleContent>
         {count > 0 ? (
-          <ul className="divide-y divide-slate-200/70 dark:divide-border/70">{children}</ul>
+          <ul className="divide-y divide-slate-200/70 dark:divide-border/70">
+            {children}
+          </ul>
         ) : compactEmpty ? (
           <p className="hidden px-1.5 pt-0.5 text-xs leading-5 text-slate-500 dark:text-muted-foreground lg:block">
             {empty}
@@ -350,6 +362,7 @@ export default function HomePlanner({
   )
   const [stashedOpen, setStashedOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const scrollRootRef = useRef<HTMLDivElement>(null)
   const loadVersion = useRef(0)
   const homePreferenceSaveQueue = useRef(Promise.resolve())
   const homePreferenceChangeVersion = useRef(0)
@@ -813,67 +826,88 @@ export default function HomePlanner({
   }
 
   const formattedDay = format(new Date(`${day}T12:00:00`), 'EEEE, MMMM d')
-  const dueSoonHasTasks = buckets.dueSoon.length > 0
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
-      <Header headerTitle="Home" taskCount={activeCount} />
-      <div className="min-h-0 flex-1 overflow-y-auto bg-background px-3 py-5 sm:px-5 sm:py-6 lg:px-6">
-        <div className="mx-auto w-full max-w-360">
-          <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="font-heading text-[clamp(2rem,4vw,3.25rem)] font-semibold leading-none tracking-[-0.055em] text-foreground">
-                {formattedDay}
-              </h1>
-              <p className="mt-2 text-base text-slate-500 dark:text-muted-foreground sm:text-lg">
-                {message}
-              </p>
-            </div>
-            <div className="grid w-full grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto sm:flex-nowrap">
-              <HomeSourcesPicker
-                lists={lists}
-                categories={categories}
-                uncategorizedListIds={uncategorizedListIds}
-                preferences={homePreferences}
-                onSourceChange={(source, visible) => {
-                  void handleHomeSourceChange(source, visible)
-                }}
-                onCategoryChange={(categoryId, visible) => {
-                  void handleHomeCategoryChange(categoryId, visible)
-                }}
-                onShowAll={() => void handleShowAllHomeSources()}
-              />
-              <TaskSortSelect
-                value={sortOption}
-                onValueChange={handleSortChange}
-                iconOnlyOnMobile
-              />
-              <label
-                className="relative col-span-4 row-start-2 min-w-0 w-full sm:order-3 sm:col-auto sm:row-auto sm:w-64"
-                aria-label="Search tasks"
-              >
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-muted-foreground" />
-                <Input
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search tasks..."
-                  className="h-10 rounded-xl border-slate-200/90 bg-white/80 pl-9 shadow-[0_6px_20px_rgba(62,84,120,0.05)] dark:border-input dark:bg-surface dark:shadow-none"
-                />
-              </label>
-              <CreateTaskDialog
-                lists={lists}
-                categories={categories}
-                listId={null}
-              >
-                <Button className="col-start-4 row-start-1 h-10 shrink-0 rounded-xl bg-primary px-3 hover:bg-accent-hover active:bg-accent-active sm:order-4 sm:col-auto sm:row-auto sm:px-4">
-                  <Plus />
-                  <span className="hidden sm:inline">Add task</span>
-                  <span className="sm:hidden">Add</span>
-                </Button>
-              </CreateTaskDialog>
+      <div
+        ref={scrollRootRef}
+        className="min-h-0 flex-1 overflow-y-auto bg-background px-4 pb-5 pt-0 sm:px-6 sm:pb-6 sm:pt-8 lg:px-8"
+      >
+        <CollapsiblePageHeader
+          headerTitle="Home"
+          taskCount={activeCount}
+          scrollRootRef={scrollRootRef}
+          rightSlot={(isCollapsed) => (
+            <CreateTaskAction
+              lists={lists}
+              categories={categories}
+              listId={null}
+              compact
+              interactive={isCollapsed}
+            />
+          )}
+        >
+          <div className="home-workspace-container mx-auto w-full max-w-360">
+            <div className="home-large-header mb-3 flex min-w-0 flex-col gap-3 pb-1 pt-2 sm:pb-2 sm:pt-3">
+              <div className="home-title-row flex min-w-0 items-start justify-between gap-4">
+                <div className="flex min-w-0 items-start gap-1">
+                  <SidebarTrigger className="mt-1 md:hidden" />
+                  <h1 className="max-w-full min-w-0 font-heading text-[clamp(2rem,4vw,3.25rem)] font-semibold leading-none tracking-[-0.055em] text-foreground">
+                    {formattedDay}
+                  </h1>
+                </div>
+                <AgendaToggle />
+              </div>
+              <div className="home-header-meta flex min-w-0 flex-col gap-4">
+                <p className="home-header-message max-w-[42rem] text-base text-slate-500 dark:text-muted-foreground sm:text-lg">
+                  {message}
+                </p>
+                <div className="home-toolbar grid w-full min-w-0 items-center gap-2">
+                  <HomeSourcesPicker
+                    lists={lists}
+                    categories={categories}
+                    uncategorizedListIds={uncategorizedListIds}
+                    preferences={homePreferences}
+                    onSourceChange={(source, visible) => {
+                      void handleHomeSourceChange(source, visible)
+                    }}
+                    onCategoryChange={(categoryId, visible) => {
+                      void handleHomeCategoryChange(categoryId, visible)
+                    }}
+                    onShowAll={() => void handleShowAllHomeSources()}
+                  />
+                  <div className="home-task-sort flex min-w-0 items-center justify-self-start">
+                    <TaskSortSelect
+                      value={sortOption}
+                      onValueChange={handleSortChange}
+                      iconOnlyOnMobile
+                    />
+                  </div>
+                  <label
+                    className="home-task-search relative min-w-0 w-full"
+                    aria-label="Search tasks"
+                  >
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-muted-foreground" />
+                    <Input
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      placeholder="Search tasks..."
+                      className="h-9 w-full min-w-0 rounded-xl border-slate-200/90 bg-white/80 pl-9 shadow-[0_6px_20px_rgba(62,84,120,0.05)] dark:border-input dark:bg-surface dark:shadow-none"
+                    />
+                  </label>
+                  <CreateTaskAction
+                    lists={lists}
+                    categories={categories}
+                    listId={null}
+                    className="home-add-task-action"
+                  />
+                </div>
+              </div>
             </div>
           </div>
+        </CollapsiblePageHeader>
 
+        <div className="home-workspace-container mx-auto w-full max-w-360">
           {error && (
             <div
               role="alert"
@@ -915,11 +949,8 @@ export default function HomePlanner({
                   </Button>
                 </div>
               ) : (
-                <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_360px]">
-                  <aside
-                    aria-label="Attention"
-                    className="contents min-w-0 flex-col gap-3 lg:flex lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1 lg:self-start"
-                  >
+                <div className="home-task-layout">
+                  <aside aria-label="Attention" className="home-attention-rail">
                     <SectionShell
                       title="Focus"
                       count={buckets.focus.length}
@@ -932,11 +963,7 @@ export default function HomePlanner({
                       {buckets.focus.map((task) => renderTask(task))}
                     </SectionShell>
 
-                    <div
-                      className={
-                        !dueSoonHasTasks ? 'hidden lg:block' : undefined
-                      }
-                    >
+                    <div>
                       <SectionShell
                         title="Due Soon"
                         count={buckets.dueSoon.length}
@@ -951,7 +978,7 @@ export default function HomePlanner({
                     </div>
                   </aside>
 
-                  <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+                  <div className="home-task-main">
                     <SectionShell
                       title="Tasks"
                       count={buckets.tasks.length}

@@ -24,16 +24,16 @@ import {
 import { updateTaskCompleted as updateTaskCompletedAction } from '../tasks/actions'
 import { getTasks } from '../tasks/queries'
 import { getListTasks } from '../lists/queries'
-import CreateTaskButton from '../tasks/create-task/create-task-button'
 import { Skeleton } from '../ui/skeleton'
 import { usePathname } from 'next/navigation'
 import { toast } from 'sonner'
-import Header from './header/app-header'
+import CollapsiblePageHeader from './header/collapsible-page-header'
 import HeaderViewToggle from './header/header-view-toggle'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
 import { arrayMove } from '@dnd-kit/sortable'
 import TaskSortSelect from '../lists/task-sort-select'
+import { SidebarTrigger } from '../ui/sidebar'
 import { waitForTaskExit } from '../tasks/task-item/task-item'
 import {
   isTaskSortOption,
@@ -46,6 +46,10 @@ import {
   renameCategory,
   reorderCategories,
 } from '../categories/actions'
+import CreateTaskButton from '../tasks/create-task/create-task-button'
+import CreateTaskAction from '../tasks/create-task/create-task-action'
+import { ListEmoji } from '../lists/list-emoji'
+import Header from './header/app-header'
 
 interface TaskWorkspaceProps {
   tasks: TaskWithList[]
@@ -125,6 +129,7 @@ export default function TaskWorkspace({
   const pathName = usePathname()
   const sortStorageKey = listId ? `planomy:list-sort:${listId}` : null
   const taskLoadVersion = useRef(0)
+  const listScrollRootRef = useRef<HTMLDivElement>(null)
   const taskView = pathName === '/completed' ? 'completed' : 'all'
 
   const refreshTasks = useCallback(async () => {
@@ -487,107 +492,175 @@ export default function TaskWorkspace({
     })
   }
 
-  return (
-    <>
-      <Header
-        taskCount={localTasks.length}
-        headerTitle={localHeaderTitle}
-        headerEmoji={listId ? localHeaderEmoji : undefined}
-        rightSlot={
-          listId && (
-            <div className="flex items-center gap-2">
-              {localView === 'list' && (
-                <TaskSortSelect
-                  value={sortOption}
-                  onValueChange={handleSortChange}
-                  iconOnlyOnMobile
-                />
-              )}
-              <HeaderViewToggle
-                listId={listId}
-                currentView={currentView}
-                localView={localView}
-                setLocalView={setLocalView}
-              />
-            </div>
-          )
+  const isListPage = listId !== null
+  const usesPageHeader = isListPage || pathName === '/completed'
+  const workspaceContent = (
+    <div
+      className={
+        usesPageHeader
+          ? 'flex min-w-0 flex-col gap-4 p-4'
+          : 'flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4'
+      }
+    >
+      {localTasks.length === 0 && pathName === '/inbox' && (
+        <p>Nothing in Unsorted. Capture a task or enjoy the silence.</p>
+      )}
+
+      {localTasks.length === 0 && pathName === '/all' && (
+        <p>No tasks yet. Every good plan starts with one.</p>
+      )}
+      {localTasks.length === 0 && pathName === '/completed' && (
+        <p>No completed tasks yet. Go plan something awesome.</p>
+      )}
+      {localTasks.length === 0 && pathName.includes('/lists/') && (
+        <p>This list is empty. Add a task to stay organized.</p>
+      )}
+
+      <div
+        className={
+          usesPageHeader ? 'min-w-0' : 'min-h-0 min-w-0 flex-1 overflow-hidden'
         }
-      />
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4">
-        {localTasks.length === 0 && pathName === '/inbox' && (
-          <p>Nothing in Unsorted. Capture a task or enjoy the silence.</p>
-        )}
-
-        {localTasks.length === 0 && pathName === '/all' && (
-          <p>No tasks yet. Every good plan starts with one.</p>
-        )}
-        {localTasks.length === 0 && pathName === '/completed' && (
-          <p>No completed tasks yet. Go plan something awesome.</p>
-        )}
-        {localTasks.length === 0 && pathName.includes('/lists/') && (
-          <p>This list is empty. Add a task to stay organized.</p>
-        )}
-
-        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-          <Suspense
-            fallback={
-              <div className="flex w-full max-w-xs flex-col gap-7">
-                <div className="flex flex-col gap-3">
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-8 w-full" />
-                </div>
-                <div className="flex flex-col gap-3">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-full" />
-                </div>
-                <Skeleton className="h-8 w-24" />
+      >
+        <Suspense
+          fallback={
+            <div className="flex w-full max-w-xs flex-col gap-7">
+              <div className="flex flex-col gap-3">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-8 w-full" />
               </div>
-            }
-          >
-            {localView === 'list' ? (
-              <TaskList
-                localTasks={displayedTasks}
-                localLists={localLists}
-                currentListId={listId}
-                handleOnReorder={handleOnReorder}
-                canReorder={canReorderTasks}
-                handleOnComplete={handleOnComplete}
-                handleOnRename={handleOnRename}
-                handleOnDueDateChange={handleOnDueDateChange}
-                handleOnNotesChange={handleOnNotesChange}
-                handleOnDelete={handleOnDelete}
-                pathName={pathName}
-                categories={listId ? localCategories : undefined}
-                handleOnChangeCategory={listId ? handleOnChangeCategory : undefined}
-                handleOnCreateCategory={
-                  listId ? handleOnCreateCategory : undefined
-                }
-                handleOnRenameCategory={
-                  listId ? handleOnRenameCategory : undefined
-                }
-                handleOnDeleteCategory={
-                  listId ? handleOnDeleteCategory : undefined
-                }
-                handleOnMoveCategory={
-                  listId ? handleOnMoveCategory : undefined
-                }
-              />
-            ) : (
-              <TaskBoard
-                tasks={localTasks}
+              <div className="flex flex-col gap-3">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-full" />
+              </div>
+              <Skeleton className="h-8 w-24" />
+            </div>
+          }
+        >
+          {localView === 'list' ? (
+            <TaskList
+              localTasks={displayedTasks}
+              localLists={localLists}
+              currentListId={listId}
+              handleOnReorder={handleOnReorder}
+              canReorder={canReorderTasks}
+              handleOnComplete={handleOnComplete}
+              handleOnRename={handleOnRename}
+              handleOnDueDateChange={handleOnDueDateChange}
+              handleOnNotesChange={handleOnNotesChange}
+              handleOnDelete={handleOnDelete}
+              pathName={pathName}
+              categories={listId ? localCategories : undefined}
+              handleOnChangeCategory={listId ? handleOnChangeCategory : undefined}
+              handleOnCreateCategory={
+                listId ? handleOnCreateCategory : undefined
+              }
+              handleOnRenameCategory={
+                listId ? handleOnRenameCategory : undefined
+              }
+              handleOnDeleteCategory={
+                listId ? handleOnDeleteCategory : undefined
+              }
+              handleOnMoveCategory={
+                listId ? handleOnMoveCategory : undefined
+              }
+              pageScroll={usesPageHeader}
+            />
+          ) : (
+            <TaskBoard
+              tasks={localTasks}
+              categories={localCategories}
+              onTaskCategoryChange={handleOnChangeCategory}
+              onCreateCategory={handleOnCreateCategory}
+              onRenameCategory={handleOnRenameCategory}
+              onDeleteCategory={handleOnDeleteCategory}
+              onMoveCategory={handleOnMoveCategory}
+              pageScroll={usesPageHeader}
+            />
+          )}
+        </Suspense>
+      </div>
+    </div>
+  )
+
+  if (usesPageHeader) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col bg-background">
+        <div
+          ref={listScrollRootRef}
+          className="min-h-0 flex-1 overflow-y-auto bg-background px-4 pb-5 pt-0 sm:px-6 sm:pb-6 sm:pt-8 lg:px-8"
+        >
+          <CollapsiblePageHeader
+            headerTitle={localHeaderTitle}
+            taskCount={localTasks.length}
+            headerEmoji={localHeaderEmoji}
+            scrollRootRef={listScrollRootRef}
+            rightSlot={(isCollapsed) => (
+              <CreateTaskAction
+                lists={localLists}
                 categories={localCategories}
-                onTaskCategoryChange={handleOnChangeCategory}
-                onCreateCategory={handleOnCreateCategory}
-                onRenameCategory={handleOnRenameCategory}
-                onDeleteCategory={handleOnDeleteCategory}
-                onMoveCategory={handleOnMoveCategory}
+                listId={listId}
+                compact
+                interactive={isCollapsed}
               />
             )}
-          </Suspense>
+          >
+            <div className="mx-auto w-full max-w-360">
+              <div className="mb-5 flex min-w-0 flex-col gap-4 py-2 sm:py-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <SidebarTrigger className="mt-1 md:hidden" />
+                  {listId && (
+                    <span className="flex size-[clamp(2rem,4vw,3.25rem)] shrink-0 items-center justify-center">
+                      <ListEmoji
+                        emoji={localHeaderEmoji}
+                        className="size-full items-center justify-center text-[clamp(2rem,4vw,3.25rem)]"
+                      />
+                    </span>
+                  )}
+                  <h1 className="min-w-0 break-words font-heading text-[clamp(2rem,4vw,3.25rem)] font-semibold leading-none tracking-[-0.055em] text-foreground">
+                    {localHeaderTitle}
+                  </h1>
+                </div>
+                <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+                  {localView === 'list' && (
+                    <TaskSortSelect
+                      value={sortOption}
+                      onValueChange={handleSortChange}
+                      iconOnlyOnMobile
+                    />
+                  )}
+                  {listId && (
+                    <HeaderViewToggle
+                      listId={listId}
+                      currentView={currentView}
+                      localView={localView}
+                      setLocalView={setLocalView}
+                    />
+                  )}
+                  <CreateTaskAction
+                    lists={localLists}
+                    categories={localCategories}
+                    listId={listId}
+                    className="sm:ml-auto"
+                  />
+                </div>
+              </div>
+            </div>
+          </CollapsiblePageHeader>
+
+          <div className="mx-auto w-full max-w-360">
+            {workspaceContent}
+          </div>
         </div>
       </div>
+    )
+  }
+
+  return (
+    <>
+      <Header taskCount={localTasks.length} headerTitle={localHeaderTitle} />
+      {workspaceContent}
       <CreateTaskButton
-        listId={listId}
+        listId={null}
         lists={localLists}
         categories={localCategories}
       />

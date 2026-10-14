@@ -290,3 +290,139 @@ html.dark {
 *::-webkit-scrollbar-thumb:hover {
   background-color: rgb(148 163 184 / 55%);
 }
+
+/* The Home workspace shares its width with the persistent Agenda rail. Keep
+   its layout tied to that available width instead of the viewport. */
+.home-workspace-container {
+  container: home-workspace / inline-size;
+}
+
+.home-task-layout {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.home-attention-rail {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1rem;
+  order: 1;
+}
+
+.home-task-main {
+  min-width: 0;
+  order: 2;
+}
+
+.home-toolbar {
+  grid-template-columns: auto auto minmax(0, 1fr);
+}
+
+.home-task-sort {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.home-task-search {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.home-add-task-action {
+  grid-column: 3;
+  grid-row: 1;
+  width: auto;
+  justify-self: start;
+}
+
+.home-toolbar .home-add-task-action {
+  height: 2.25rem;
+}
+
+@container home-workspace (min-width: 720px) {
+  .home-header-meta {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    column-gap: 2.5rem;
+    row-gap: 1rem;
+  }
+
+  .home-header-message {
+    flex: 0 1 30rem;
+    min-width: min(100%, 22rem);
+    max-width: 42rem;
+  }
+
+  .home-header-meta .home-toolbar {
+    flex: 1 1 40rem;
+    min-width: 0;
+  }
+
+  .home-task-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .home-attention-rail {
+    display: flex;
+    grid-column: 1;
+    grid-row: 1;
+    flex-direction: column;
+    gap: 1rem;
+    order: initial;
+  }
+
+  .home-attention-rail > * {
+    min-width: 0;
+  }
+
+  .home-task-main {
+    grid-column: 1;
+    grid-row: 2;
+    order: initial;
+  }
+
+  .home-toolbar {
+    grid-template-columns: auto auto minmax(10rem, 1fr) auto;
+  }
+
+  .home-task-sort,
+  .home-task-search,
+  .home-add-task-action {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .home-task-search {
+    width: auto;
+  }
+}
+
+@container home-workspace (min-width: 960px) {
+  .home-task-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 380px);
+  }
+
+  .home-attention-rail {
+    display: flex;
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+    position: sticky;
+    top: 1.5rem;
+    order: initial;
+  }
+
+  .home-task-main {
+    grid-column: 1;
+    grid-row: 1;
+    order: initial;
+  }
+
+}
