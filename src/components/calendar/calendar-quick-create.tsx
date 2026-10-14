@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -54,6 +54,21 @@ function rangeLabel(start: Date, end: Date | null) {
   return `${day} · ${timeLabel(start.getTime())}–${timeLabel(displayedEnd.getTime())}`
 }
 
+function durationValue(start: Date, end: Date | null) {
+  return String(
+    end
+      ? Math.max(
+          SLOT_MINUTES,
+          Math.round((end.getTime() - start.getTime()) / MINUTE),
+        )
+      : SLOT_MINUTES,
+  )
+}
+
+function rangeKey(start: Date, end: Date | null) {
+  return `${start.getTime()}:${end?.getTime() ?? 'default'}`
+}
+
 export default function CalendarQuickCreate({
   draft,
   lists,
@@ -76,16 +91,33 @@ export default function CalendarQuickCreate({
   const [listId, setListId] = useState(draft.listId ?? NO_LIST)
   const [date, setDate] = useState(initial.date)
   const [startTime, setStartTime] = useState(initial.time)
-  const [duration, setDuration] = useState(
-    draft.endsAt
-      ? String(Math.max(SLOT_MINUTES, Math.round((draft.endsAt.getTime() - draft.startsAt.getTime()) / MINUTE)))
-      : String(SLOT_MINUTES),
+  const [duration, setDuration] = useState(() =>
+    durationValue(draft.startsAt, draft.endsAt),
   )
   const [error, setError] = useState<string | null>(null)
+  const draftStart = draft.startsAt.getTime()
+  const draftEnd = draft.endsAt?.getTime() ?? null
+  const draftRangeKey = rangeKey(draft.startsAt, draft.endsAt)
+  const lastPublishedRange = useRef(draftRangeKey)
+  const syncingFromDraft = useRef(false)
 
   useEffect(() => {
     onDraftTitleChange(title)
   }, [onDraftTitleChange, title])
+
+  useEffect(() => {
+    if (draftRangeKey === lastPublishedRange.current) return
+    const nextStart = new Date(draftStart)
+    const nextEnd = draftEnd === null ? null : new Date(draftEnd)
+    const nextInput = localInputValue(nextStart)
+
+    syncingFromDraft.current = true
+    lastPublishedRange.current = draftRangeKey
+    setDate(nextInput.date)
+    setStartTime(nextInput.time)
+    setDuration(durationValue(nextStart, nextEnd))
+    setError(null)
+  }, [draftEnd, draftRangeKey, draftStart])
 
   const resolvedRange = useMemo(() => {
     const minute = Number(startTime.split(':')[1])
@@ -109,7 +141,16 @@ export default function CalendarQuickCreate({
   }, [date, draft.startsAt, duration, startTime])
 
   useEffect(() => {
-    if (resolvedRange) onDraftRangeChange(resolvedRange.start, resolvedRange.end)
+    if (!resolvedRange) return
+    if (syncingFromDraft.current) {
+      syncingFromDraft.current = false
+      return
+    }
+
+    const nextRangeKey = rangeKey(resolvedRange.start, resolvedRange.end)
+    if (nextRangeKey === lastPublishedRange.current) return
+    lastPublishedRange.current = nextRangeKey
+    onDraftRangeChange(resolvedRange.start, resolvedRange.end)
   }, [onDraftRangeChange, resolvedRange])
 
   function submit(event: React.FormEvent) {
@@ -145,6 +186,7 @@ export default function CalendarQuickCreate({
         />
       </PopoverAnchor>
       <PopoverContent
+        data-calendar-quick-create
         align="start"
         side="right"
         sideOffset={10}
@@ -155,6 +197,12 @@ export default function CalendarQuickCreate({
           requestAnimationFrame(() => {
             document.querySelector<HTMLInputElement>('[data-calendar-quick-title]')?.focus()
           })
+        }}
+        onInteractOutside={(event) => {
+          const target = event.target
+          if (target instanceof Element && target.closest('.planomy-create-draft')) {
+            event.preventDefault()
+          }
         }}
       >
         <form className="space-y-3" onSubmit={submit}>

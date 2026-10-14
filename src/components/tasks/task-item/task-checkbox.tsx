@@ -23,7 +23,7 @@ export function TaskCheckbox({ task, handleOnComplete }: TaskCheckboxProps) {
         group/checkbox
         task-checkbox
         relative
-        flex h-[1.125rem] w-[1.125rem] shrink-0
+        flex h-4.5 w-4.5 shrink-0
         items-center justify-center
         rounded-full
         border border-border

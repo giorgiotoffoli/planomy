@@ -12,6 +12,18 @@ export function taskDisplayEnd(start: Date, end: Date | null) {
   return end ?? new Date(start.getTime() + DEFAULT_TASK_DISPLAY_MINUTES * MINUTE)
 }
 
+export function moveTimedRange(
+  start: Date,
+  end: Date | null,
+  nextStart: Date,
+): CalendarDraftRange {
+  const duration = taskDisplayEnd(start, end).getTime() - start.getTime()
+  return {
+    startsAt: nextStart,
+    endsAt: new Date(nextStart.getTime() + duration),
+  }
+}
+
 export function isSingleDayTimedRange(start: Date, end: Date | null) {
   if (!Number.isFinite(start.getTime()) || (end && !Number.isFinite(end.getTime()))) {
     return false

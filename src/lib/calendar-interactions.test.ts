@@ -4,6 +4,7 @@ import {
   DEFAULT_TASK_DISPLAY_MINUTES,
   durationEnd,
   isSingleDayTimedRange,
+  moveTimedRange,
   taskDisplayEnd,
 } from './calendar-interactions.ts'
 
@@ -35,4 +36,30 @@ test('duration changes are capped at the end of the local day', () => {
   assert.equal(end?.getDate(), 15)
   assert.equal(end?.getHours(), 0)
   assert.equal(end?.getMinutes(), 0)
+})
+
+test('moving a draft keeps its exact time window', () => {
+  const start = new Date(2026, 9, 14, 10, 30)
+  const end = new Date(2026, 9, 14, 11, 15)
+  const nextStart = new Date(2026, 9, 14, 14, 0)
+  const moved = moveTimedRange(start, end, nextStart)
+
+  assert.equal(moved.startsAt.getTime(), nextStart.getTime())
+  assert.equal(moved.endsAt?.getHours(), 14)
+  assert.equal(moved.endsAt?.getMinutes(), 45)
+  assert.equal(
+    moved.endsAt!.getTime() - moved.startsAt.getTime(),
+    end.getTime() - start.getTime(),
+  )
+})
+
+test('moving a duration-less draft keeps its default display window', () => {
+  const start = new Date(2026, 9, 14, 10, 30)
+  const nextStart = new Date(2026, 9, 14, 12, 0)
+  const moved = moveTimedRange(start, null, nextStart)
+
+  assert.equal(
+    moved.endsAt!.getTime() - moved.startsAt.getTime(),
+    DEFAULT_TASK_DISPLAY_MINUTES * 60_000,
+  )
 })
