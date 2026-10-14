@@ -19,7 +19,10 @@ import {
 import { removeTimeBlock, saveTimeBlock } from '@/components/agenda/actions'
 import { TaskEditDialog } from '@/components/tasks/task-item/task-edit/task-edit-dialog'
 import { projectCalendarItems } from '@/lib/calendar-items'
-import { isSingleDayTimedRange, taskDisplayEnd } from '@/lib/calendar-interactions'
+import {
+  isSingleDayTimedRange,
+  taskDisplayEnd,
+} from '@/lib/calendar-interactions'
 import type { CalendarRangeInput } from '@/lib/events'
 import type {
   AgendaBlock,
@@ -36,7 +39,11 @@ import CalendarHeader, {
 import CalendarView from './calendar-view'
 import type { QuickCreateInput } from './calendar-quick-create'
 
-function replaceScheduledBlock(blocks: AgendaBlock[], next: AgendaBlock | null, taskId: string) {
+function replaceScheduledBlock(
+  blocks: AgendaBlock[],
+  next: AgendaBlock | null,
+  taskId: string,
+) {
   const remaining = blocks.filter((block) => block.task_id !== taskId)
   return next ? [...remaining, next] : remaining
 }
@@ -177,32 +184,38 @@ export default function CalendarPage({
     setBusyTaskIds(new Set(pendingTasks.current))
   }, [])
 
-  const loadRange = useCallback(async (range: CalendarRangeInput) => {
-    if (!masterKey) return
-    const version = ++loadVersion.current
+  const loadRange = useCallback(
+    async (range: CalendarRangeInput) => {
+      if (!masterKey) return
+      const version = ++loadVersion.current
 
-    try {
-      const result = await getCalendarRangeData(range)
-      const [nextDueTasks, nextScheduledTasks, nextEvents] = await Promise.all([
-        decryptTasks(result.dueTasks, masterKey),
-        decryptScheduledTasks(result.scheduledTasks, masterKey),
-        decryptEvents(result.events, masterKey),
-      ])
-      if (version === loadVersion.current) {
-        commitDueTasks(nextDueTasks)
-        commitScheduledTasks(applyPendingSchedules(nextScheduledTasks, pendingSchedules.current))
-        setEvents(nextEvents)
+      try {
+        const result = await getCalendarRangeData(range)
+        const [nextDueTasks, nextScheduledTasks, nextEvents] =
+          await Promise.all([
+            decryptTasks(result.dueTasks, masterKey),
+            decryptScheduledTasks(result.scheduledTasks, masterKey),
+            decryptEvents(result.events, masterKey),
+          ])
+        if (version === loadVersion.current) {
+          commitDueTasks(nextDueTasks)
+          commitScheduledTasks(
+            applyPendingSchedules(nextScheduledTasks, pendingSchedules.current),
+          )
+          setEvents(nextEvents)
+        }
+      } catch (cause) {
+        if (version === loadVersion.current) {
+          toast.error(
+            cause instanceof Error
+              ? cause.message
+              : 'Calendar items could not be loaded.',
+          )
+        }
       }
-    } catch (cause) {
-      if (version === loadVersion.current) {
-        toast.error(
-          cause instanceof Error
-            ? cause.message
-            : 'Calendar items could not be loaded.',
-        )
-      }
-    }
-  }, [commitDueTasks, commitScheduledTasks, masterKey])
+    },
+    [commitDueTasks, commitScheduledTasks, masterKey],
+  )
 
   useEffect(() => {
     if (!masterKey) return
@@ -263,17 +276,14 @@ export default function CalendarPage({
     () => projectCalendarItems(dueTasks ?? [], scheduledTasks, events),
     [dueTasks, events, scheduledTasks],
   )
-  const editingTask = useMemo(
-    () => {
-      if (!editingTaskId) return null
-      return (
-        dueTasks?.find((task) => task.id === editingTaskId) ??
-        scheduledTasks.find((block) => block.task.id === editingTaskId)?.task ??
-        null
-      )
-    },
-    [dueTasks, editingTaskId, scheduledTasks],
-  )
+  const editingTask = useMemo(() => {
+    if (!editingTaskId) return null
+    return (
+      dueTasks?.find((task) => task.id === editingTaskId) ??
+      scheduledTasks.find((block) => block.task.id === editingTaskId)?.task ??
+      null
+    )
+  }, [dueTasks, editingTaskId, scheduledTasks])
 
   function navigate(navigation: CalendarNavigation) {
     setCommand((current) => ({
@@ -290,221 +300,254 @@ export default function CalendarPage({
     [loadRange],
   )
 
-  const handleTaskSchedule = useCallback(async (
-    task: TaskWithList,
-    startsAt: Date,
-    endsAt: Date | null,
-  ) => {
-    const normalizedEndsAt = taskDisplayEnd(startsAt, endsAt)
-    if (
-      pendingTasks.current.has(task.id) ||
-      !isSingleDayTimedRange(startsAt, normalizedEndsAt)
-    ) return false
-
-    const previous = scheduledTasksRef.current.find((block) => block.task_id === task.id) ?? null
-    const next: AgendaBlock = {
-      task_id: task.id,
-      user_id: task.user_id,
-      starts_at: startsAt.toISOString(),
-      ends_at: normalizedEndsAt.toISOString(),
-      task,
-    }
-
-    pendingSchedules.current.set(task.id, next)
-    setTaskBusy(task.id, true)
-    commitScheduledTasks(replaceScheduledBlock(scheduledTasksRef.current, next, task.id))
-
-    try {
-      await saveTimeBlock(task.id, next.starts_at, next.ends_at)
-      pendingSchedules.current.delete(task.id)
-      notifyPlanTimeChanged('calendar')
-      return true
-    } catch (cause) {
-      pendingSchedules.current.delete(task.id)
-      commitScheduledTasks(replaceScheduledBlock(scheduledTasksRef.current, previous, task.id))
-      toast.error(
-        cause instanceof Error
-          ? `Couldn't update scheduled time. ${cause.message}`
-          : "Couldn't update scheduled time. Changes were reverted.",
+  const handleTaskSchedule = useCallback(
+    async (task: TaskWithList, startsAt: Date, endsAt: Date | null) => {
+      const normalizedEndsAt = taskDisplayEnd(startsAt, endsAt)
+      if (
+        pendingTasks.current.has(task.id) ||
+        !isSingleDayTimedRange(startsAt, normalizedEndsAt)
       )
-      return false
-    } finally {
-      setTaskBusy(task.id, false)
-    }
-  }, [commitScheduledTasks, setTaskBusy])
+        return false
 
-  const handleTaskUnschedule = useCallback(async (task: TaskWithList) => {
-    if (pendingTasks.current.has(task.id)) return false
-    const previous = scheduledTasksRef.current.find((block) => block.task_id === task.id) ?? null
-    if (!previous) return true
+      const previous =
+        scheduledTasksRef.current.find((block) => block.task_id === task.id) ??
+        null
+      const next: AgendaBlock = {
+        task_id: task.id,
+        user_id: task.user_id,
+        starts_at: startsAt.toISOString(),
+        ends_at: normalizedEndsAt.toISOString(),
+        task,
+      }
 
-    pendingSchedules.current.set(task.id, null)
-    setTaskBusy(task.id, true)
-    commitScheduledTasks(replaceScheduledBlock(scheduledTasksRef.current, null, task.id))
-    setSelectedTaskId(null)
-
-    try {
-      await removeTimeBlock(task.id)
-      pendingSchedules.current.delete(task.id)
-      notifyPlanTimeChanged('calendar')
-      return true
-    } catch (cause) {
-      pendingSchedules.current.delete(task.id)
-      commitScheduledTasks(replaceScheduledBlock(scheduledTasksRef.current, previous, task.id))
-      toast.error(
-        cause instanceof Error
-          ? `Couldn't unschedule task. ${cause.message}`
-          : "Couldn't unschedule task. Changes were reverted.",
+      pendingSchedules.current.set(task.id, next)
+      setTaskBusy(task.id, true)
+      commitScheduledTasks(
+        replaceScheduledBlock(scheduledTasksRef.current, next, task.id),
       )
-      return false
-    } finally {
-      setTaskBusy(task.id, false)
-    }
-  }, [commitScheduledTasks, setTaskBusy])
 
-  const handleTaskComplete = useCallback(async (task: TaskWithList) => {
-    if (pendingTasks.current.has(task.id)) return false
-    const completed = !task.completed
-    const updateTask = (candidate: TaskWithList) =>
-      candidate.id === task.id ? { ...candidate, completed } : candidate
+      try {
+        await saveTimeBlock(task.id, next.starts_at, next.ends_at)
+        pendingSchedules.current.delete(task.id)
+        notifyPlanTimeChanged('calendar')
+        return true
+      } catch (cause) {
+        pendingSchedules.current.delete(task.id)
+        commitScheduledTasks(
+          replaceScheduledBlock(scheduledTasksRef.current, previous, task.id),
+        )
+        toast.error(
+          cause instanceof Error
+            ? `Couldn't update scheduled time. ${cause.message}`
+            : "Couldn't update scheduled time. Changes were reverted.",
+        )
+        return false
+      } finally {
+        setTaskBusy(task.id, false)
+      }
+    },
+    [commitScheduledTasks, setTaskBusy],
+  )
 
-    setTaskBusy(task.id, true)
-    commitDueTasks(dueTasksRef.current?.map(updateTask) ?? null)
-    commitScheduledTasks(
-      scheduledTasksRef.current.map((block) =>
-        block.task_id === task.id
-          ? { ...block, task: { ...block.task, completed } }
-          : block,
-      ),
-    )
+  const handleTaskUnschedule = useCallback(
+    async (task: TaskWithList) => {
+      if (pendingTasks.current.has(task.id)) return false
+      const previous =
+        scheduledTasksRef.current.find((block) => block.task_id === task.id) ??
+        null
+      if (!previous) return true
 
-    try {
-      await updateTaskCompletedAction(task.id, completed)
-      notifyTasksChanged()
-      return true
-    } catch (cause) {
-      const restoreTask = (candidate: TaskWithList) =>
-        candidate.id === task.id ? { ...candidate, completed: task.completed } : candidate
-      commitDueTasks(dueTasksRef.current?.map(restoreTask) ?? null)
+      pendingSchedules.current.set(task.id, null)
+      setTaskBusy(task.id, true)
+      commitScheduledTasks(
+        replaceScheduledBlock(scheduledTasksRef.current, null, task.id),
+      )
+      setSelectedTaskId(null)
+
+      try {
+        await removeTimeBlock(task.id)
+        pendingSchedules.current.delete(task.id)
+        notifyPlanTimeChanged('calendar')
+        return true
+      } catch (cause) {
+        pendingSchedules.current.delete(task.id)
+        commitScheduledTasks(
+          replaceScheduledBlock(scheduledTasksRef.current, previous, task.id),
+        )
+        toast.error(
+          cause instanceof Error
+            ? `Couldn't unschedule task. ${cause.message}`
+            : "Couldn't unschedule task. Changes were reverted.",
+        )
+        return false
+      } finally {
+        setTaskBusy(task.id, false)
+      }
+    },
+    [commitScheduledTasks, setTaskBusy],
+  )
+
+  const handleTaskComplete = useCallback(
+    async (task: TaskWithList) => {
+      if (pendingTasks.current.has(task.id)) return false
+      const completed = !task.completed
+      const updateTask = (candidate: TaskWithList) =>
+        candidate.id === task.id ? { ...candidate, completed } : candidate
+
+      setTaskBusy(task.id, true)
+      commitDueTasks(dueTasksRef.current?.map(updateTask) ?? null)
       commitScheduledTasks(
         scheduledTasksRef.current.map((block) =>
           block.task_id === task.id
-            ? { ...block, task: { ...block.task, completed: task.completed } }
+            ? { ...block, task: { ...block.task, completed } }
             : block,
         ),
       )
-      toast.error(cause instanceof Error ? cause.message : 'Task could not be updated.')
-      return false
-    } finally {
-      setTaskBusy(task.id, false)
-    }
-  }, [commitDueTasks, commitScheduledTasks, setTaskBusy])
 
-  const handleQuickCreate = useCallback(async (input: QuickCreateInput) => {
-    const endsAt = taskDisplayEnd(input.startsAt, input.endsAt)
-    if (!masterKey || !isSingleDayTimedRange(input.startsAt, endsAt)) {
-      toast.error('Unlock your vault and choose a valid time range.')
-      return false
-    }
+      try {
+        await updateTaskCompletedAction(task.id, completed)
+        notifyTasksChanged()
+        return true
+      } catch (cause) {
+        const restoreTask = (candidate: TaskWithList) =>
+          candidate.id === task.id
+            ? { ...candidate, completed: task.completed }
+            : candidate
+        commitDueTasks(dueTasksRef.current?.map(restoreTask) ?? null)
+        commitScheduledTasks(
+          scheduledTasksRef.current.map((block) =>
+            block.task_id === task.id
+              ? { ...block, task: { ...block.task, completed: task.completed } }
+              : block,
+          ),
+        )
+        toast.error(
+          cause instanceof Error ? cause.message : 'Task could not be updated.',
+        )
+        return false
+      } finally {
+        setTaskBusy(task.id, false)
+      }
+    },
+    [commitDueTasks, commitScheduledTasks, setTaskBusy],
+  )
 
-    const tempId = `calendar-draft:${crypto.randomUUID()}`
-    const selectedList = lists.find((list) => list.id === input.listId) ?? null
-    const optimisticTask: TaskWithList = {
-      id: tempId,
-      user_id:
-        scheduledTasksRef.current[0]?.user_id ??
-        dueTasksRef.current?.[0]?.user_id ??
-        '',
-      list_id: input.listId,
-      title: input.title,
-      notes: '',
-      completed: false,
-      due_date: null,
-      due_time: null,
-      category_id: null,
-      position: Number.MAX_SAFE_INTEGER,
-      focused: false,
-      stashed: false,
-      list: selectedList,
-    }
-    const optimisticBlock: AgendaBlock = {
-      task_id: tempId,
-      user_id: optimisticTask.user_id,
-      starts_at: input.startsAt.toISOString(),
-      ends_at: endsAt.toISOString(),
-      task: optimisticTask,
-    }
+  const handleQuickCreate = useCallback(
+    async (input: QuickCreateInput) => {
+      const endsAt = taskDisplayEnd(input.startsAt, input.endsAt)
+      if (!masterKey || !isSingleDayTimedRange(input.startsAt, endsAt)) {
+        toast.error('Unlock your vault and choose a valid time range.')
+        return false
+      }
 
-    pendingSchedules.current.set(tempId, optimisticBlock)
-    setTaskBusy(tempId, true)
-    commitScheduledTasks([...scheduledTasksRef.current, optimisticBlock])
-    let createdTaskId: string | null = null
-
-    try {
-      const encryptedTitle = await encryptString(input.title, masterKey)
-      const savedTask = await createTaskAction({
-        title: encryptedTitle,
-        notes: '',
-        listId: input.listId,
-        categoryId: null,
-        dueDate: null,
-        dueTime: null,
-        focused: false,
-      })
-      createdTaskId = savedTask.id
-      const localTask: TaskWithList = {
-        ...savedTask,
+      const tempId = `calendar-draft:${crypto.randomUUID()}`
+      const selectedList =
+        lists.find((list) => list.id === input.listId) ?? null
+      const optimisticTask: TaskWithList = {
+        id: tempId,
+        user_id:
+          scheduledTasksRef.current[0]?.user_id ??
+          dueTasksRef.current?.[0]?.user_id ??
+          '',
+        list_id: input.listId,
         title: input.title,
         notes: '',
+        completed: false,
+        due_date: null,
+        due_time: null,
+        category_id: null,
+        position: Number.MAX_SAFE_INTEGER,
+        focused: false,
+        stashed: false,
         list: selectedList,
       }
-      const savedBlock: AgendaBlock = {
-        ...optimisticBlock,
-        task_id: savedTask.id,
-        user_id: savedTask.user_id,
-        task: localTask,
+      const optimisticBlock: AgendaBlock = {
+        task_id: tempId,
+        user_id: optimisticTask.user_id,
+        starts_at: input.startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+        task: optimisticTask,
       }
 
-      pendingSchedules.current.delete(tempId)
-      pendingSchedules.current.set(savedTask.id, savedBlock)
-      setTaskBusy(tempId, false)
-      setTaskBusy(savedTask.id, true)
-      commitScheduledTasks([
-        ...scheduledTasksRef.current.filter((block) => block.task_id !== tempId),
-        savedBlock,
-      ])
+      pendingSchedules.current.set(tempId, optimisticBlock)
+      setTaskBusy(tempId, true)
+      commitScheduledTasks([...scheduledTasksRef.current, optimisticBlock])
+      let createdTaskId: string | null = null
 
-      await saveTimeBlock(savedTask.id, savedBlock.starts_at, savedBlock.ends_at)
-      pendingSchedules.current.delete(savedTask.id)
-      notifyPlanTimeChanged('calendar')
-      return true
-    } catch (cause) {
-      pendingSchedules.current.delete(tempId)
-      if (createdTaskId) pendingSchedules.current.delete(createdTaskId)
-      commitScheduledTasks(
-        scheduledTasksRef.current.filter(
-          (block) => block.task_id !== tempId && block.task_id !== createdTaskId,
-        ),
-      )
-      if (createdTaskId) {
-        try {
-          await deleteTaskAction(createdTaskId)
-        } catch {
-          // The scheduled draft is still removed locally. A rare cleanup
-          // failure leaves an unscheduled task that can be managed in Inbox.
+      try {
+        const encryptedTitle = await encryptString(input.title, masterKey)
+        const savedTask = await createTaskAction({
+          title: encryptedTitle,
+          notes: '',
+          listId: input.listId,
+          categoryId: null,
+          dueDate: null,
+          dueTime: null,
+          focused: false,
+        })
+        createdTaskId = savedTask.id
+        const localTask: TaskWithList = {
+          ...savedTask,
+          title: input.title,
+          notes: '',
+          list: selectedList,
         }
+        const savedBlock: AgendaBlock = {
+          ...optimisticBlock,
+          task_id: savedTask.id,
+          user_id: savedTask.user_id,
+          task: localTask,
+        }
+
+        pendingSchedules.current.delete(tempId)
+        pendingSchedules.current.set(savedTask.id, savedBlock)
+        setTaskBusy(tempId, false)
+        setTaskBusy(savedTask.id, true)
+        commitScheduledTasks([
+          ...scheduledTasksRef.current.filter(
+            (block) => block.task_id !== tempId,
+          ),
+          savedBlock,
+        ])
+
+        await saveTimeBlock(
+          savedTask.id,
+          savedBlock.starts_at,
+          savedBlock.ends_at,
+        )
+        pendingSchedules.current.delete(savedTask.id)
+        notifyPlanTimeChanged('calendar')
+        return true
+      } catch (cause) {
+        pendingSchedules.current.delete(tempId)
+        if (createdTaskId) pendingSchedules.current.delete(createdTaskId)
+        commitScheduledTasks(
+          scheduledTasksRef.current.filter(
+            (block) =>
+              block.task_id !== tempId && block.task_id !== createdTaskId,
+          ),
+        )
+        if (createdTaskId) {
+          try {
+            await deleteTaskAction(createdTaskId)
+          } catch {
+            // The scheduled draft is still removed locally. A rare cleanup
+            // failure leaves an unscheduled task that can be managed in Inbox.
+          }
+        }
+        toast.error(
+          cause instanceof Error
+            ? `Couldn't create scheduled task. ${cause.message}`
+            : "Couldn't create scheduled task. The draft was removed.",
+        )
+        return false
+      } finally {
+        setTaskBusy(tempId, false)
+        if (createdTaskId) setTaskBusy(createdTaskId, false)
       }
-      toast.error(
-        cause instanceof Error
-          ? `Couldn't create scheduled task. ${cause.message}`
-          : "Couldn't create scheduled task. The draft was removed.",
-      )
-      return false
-    } finally {
-      setTaskBusy(tempId, false)
-      if (createdTaskId) setTaskBusy(createdTaskId, false)
-    }
-  }, [commitScheduledTasks, lists, masterKey, setTaskBusy])
+    },
+    [commitScheduledTasks, lists, masterKey, setTaskBusy],
+  )
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
@@ -513,7 +556,9 @@ export default function CalendarPage({
         viewMode={viewMode}
         onNavigate={navigate}
         onViewChange={setViewMode}
-        onCreate={() => toast.info('Click or drag an empty time to add a task.')}
+        onCreate={() =>
+          toast.info('Click or drag an empty time to add a task.')
+        }
       />
       <div
         className="flex min-h-0 flex-1 flex-col bg-surface pb-2 pt-2 sm:pb-3 lg:pb-4"

@@ -26,6 +26,8 @@ export default function CalendarItemContent({
   displayEndsAt,
   interactionPreview = false,
   selected = false,
+  menuOpen,
+  onMenuOpenChange,
   onOpenTask,
   onUnschedule,
   onSetDuration,
@@ -37,6 +39,8 @@ export default function CalendarItemContent({
   displayEndsAt?: string | null
   interactionPreview?: boolean
   selected?: boolean
+  menuOpen?: boolean
+  onMenuOpenChange?: (open: boolean) => void
   onOpenTask?: () => void
   onUnschedule?: () => void
   onSetDuration?: (minutes: number) => void
@@ -93,7 +97,7 @@ export default function CalendarItemContent({
         ) : null}
 
         {selected && !compact && onOpenTask && onUnschedule && onSetDuration ? (
-          <DropdownMenu>
+          <DropdownMenu open={menuOpen} onOpenChange={onMenuOpenChange}>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
@@ -133,7 +137,13 @@ export default function CalendarItemContent({
                 </DropdownMenuItem>
               ) : null}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={onUnschedule}>
+              <DropdownMenuItem
+                onSelect={() => {
+                  // Let Radix finish closing the menu before removing the
+                  // event that owns its trigger.
+                  window.setTimeout(() => onUnschedule(), 0)
+                }}
+              >
                 <CalendarX /> Unschedule
               </DropdownMenuItem>
             </DropdownMenuContent>

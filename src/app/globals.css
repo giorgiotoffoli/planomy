@@ -804,6 +804,18 @@ html.dark {
   color: var(--text-primary);
 }
 
+.planomy-calendar .planomy-create-draft.is-draggable {
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+
+.planomy-calendar .planomy-create-draft.is-draggable:active,
+.planomy-calendar .planomy-create-draft.is-draggable.is-interaction-preview {
+  cursor: grabbing;
+  box-shadow: 0 8px 22px rgb(0 0 0 / 18%);
+}
+
 .planomy-create-draft-content {
   justify-content: center;
 }
@@ -811,6 +823,11 @@ html.dark {
 body.calendar-is-manipulating,
 body.calendar-is-manipulating * {
   user-select: none !important;
+}
+
+body.calendar-is-manipulating [data-calendar-quick-create] {
+  pointer-events: none;
+  opacity: 0 !important;
 }
 
 .planomy-scheduled-task-marker {
@@ -924,9 +941,7 @@ button.planomy-scheduled-task-marker svg {
   font-size: 0.78rem;
 }
 
-/* The persistent Agenda is the compact Today projection of the same
-   Calendar surface. Its slots stay native droppable targets so task planning
-   keeps the existing drag-and-drop behavior. */
+/* The persistent Planner renders the shared day Calendar. */
 .agenda-calendar {
   --calendar-canvas: var(--surface);
   background: var(--calendar-canvas);
@@ -941,56 +956,44 @@ button.planomy-scheduled-task-marker svg {
   background: color-mix(in oklab, var(--calendar-canvas) 96%, var(--background));
 }
 
-.agenda-calendar-all-day {
-  display: grid;
-  grid-template-columns: 4.5rem minmax(0, 1fr);
-  gap: 0.45rem;
-  background: var(--calendar-canvas);
+.agenda-calendar .calendar-grid-scroll,
+.agenda-calendar .planomy-calendar {
+  height: 100%;
 }
 
-.agenda-calendar-lane-label {
-  padding-top: 0.35rem;
-  color: var(--text-tertiary);
-  font-size: 0.72rem;
-  font-weight: 600;
+.agenda-calendar .fc-timegrid-axis,
+.agenda-calendar .fc-timegrid-slot-label,
+.agenda-calendar .fc-timegrid-axis-chunk {
+  display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
 }
 
-.agenda-calendar-all-day-item {
-  min-height: 1.7rem;
-  border-radius: 0.4rem;
+.agenda-calendar .fc-timegrid-col-events {
+  left: 2.65rem;
 }
 
-.agenda-calendar-all-day-item.planomy-due-event {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.agenda-calendar-slot {
-  z-index: 0;
-  border-top-color: transparent;
-}
-
-.agenda-calendar-slot.agenda-calendar-hour {
-  border-top-color: var(--border-subtle);
-}
-
-.agenda-task-block {
+.agenda-calendar .planner-calendar-hour-label {
+  position: absolute;
   z-index: 2;
+  top: 0.2rem;
+  left: 0.45rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
 }
 
-.agenda-task-block .task-checkbox,
-.agenda-task-block button {
-  position: relative;
-  z-index: 3;
+.agenda-calendar .planomy-due-label {
+  font-size: 0.72rem;
 }
 
-.agenda-task-resize-handle {
-  background: color-mix(in oklab, var(--list-color) 35%, transparent);
-}
-
-.agenda-now-indicator {
-  border-color: var(--primary);
+.agenda-calendar .fc-col-header-cell,
+.agenda-calendar .fc-timegrid-col,
+.agenda-calendar .fc-timegrid-slot-lane {
+  border-left: 0 !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

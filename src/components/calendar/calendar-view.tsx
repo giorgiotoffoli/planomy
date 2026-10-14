@@ -1,6 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
@@ -8,7 +15,12 @@ import timeGridPlugin from '@fullcalendar/timegrid'
 import { isListColor, listColorCssValue } from '@/lib/list-colors'
 import type { CalendarItem } from '@/lib/calendar-items'
 import type { CalendarRangeInput } from '@/lib/events'
-import { durationEnd, isSingleDayTimedRange, taskDisplayEnd } from '@/lib/calendar-interactions'
+import {
+  durationEnd,
+  isSingleDayTimedRange,
+  moveTimedRange,
+  taskDisplayEnd,
+} from '@/lib/calendar-interactions'
 import { localDateKey } from '@/lib/today'
 import type { List, TaskWithList } from '@/types'
 import CalendarItemContent from './calendar-item-content'
@@ -125,6 +137,10 @@ export default function CalendarView({
   onTaskUnschedule,
   onTaskComplete,
   onQuickCreate,
+  date,
+  showDayHeader = true,
+  openTaskMenuOnClick = false,
+  renderSlotLaneContent,
 }: {
   viewMode: CalendarViewMode
   command: CalendarCommand | null
@@ -140,10 +156,15 @@ export default function CalendarView({
   onTaskUnschedule: (task: TaskWithList) => Promise<boolean>
   onTaskComplete: (task: TaskWithList) => Promise<boolean>
   onQuickCreate: (input: QuickCreateInput) => Promise<boolean>
+  date?: string
+  showDayHeader?: boolean
+  openTaskMenuOnClick?: boolean
+  renderSlotLaneContent?: (date: Date) => ReactNode
 }) {
   const calendarRef = useRef<FullCalendar>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const [draft, setDraft] = useState<QuickCreateDraft | null>(null)
+  const [openTaskMenuId, setOpenTaskMenuId] = useState<string | null>(null)
   const itemById = useMemo(
     () => new Map(calendarItems.map((item) => [item.id, item])),
     [calendarItems],
@@ -151,6 +172,7 @@ export default function CalendarView({
   const interactiveTimeGrid = viewMode === 'day' || viewMode === 'week'
   const clearInteraction = useCallback(() => {
     setDraft(null)
+    setOpenTaskMenuId(null)
     calendarRef.current?.getApi().unselect()
   }, [])
   const changeDraftTitle = useCallback((title: string) => {
@@ -221,11 +243,12 @@ export default function CalendarView({
         start: draft.startsAt.toISOString(),
         end: taskDisplayEnd(draft.startsAt, draft.endsAt).toISOString(),
         allDay: false,
-        editable: false,
+        editable: interactiveTimeGrid,
+        startEditable: interactiveTimeGrid,
+        durationEditable: false,
         extendedProps: {
           kind: 'create-draft',
           listColor: selectedList?.color ?? null,
-          persistedEnd: draft.endsAt?.toISOString() ?? null,
         },
       })
     }
@@ -252,6 +275,16 @@ export default function CalendarView({
       api.changeView(fullCalendarView[viewMode])
     }
   }, [clearInteraction, onTaskSelect, viewMode])
+
+  useEffect(() => {
+    if (!date) return
+    const api = calendarRef.current?.getApi()
+    if (api && localDateKey(api.getDate()) !== date) {
+      clearInteraction()
+      onTaskSelect(null)
+      api.gotoDate(date)
+    }
+  }, [clearInteraction, date, onTaskSelect])
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -283,12 +316,19 @@ export default function CalendarView({
     rootRef.current
       ?.querySelectorAll<HTMLElement>('[data-calendar-task-id]')
       .forEach((element) => {
+        const isSelected = element.dataset.calendarTaskId === selectedTaskId
         element.setAttribute(
           'aria-selected',
-          String(element.dataset.calendarTaskId === selectedTaskId),
+          String(isSelected),
         )
+        if (openTaskMenuOnClick) {
+          element.setAttribute(
+            'aria-expanded',
+            String(element.dataset.calendarTaskId === openTaskMenuId),
+          )
+        }
       })
-  }, [calendarItems, selectedTaskId])
+  }, [calendarItems, openTaskMenuId, openTaskMenuOnClick, selectedTaskId])
 
   useEffect(() => () => {
     document.body.classList.remove('calendar-is-manipulating')
@@ -304,11 +344,13 @@ export default function CalendarView({
         <FullCalendar
           ref={calendarRef}
           plugins={calendarPlugins}
-          initialView={fullCalendarView.week}
+          initialView={fullCalendarView[viewMode]}
+          initialDate={date}
           firstDay={0}
           headerToolbar={false}
           height="100%"
           nowIndicator
+          dayHeaders={showDayHeader}
           allDaySlot
           allDayContent={() => <span className="planomy-due-label">All day</span>}
           dayHeaderContent={(info) =>
@@ -351,6 +393,9 @@ export default function CalendarView({
             omitZeroMinute: true,
             meridiem: 'short',
           }}
+          slotLaneContent={renderSlotLaneContent
+            ? (info) => info.date ? renderSlotLaneContent(info.date) : null
+            : undefined}
           expandRows={false}
           weekends
           editable={false}
@@ -366,7 +411,9 @@ export default function CalendarView({
           selectLongPressDelay={250}
           selectAllow={(info) => !info.allDay && isSingleDayTimedRange(info.start, info.end)}
           eventAllow={(dropInfo, draggedEvent) =>
-            draggedEvent?.extendedProps.kind === 'scheduled-task' &&
+            ['create-draft', 'scheduled-task'].includes(
+              draggedEvent?.extendedProps.kind,
+            ) &&
             !dropInfo.allDay &&
             isSingleDayTimedRange(dropInfo.start, dropInfo.end)
           }
@@ -428,6 +475,7 @@ export default function CalendarView({
                     ? 'planomy-scheduled-event'
                     : 'planomy-native-event',
               info.view.type === 'dayGridMonth' ? 'is-month' : 'is-time-grid',
+              kind === 'create-draft' ? 'is-draggable' : '',
               item?.kind === 'scheduled-task' && item.task.id === selectedTaskId ? 'is-selected' : '',
               item?.kind === 'scheduled-task' && busyTaskIds.has(item.task.id) ? 'is-saving' : '',
               info.isMirror || info.isDragging || info.isResizing ? 'is-interaction-preview' : '',
@@ -436,7 +484,6 @@ export default function CalendarView({
           eventContent={(info) => {
             const item = itemById.get(info.event.id)
             if (info.event.extendedProps.kind === 'create-draft') {
-              const persistedEnd = info.event.extendedProps.persistedEnd as string | null
               return (
                 <div className="planomy-calendar-block-content planomy-create-draft-content">
                   <div className="planomy-calendar-block-title">{info.event.title || 'New task'}</div>
@@ -444,7 +491,7 @@ export default function CalendarView({
                     {info.event.start?.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                     {` – ${taskDisplayEnd(
                       info.event.start ?? new Date(),
-                      persistedEnd ? new Date(persistedEnd) : null,
+                      info.event.end ?? null,
                     ).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}
                   </span>
                 </div>
@@ -472,8 +519,27 @@ export default function CalendarView({
                 displayEndsAt={livePreview ? info.event.end?.toISOString() ?? null : undefined}
                 interactionPreview={livePreview}
                 selected={item.kind === 'scheduled-task' && item.task.id === selectedTaskId}
+                menuOpen={
+                  openTaskMenuOnClick && item.kind === 'scheduled-task'
+                    ? item.task.id === openTaskMenuId
+                    : undefined
+                }
+                onMenuOpenChange={
+                  openTaskMenuOnClick && item.kind === 'scheduled-task'
+                    ? (open) => {
+                        setOpenTaskMenuId(open ? item.task.id : null)
+                        if (open) onTaskSelect(item.task.id)
+                      }
+                    : undefined
+                }
                 onOpenTask={item.kind === 'scheduled-task' ? () => onTaskOpen(item.task.id) : undefined}
-                onUnschedule={item.kind === 'scheduled-task' ? () => { void onTaskUnschedule(item.task) } : undefined}
+                onUnschedule={item.kind === 'scheduled-task' ? async () => {
+                  const removed = await onTaskUnschedule(item.task)
+                  if (removed) {
+                    setOpenTaskMenuId(null)
+                    onTaskSelect(null)
+                  }
+                } : undefined}
                 onSetDuration={item.kind === 'scheduled-task' ? (minutes) => {
                   void onTaskSchedule(item.task, new Date(item.startsAt), durationEnd(new Date(item.startsAt), minutes))
                 } : undefined}
@@ -501,6 +567,7 @@ export default function CalendarView({
               info.el.setAttribute('aria-label', `Scheduled task: ${item.task.title}`)
               info.el.dataset.calendarTaskId = item.task.id
               info.el.setAttribute('aria-selected', String(item.task.id === selectedTaskId))
+              if (openTaskMenuOnClick) info.el.setAttribute('aria-haspopup', 'menu')
               info.el.querySelector<HTMLElement>('.fc-event-resizer-end')?.setAttribute(
                 'aria-label',
                 `Resize scheduled duration for ${item.task.title}`,
@@ -513,19 +580,35 @@ export default function CalendarView({
             if (item?.kind === 'scheduled-task' && interactiveTimeGrid) {
               clearInteraction()
               onTaskSelect(item.task.id)
+              if (openTaskMenuOnClick) setOpenTaskMenuId(item.task.id)
               info.el.focus()
             } else if (item?.kind === 'due-task' || item?.kind === 'scheduled-task') {
               onTaskOpen(item.task.id)
             }
           }}
           eventDragStart={(info) => {
-            clearInteraction()
+            const kind = info.event.extendedProps.kind
+            if (kind !== 'create-draft') clearInteraction()
             const item = itemById.get(info.event.id)
             if (item?.kind === 'scheduled-task') onTaskSelect(item.task.id)
             setManipulating(true)
           }}
           eventDragStop={() => setManipulating(false)}
           eventDrop={(info) => {
+            if (
+              info.event.extendedProps.kind === 'create-draft' &&
+              info.event.start &&
+              draft
+            ) {
+              const moved = moveTimedRange(
+                draft.startsAt,
+                draft.endsAt,
+                info.event.start,
+              )
+              changeDraftRange(moved.startsAt, moved.endsAt)
+              return
+            }
+
             const item = itemById.get(info.event.id)
             if (item?.kind !== 'scheduled-task' || !info.event.start) {
               info.revert()

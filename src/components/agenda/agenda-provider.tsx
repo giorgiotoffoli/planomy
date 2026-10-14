@@ -2,16 +2,23 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { DndContext, DragOverlay, KeyboardSensor, MouseSensor, TouchSensor, closestCenter, pointerWithin, useSensor, useSensors, type DragEndEvent, type DragOverEvent } from '@dnd-kit/core'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
-import { decryptString } from '@/lib/crypto/e2ee'
+import { decryptString, encryptString } from '@/lib/crypto/e2ee'
 import { dayBounds, dragIntent, MINUTE, shiftDay, SLOT_MINUTES, snapInstant, timeLabel } from '@/lib/agenda'
+import { isSingleDayTimedRange, taskDisplayEnd } from '@/lib/calendar-interactions'
 import { localDateKey } from '@/lib/today'
 import type { AgendaBlock, CalendarEventWithList, Category, List, TaskWithList, TimeBlock } from '@/types'
 import { getCalendarRangeData } from '@/components/calendar/actions'
+import type { QuickCreateInput } from '@/components/calendar/calendar-quick-create'
+import {
+  createTask as createTaskAction,
+  deleteTask as deleteTaskAction,
+  updateTaskCompleted as updateTaskCompletedAction,
+} from '@/components/tasks/actions'
 import { removeTimeBlock, saveTimeBlock } from './actions'
-import { TASKS_CHANGED } from '@/components/tasks/mutations'
+import { TASKS_CHANGED, notifyTasksChanged } from '@/components/tasks/mutations'
 import { PLAN_TIME_CHANGED, notifyPlanTimeChanged, planTimeChangeOrigin } from './mutations'
 import AgendaPanel from './agenda-panel'
 
@@ -80,6 +87,8 @@ type AgendaContextValue = {
   reload: () => Promise<void>
   save: (task: TaskWithList, start: number, end: number | null) => Promise<boolean>
   remove: (taskId: string) => Promise<boolean>
+  complete: (task: TaskWithList) => Promise<boolean>
+  create: (input: QuickCreateInput) => Promise<boolean>
   categories: Category[]
   busy: Set<string>
   preview: {
@@ -99,6 +108,9 @@ export function useAgenda() {
 export default function AgendaProvider({ children }: { children: ReactNode }) {
   const { masterKey } = useE2EE()
   const router = useRouter()
+  const pathname = usePathname()
+  const plannerAvailable =
+    pathname !== '/calendar' && !pathname.startsWith('/calendar/')
   const [open, setOpenState] = useState(false)
   const [day, setDay] = useState(() => localDateKey())
   const [loaded, setLoaded] = useState<{
@@ -183,13 +195,13 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
   useEffect(() => { latestReload.current = reload }, [reload])
 
   useEffect(() => {
-    const timeout = setTimeout(() => { if (open) void reload() }, 0)
+    const timeout = setTimeout(() => { if (open && plannerAvailable) void reload() }, 0)
     return () => { clearTimeout(timeout); invalidate() }
-  }, [open, reload, invalidate])
+  }, [open, plannerAvailable, reload, invalidate])
   useEffect(() => {
-    const changed = () => { router.refresh(); if (open) void reload() }
+    const changed = () => { router.refresh(); if (open && plannerAvailable) void reload() }
     const planTimeChanged = (event: Event) => {
-      if (open && planTimeChangeOrigin(event) !== 'agenda') void reload()
+      if (open && plannerAvailable && planTimeChangeOrigin(event) !== 'agenda') void reload()
     }
     window.addEventListener(TASKS_CHANGED, changed)
     window.addEventListener(PLAN_TIME_CHANGED, planTimeChanged)
@@ -197,7 +209,13 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
       window.removeEventListener(TASKS_CHANGED, changed)
       window.removeEventListener(PLAN_TIME_CHANGED, planTimeChanged)
     }
-  }, [open, reload, router])
+  }, [open, plannerAvailable, reload, router])
+
+  const setTaskBusy = useCallback((taskId: string, isBusy: boolean) => {
+    if (isBusy) pending.current.add(taskId)
+    else pending.current.delete(taskId)
+    setBusy(new Set(pending.current))
+  }, [])
 
   async function mutate(taskId: string, operation: () => Promise<unknown>, optimistic: (blocks: AgendaBlock[]) => AgendaBlock[]) {
     if (pending.current.has(taskId)) return false
@@ -234,6 +252,150 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
   async function remove(taskId: string) {
     return mutate(taskId, () => removeTimeBlock(taskId), blocks => blocks.filter(block => block.task_id !== taskId))
   }
+  async function complete(task: TaskWithList) {
+    if (pending.current.has(task.id)) return false
+    const completed = !task.completed
+    const update = (candidate: TaskWithList, nextCompleted: boolean) =>
+      candidate.id === task.id
+        ? { ...candidate, completed: nextCompleted }
+        : candidate
+
+    setTaskBusy(task.id, true)
+    setLoaded(current => ({
+      ...current,
+      dueTasks: current.dueTasks.map(candidate => update(candidate, completed)),
+      blocks: current.blocks.map(block => block.task_id === task.id
+        ? { ...block, task: update(block.task, completed) }
+        : block),
+    }))
+
+    try {
+      await updateTaskCompletedAction(task.id, completed)
+      notifyTasksChanged()
+      return true
+    } catch (cause) {
+      setLoaded(current => ({
+        ...current,
+        dueTasks: current.dueTasks.map(candidate => update(candidate, task.completed)),
+        blocks: current.blocks.map(block => block.task_id === task.id
+          ? { ...block, task: update(block.task, task.completed) }
+          : block),
+      }))
+      toast.error(cause instanceof Error ? cause.message : 'Task could not be updated.')
+      return false
+    } finally {
+      setTaskBusy(task.id, false)
+    }
+  }
+  async function create(input: QuickCreateInput) {
+    const endsAt = taskDisplayEnd(input.startsAt, input.endsAt)
+    if (
+      !masterKey ||
+      loaded.day !== day ||
+      !isSingleDayTimedRange(input.startsAt, endsAt)
+    ) {
+      toast.error('Unlock your vault and choose a valid time range.')
+      return false
+    }
+
+    const tempId = `planner-draft:${crypto.randomUUID()}`
+    const selectedList = loaded.lists.find(list => list.id === input.listId) ?? null
+    const optimisticTask: TaskWithList = {
+      id: tempId,
+      user_id:
+        loaded.lists[0]?.user_id ??
+        loaded.blocks[0]?.user_id ??
+        loaded.dueTasks[0]?.user_id ??
+        '',
+      list_id: input.listId,
+      title: input.title,
+      notes: '',
+      completed: false,
+      due_date: null,
+      due_time: null,
+      category_id: null,
+      position: Number.MAX_SAFE_INTEGER,
+      focused: false,
+      stashed: false,
+      list: selectedList,
+    }
+    const optimisticBlock: AgendaBlock = {
+      task_id: tempId,
+      user_id: optimisticTask.user_id,
+      starts_at: input.startsAt.toISOString(),
+      ends_at: endsAt.toISOString(),
+      task: optimisticTask,
+    }
+
+    setTaskBusy(tempId, true)
+    setLoaded(current => ({
+      ...current,
+      blocks: [...current.blocks, optimisticBlock],
+    }))
+    let createdTaskId: string | null = null
+
+    try {
+      const encryptedTitle = await encryptString(input.title, masterKey)
+      const savedTask = await createTaskAction({
+        title: encryptedTitle,
+        notes: '',
+        listId: input.listId,
+        categoryId: null,
+        dueDate: null,
+        dueTime: null,
+        focused: false,
+      })
+      createdTaskId = savedTask.id
+      const savedBlock: AgendaBlock = {
+        ...optimisticBlock,
+        task_id: savedTask.id,
+        user_id: savedTask.user_id,
+        task: {
+          ...savedTask,
+          title: input.title,
+          notes: '',
+          list: selectedList,
+        },
+      }
+
+      setTaskBusy(tempId, false)
+      setTaskBusy(savedTask.id, true)
+      setLoaded(current => ({
+        ...current,
+        blocks: [
+          ...current.blocks.filter(block => block.task_id !== tempId),
+          savedBlock,
+        ],
+      }))
+      await saveTimeBlock(savedTask.id, savedBlock.starts_at, savedBlock.ends_at)
+      setTaskBusy(savedTask.id, false)
+      notifyPlanTimeChanged('agenda')
+      notifyTasksChanged()
+      return true
+    } catch (cause) {
+      setLoaded(current => ({
+        ...current,
+        blocks: current.blocks.filter(block =>
+          block.task_id !== tempId && block.task_id !== createdTaskId),
+      }))
+      if (createdTaskId) {
+        try {
+          await deleteTaskAction(createdTaskId)
+        } catch {
+          // A rare cleanup failure leaves an unscheduled task in Inbox.
+        }
+      }
+      toast.error(
+        cause instanceof Error
+          ? `Couldn't create scheduled task. ${cause.message}`
+          : "Couldn't create scheduled task. The draft was removed.",
+      )
+      return false
+    } finally {
+      setTaskBusy(tempId, false)
+      if (createdTaskId) setTaskBusy(createdTaskId, false)
+    }
+  }
   function proposal(event: DragOverEvent | DragEndEvent) {
     const source = event.active.data.current as AgendaDrag | undefined
     const target = event.over?.data.current
@@ -263,7 +425,7 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
     setDrag(null); setPreview(null)
   }
 
-  return <AgendaContext.Provider value={{ open, setOpen, day, setDay, blocks: loaded.day === day ? loaded.blocks : [], dueTasks: loaded.day === day ? loaded.dueTasks : [], events: loaded.day === day ? loaded.events : [], lists: loaded.lists, categories: loaded.categories, loading: loading || (loaded.day !== day && !error), error, reload, save, remove, busy, preview }}>
+  return <AgendaContext.Provider value={{ open, setOpen, day, setDay, blocks: loaded.day === day ? loaded.blocks : [], dueTasks: loaded.day === day ? loaded.dueTasks : [], events: loaded.day === day ? loaded.events : [], lists: loaded.lists, categories: loaded.categories, loading: loading || (loaded.day !== day && !error), error, reload, save, remove, complete, create, busy, preview }}>
     <DndContext sensors={sensors} collisionDetection={args => {
       // Pointer drags must actually enter a target; keyboard drags use nearest target.
       const candidates = args.droppableContainers.filter(container => dragIntent(args.active.data.current ?? {}, container.data.current) !== 'none')
@@ -271,7 +433,7 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
     }} onDragStart={event => setDrag(event.active.data.current as AgendaDrag)} onDragOver={event => setPreview(proposal(event))} onDragEnd={finishDrag} onDragCancel={() => { setDrag(null); setPreview(null) }}>
       <div className="flex h-dvh min-w-0 overflow-hidden">
         <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background selection:bg-primary selection:text-primary-foreground">{children}</main>
-        <AgendaPanel />
+        {plannerAvailable ? <AgendaPanel /> : null}
       </div>
       <DragOverlay dropAnimation={null}>{drag && <div className="max-w-60 rounded-lg border bg-background p-3 text-sm shadow-lg"><p className="truncate font-medium">{drag.task.title}</p>{preview && <p className="text-xs text-muted-foreground">{timeLabel(preview.start)} – {timeLabel(preview.end)}</p>}</div>}</DragOverlay>
     </DndContext>
