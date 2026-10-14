@@ -37,3 +37,8 @@ test('local Plan time becomes an explicit instant after validation', () => {
   const result = resolveLocalPlanTime('2026-10-12', '15:00', 60)
   assert.equal(result.endsAt, new Date(Date.parse(result.startsAt) + 60 * 60_000).toISOString())
 })
+
+test('local Plan time does not invent a duration when none is provided', () => {
+  const result = resolveLocalPlanTime('2026-10-12', '15:00', null)
+  assert.equal(result.endsAt, null)
+})

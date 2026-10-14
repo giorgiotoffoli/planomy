@@ -32,7 +32,7 @@ import { localTimeCandidates, MINUTE, timeInput, timeLabel } from '@/lib/agenda'
 export type PlanTimeDraft = {
   date: string
   startTime: string
-  duration: number
+  duration: number | null
   occurrence: string
 }
 
@@ -87,12 +87,15 @@ function initialPlanTime(block?: TimeBlock | null): PlanTimeDraft | null {
   return {
     date: localDateKey(new Date(start)),
     startTime: timeInput(start),
-    duration: Math.max(15, (Date.parse(block.ends_at) - start) / MINUTE),
+    duration: block.ends_at
+      ? Math.max(15, (Date.parse(block.ends_at) - start) / MINUTE)
+      : null,
     occurrence: String(start),
   }
 }
 
 function planEndLabel(plan: PlanTimeDraft) {
+  if (plan.duration === null) return null
   const candidates = localTimeCandidates(plan.date, plan.startTime)
   const chosen = candidates.length === 1
     ? candidates[0]
@@ -224,7 +227,7 @@ export function TaskForm({
       setPlanTime({
         date: localDateKey(),
         startTime: '09:00',
-        duration: 30,
+        duration: null,
         occurrence: '',
       })
     }
@@ -458,12 +461,29 @@ export function TaskForm({
                 <label className="block max-w-[12rem] space-y-1.5 text-xs font-medium text-muted-foreground">
                   Duration
                   <Select
-                    value={durationOptions.includes(planTime.duration) ? String(planTime.duration) : 'custom'}
-                    onValueChange={(value) => setPlanTime({ ...planTime, duration: value === 'custom' ? planTime.duration : Number(value) })}
+                    value={
+                      planTime.duration === null
+                        ? 'none'
+                        : durationOptions.includes(planTime.duration)
+                          ? String(planTime.duration)
+                          : 'custom'
+                    }
+                    onValueChange={(value) =>
+                      setPlanTime({
+                        ...planTime,
+                        duration:
+                          value === 'none'
+                            ? null
+                            : value === 'custom'
+                              ? (planTime.duration ?? 30)
+                              : Number(value),
+                      })
+                    }
                     disabled={disabled}
                   >
                     <SelectTrigger className="h-10 w-full border-blue-200/80 bg-background text-sm font-normal text-foreground dark:border-blue-900/60"><SelectValue /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">No duration</SelectItem>
                       {durationOptions.map((duration) => (
                         <SelectItem key={duration} value={String(duration)}>{duration < 60 ? `${duration} min` : `${duration / 60} hour${duration === 60 ? '' : 's'}`}</SelectItem>
                       ))}
@@ -471,7 +491,8 @@ export function TaskForm({
                     </SelectContent>
                   </Select>
                 </label>
-                {!durationOptions.includes(planTime.duration) && (
+                {planTime.duration !== null &&
+                  !durationOptions.includes(planTime.duration) && (
                   <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">
                     Custom duration in minutes
                     <Input
@@ -484,7 +505,7 @@ export function TaskForm({
                       className="h-10 rounded-lg border-blue-200/80 bg-background text-sm font-normal text-foreground focus-visible:border-blue-400 focus-visible:ring-blue-500/30 dark:border-blue-900/60"
                     />
                   </label>
-                )}
+                  )}
                 {(() => {
                   const candidates = localTimeCandidates(planTime.date, planTime.startTime)
                   if (candidates.length === 0) {

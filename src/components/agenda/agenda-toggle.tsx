@@ -6,5 +6,5 @@ import { useAgenda } from './agenda-provider'
 
 export default function AgendaToggle() {
   const { open, setOpen } = useAgenda()
-  return <Button type="button" data-agenda-toggle variant={open ? 'secondary' : 'ghost'} size="icon" aria-label={open ? 'Close daily agenda' : 'Open daily agenda'} aria-expanded={open} aria-controls="daily-agenda" onClick={() => setOpen(!open)}><CalendarClock /></Button>
+  return <Button type="button" data-agenda-toggle variant={open ? 'secondary' : 'ghost'} size="icon" aria-label={open ? 'Close Today calendar' : 'Open Today calendar'} aria-expanded={open} aria-controls="daily-agenda" onClick={() => setOpen(!open)}><CalendarClock /></Button>
 }

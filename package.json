@@ -15,6 +15,7 @@
     "@dnd-kit/react": "^0.3.2",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@fullcalendar/daygrid": "^6.1.21",
     "@fullcalendar/interaction": "^6.1.19",
     "@fullcalendar/react": "^6.1.19",
     "@fullcalendar/timegrid": "^6.1.19",

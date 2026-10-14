@@ -59,7 +59,7 @@ export async function getListTasks(listId: string) {
 
   const { data: tasks, error } = await supabase
     .from('tasks')
-    .select('*, list:lists (title, id, emoji, default_view)')
+    .select('*, list:lists (title, id, emoji, default_view, color)')
     .eq('user_id', user!.id)
     .eq('list_id', listId)
     .eq('completed', false)

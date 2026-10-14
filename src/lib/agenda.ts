@@ -54,12 +54,44 @@ export function validateInterval(startsAt: string, endsAt: string) {
   return { start, end }
 }
 
-export type Interval = { task_id: string; starts_at: string; ends_at: string }
+export function validateScheduledTime(
+  startsAt: string,
+  endsAt: string | null,
+) {
+  const zoned = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}.*(?:Z|[+-]\d{2}:\d{2})$/
+  const start = Date.parse(startsAt)
+  if (!zoned.test(startsAt) || !Number.isFinite(start)) {
+    throw new Error('Choose a valid scheduled start time.')
+  }
+
+  if (endsAt === null) return { start, end: null }
+
+  const { end } = validateInterval(startsAt, endsAt)
+  return { start, end }
+}
+
+export type Interval = {
+  task_id: string
+  starts_at: string
+  ends_at: string | null
+}
 
 /** Clip for display only. Connected overlapping groups share equal-width columns. */
 export function layoutBlocks<T extends Interval>(blocks: T[], day: string) {
   const { start, end } = dayBounds(day)
-  const visible = blocks.map(block => ({ block, start: Math.max(start, Date.parse(block.starts_at)), end: Math.min(end, Date.parse(block.ends_at)), column: 0, columns: 1 }))
+  const visible = blocks.map(block => {
+    const blockStart = Date.parse(block.starts_at)
+    const displayEnd = block.ends_at
+      ? Date.parse(block.ends_at)
+      : blockStart + 30 * MINUTE
+    return {
+      block,
+      start: Math.max(start, blockStart),
+      end: Math.min(end, displayEnd),
+      column: 0,
+      columns: 1,
+    }
+  })
     .filter(block => block.start < block.end).sort((a, b) => a.start - b.start || a.end - b.end)
   let group: typeof visible = [], columnEnds: number[] = [], groupEnd = 0
   const finish = () => { for (const item of group) item.columns = columnEnds.length }

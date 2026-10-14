@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import type { List } from '@/types'
+import { isListColor, type ListColor } from '@/lib/list-colors'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -79,4 +80,26 @@ export async function updateListDefaultView(
   }
 
   revalidatePath('/')
+}
+
+export async function updateListColor(listId: string, color: ListColor) {
+  if (!isListColor(color)) throw new Error('Choose an approved List color.')
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('Unauthorized')
+
+  const { error } = await supabase
+    .from('lists')
+    .update({ color })
+    .eq('id', listId)
+    .eq('user_id', user.id)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/')
+  revalidatePath('/calendar')
 }

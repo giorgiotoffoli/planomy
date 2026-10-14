@@ -1,11 +1,21 @@
-import type { AgendaBlock, List, TaskWithList } from '@/types'
+import { isListColor } from '@/lib/list-colors'
+import type {
+  AgendaBlock,
+  CalendarEventWithList,
+  List,
+  TaskWithList,
+} from '@/types'
 import type { Tables } from './database-types'
 
 type ListRow = Tables<'lists'>
 type TaskRow = Tables<'tasks'>
 type TimeBlockRow = Tables<'task_time_blocks'>
+type EventRow = Tables<'events'>
 
-type ListSummaryRow = Pick<ListRow, 'id' | 'title' | 'emoji' | 'default_view'>
+type ListSummaryRow = Pick<
+  ListRow,
+  'id' | 'title' | 'emoji' | 'default_view' | 'color'
+>
 
 export type TaskWithListRow = TaskRow & {
   list: ListSummaryRow | null
@@ -13,6 +23,10 @@ export type TaskWithListRow = TaskRow & {
 
 type AgendaBlockRow = TimeBlockRow & {
   task: TaskWithListRow
+}
+
+export type EventWithListRow = EventRow & {
+  list: ListSummaryRow | null
 }
 
 function required(value: string | null, column: string): string {
@@ -31,12 +45,21 @@ function listView(value: string | null): List['default_view'] {
   return value
 }
 
+function listColor(value: string): List['color'] {
+  if (!isListColor(value)) {
+    throw new Error('Invalid database row: lists.color is not approved')
+  }
+
+  return value
+}
+
 function toListSummary(row: ListSummaryRow): NonNullable<TaskWithList['list']> {
   return {
     id: row.id,
     title: required(row.title, 'lists.title'),
     emoji: row.emoji,
     default_view: listView(row.default_view),
+    color: listColor(row.color),
   }
 }
 
@@ -73,5 +96,24 @@ export function toAgendaBlock(row: AgendaBlockRow): AgendaBlock {
     starts_at: row.starts_at,
     ends_at: row.ends_at,
     task: toTaskWithList(row.task),
+  }
+}
+
+export function toCalendarEvent(
+  row: EventWithListRow,
+): CalendarEventWithList {
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    list_id: row.list_id,
+    title: row.title,
+    all_day: row.all_day,
+    starts_at: row.starts_at,
+    ends_at: row.ends_at,
+    starts_on: row.starts_on,
+    ends_on: row.ends_on,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    list: row.list ? toListSummary(row.list) : null,
   }
 }
