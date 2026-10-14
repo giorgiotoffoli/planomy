@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/sidebar'
 import {
   CheckCircle,
+  CalendarDays,
   CalendarClock,
   Home,
   SearchIcon,
@@ -28,6 +29,11 @@ const tabs: Tab[] = [
     title: 'Home',
     link: '/home',
     icon: <Home />,
+  },
+  {
+    title: 'Calendar',
+    link: '/calendar',
+    icon: <CalendarDays />,
   },
   {
     title: 'Deadlines',

@@ -48,6 +48,7 @@ export type Database = {
       }
       lists: {
         Row: {
+          color: string
           default_view: string | null
           emoji: string | null
           id: string
@@ -55,6 +56,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          color?: string
           default_view?: string | null
           emoji?: string | null
           id?: string
@@ -62,6 +64,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          color?: string
           default_view?: string | null
           emoji?: string | null
           id?: string
@@ -69,6 +72,56 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      events: {
+        Row: {
+          all_day: boolean
+          created_at: string
+          ends_at: string | null
+          ends_on: string | null
+          id: string
+          list_id: string | null
+          starts_at: string | null
+          starts_on: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          all_day?: boolean
+          created_at?: string
+          ends_at?: string | null
+          ends_on?: string | null
+          id?: string
+          list_id?: string | null
+          starts_at?: string | null
+          starts_on?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          all_day?: boolean
+          created_at?: string
+          ends_at?: string | null
+          ends_on?: string | null
+          id?: string
+          list_id?: string | null
+          starts_at?: string | null
+          starts_on?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "lists"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       categories: {
         Row: {
@@ -104,19 +157,19 @@ export type Database = {
       }
       task_time_blocks: {
         Row: {
-          ends_at: string
+          ends_at: string | null
           starts_at: string
           task_id: string
           user_id: string
         }
         Insert: {
-          ends_at: string
+          ends_at?: string | null
           starts_at: string
           task_id: string
           user_id: string
         }
         Update: {
-          ends_at?: string
+          ends_at?: string | null
           starts_at?: string
           task_id?: string
           user_id?: string

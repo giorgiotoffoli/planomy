@@ -21,6 +21,7 @@ import { useEffect, useState } from 'react'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString } from '@/lib/crypto/e2ee'
 import { ListEmoji } from '@/components/lists/list-emoji'
+import { ListColorMenu } from '@/components/lists/list-color-menu'
 
 export function NavLists({ lists }: { lists: List[] }) {
   const { masterKey } = useE2EE()
@@ -85,6 +86,17 @@ export function NavLists({ lists }: { lists: List[] }) {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="start" side="right">
+                <ListColorMenu
+                  listId={list.id}
+                  color={list.color}
+                  onChange={(color) =>
+                    setLocalLists((current) =>
+                      current.map((item) =>
+                        item.id === list.id ? { ...item, color } : item,
+                      ),
+                    )
+                  }
+                />
                 <RenameListButton list={list} />
                 <DeleteListButton list={list} />
               </DropdownMenuContent>

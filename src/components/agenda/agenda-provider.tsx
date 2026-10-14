@@ -6,11 +6,13 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString } from '@/lib/crypto/e2ee'
-import { dayBounds, dragIntent, MINUTE, snapInstant, timeLabel } from '@/lib/agenda'
+import { dayBounds, dragIntent, MINUTE, shiftDay, SLOT_MINUTES, snapInstant, timeLabel } from '@/lib/agenda'
 import { localDateKey } from '@/lib/today'
-import type { AgendaBlock, Category, List, TaskWithList, TimeBlock } from '@/types'
-import { getAgendaData, removeTimeBlock, saveTimeBlock } from './actions'
+import type { AgendaBlock, CalendarEventWithList, Category, List, TaskWithList, TimeBlock } from '@/types'
+import { getCalendarRangeData } from '@/components/calendar/actions'
+import { removeTimeBlock, saveTimeBlock } from './actions'
 import { TASKS_CHANGED } from '@/components/tasks/mutations'
+import { PLAN_TIME_CHANGED, notifyPlanTimeChanged, planTimeChangeOrigin } from './mutations'
 import AgendaPanel from './agenda-panel'
 
 export type AgendaDrag = {
@@ -20,16 +22,72 @@ export type AgendaDrag = {
   scope?: string
   reorder?: (active: string, over: string) => void
 }
+
+async function decryptTask(task: TaskWithList, masterKey: Uint8Array) {
+  return {
+    ...task,
+    title: await decryptString(task.title, masterKey),
+    notes: task.notes ? await decryptString(task.notes, masterKey) : task.notes,
+    list: task.list
+      ? {
+          ...task.list,
+          title: await decryptString(task.list.title, masterKey),
+          emoji: task.list.emoji
+            ? await decryptString(task.list.emoji, masterKey)
+            : task.list.emoji,
+        }
+      : null,
+  }
+}
+
+async function decryptBlocks(blocks: AgendaBlock[], masterKey: Uint8Array) {
+  return Promise.all(
+    blocks
+      .filter((block) => block.task)
+      .map(async (block) => ({
+        ...block,
+        task: await decryptTask(block.task, masterKey),
+      })),
+  )
+}
+
+async function decryptEvents(
+  events: CalendarEventWithList[],
+  masterKey: Uint8Array,
+) {
+  return Promise.all(
+    events.map(async (event) => ({
+      ...event,
+      title: await decryptString(event.title, masterKey),
+      list: event.list
+        ? {
+            ...event.list,
+            title: await decryptString(event.list.title, masterKey),
+            emoji: event.list.emoji
+              ? await decryptString(event.list.emoji, masterKey)
+              : event.list.emoji,
+          }
+        : null,
+    })),
+  )
+}
+
 type AgendaContextValue = {
   open: boolean; setOpen: (open: boolean) => void
   day: string; setDay: (day: string) => void
-  blocks: AgendaBlock[]; lists: List[]; loading: boolean; error: string | null
+  blocks: AgendaBlock[]; dueTasks: TaskWithList[]; events: CalendarEventWithList[]
+  lists: List[]; loading: boolean; error: string | null
   reload: () => Promise<void>
-  save: (task: TaskWithList, start: number, end: number) => Promise<boolean>
+  save: (task: TaskWithList, start: number, end: number | null) => Promise<boolean>
   remove: (taskId: string) => Promise<boolean>
   categories: Category[]
   busy: Set<string>
-  preview: { task: TaskWithList; start: number; end: number } | null
+  preview: {
+    task: TaskWithList
+    start: number
+    end: number
+    persistedEnd: number | null
+  } | null
 }
 const AgendaContext = createContext<AgendaContextValue | null>(null)
 export function useAgenda() {
@@ -43,7 +101,14 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const [open, setOpenState] = useState(false)
   const [day, setDay] = useState(() => localDateKey())
-  const [loaded, setLoaded] = useState<{ day: string; blocks: AgendaBlock[]; lists: List[]; categories: Category[] }>({ day: '', blocks: [], lists: [], categories: [] })
+  const [loaded, setLoaded] = useState<{
+    day: string
+    blocks: AgendaBlock[]
+    dueTasks: TaskWithList[]
+    events: CalendarEventWithList[]
+    lists: List[]
+    categories: Category[]
+  }>({ day: '', blocks: [], dueTasks: [], events: [], lists: [], categories: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(new Set<string>())
@@ -56,7 +121,18 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
 
   const setOpen = useCallback((value: boolean) => {
     setOpenState(value)
+    if (value) setDay(localDateKey())
     try { localStorage.setItem('planomy:agenda:open', String(value)) } catch { /* Private browsing may disable storage. */ }
+  }, [])
+
+  useEffect(() => {
+    const syncToday = () => setDay((current) => {
+      const today = localDateKey()
+      return current === today ? current : today
+    })
+    syncToday()
+    const interval = window.setInterval(syncToday, 60_000)
+    return () => window.clearInterval(interval)
   }, [])
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -71,32 +147,32 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
     const { start, end } = dayBounds(day)
     setLoading(true)
     try {
-      const result = await getAgendaData(new Date(start).toISOString(), new Date(end).toISOString())
-      const blocks = await Promise.all(result.blocks.filter(block => block.task).map(async block => ({ ...block, task: {
-        ...block.task,
-        title: await decryptString(block.task.title, masterKey),
-        notes: block.task.notes ? await decryptString(block.task.notes, masterKey) : block.task.notes,
-        list: block.task.list ? {
-          ...block.task.list,
-          title: await decryptString(block.task.list.title, masterKey),
-          emoji: block.task.list.emoji
-            ? await decryptString(block.task.list.emoji, masterKey)
-            : block.task.list.emoji,
-        } : null,
-      } })))
-        const lists = await Promise.all(result.lists.map(async list => ({
-        ...list,
-        title: await decryptString(list.title, masterKey),
-        emoji: list.emoji ? await decryptString(list.emoji, masterKey) : list.emoji,
-        })))
-        const categories = await Promise.all(result.categories.map(async category => ({
+      const result = await getCalendarRangeData({
+        startsAt: new Date(start).toISOString(),
+        endsAt: new Date(end).toISOString(),
+        startsOn: day,
+        endsOn: shiftDay(day, 1),
+      })
+      const [blocks, dueTasks, events, lists, categories] = await Promise.all([
+        decryptBlocks(result.scheduledTasks, masterKey),
+        Promise.all(result.dueTasks.map((task) => decryptTask(task, masterKey))),
+        decryptEvents(result.events, masterKey),
+        Promise.all(result.lists.map(async (list) => ({
+          ...list,
+          title: await decryptString(list.title, masterKey),
+          emoji: list.emoji
+            ? await decryptString(list.emoji, masterKey)
+            : list.emoji,
+        }))),
+        Promise.all(result.categories.map(async category => ({
           ...category,
           title: await decryptString(category.title, masterKey),
-        })))
+        }))),
+      ])
       if (request === generation.current) {
         setLoaded(current => ({ day, lists, blocks: current.day === day
           ? [...blocks.filter(block => !pending.current.has(block.task_id)), ...current.blocks.filter(block => pending.current.has(block.task_id))]
-          : blocks, categories }))
+          : blocks, dueTasks, events, categories }))
         setError(null)
       }
     } catch (cause) {
@@ -112,8 +188,15 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
   }, [open, reload, invalidate])
   useEffect(() => {
     const changed = () => { router.refresh(); if (open) void reload() }
+    const planTimeChanged = (event: Event) => {
+      if (open && planTimeChangeOrigin(event) !== 'agenda') void reload()
+    }
     window.addEventListener(TASKS_CHANGED, changed)
-    return () => window.removeEventListener(TASKS_CHANGED, changed)
+    window.addEventListener(PLAN_TIME_CHANGED, planTimeChanged)
+    return () => {
+      window.removeEventListener(TASKS_CHANGED, changed)
+      window.removeEventListener(PLAN_TIME_CHANGED, planTimeChanged)
+    }
   }, [open, reload, router])
 
   async function mutate(taskId: string, operation: () => Promise<unknown>, optimistic: (blocks: AgendaBlock[]) => AgendaBlock[]) {
@@ -123,6 +206,7 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
     setLoaded(current => ({ ...current, blocks: optimistic(current.blocks) }))
     try {
       await operation()
+      notifyPlanTimeChanged('agenda')
       return true
     } catch (cause) {
       setLoaded(current => ({ ...current, blocks: [...current.blocks.filter(block => block.task_id !== taskId), ...(previous && current.day === loaded.day ? [previous] : [])] }))
@@ -133,12 +217,18 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
       await latestReload.current()
     }
   }
-  async function save(task: TaskWithList, start: number, end: number) {
-    if (!Number.isFinite(new Date(start).getTime()) || !Number.isFinite(new Date(end).getTime()) || end - start < 15 * MINUTE) {
+  async function save(task: TaskWithList, start: number, end: number | null) {
+    const normalizedEnd = end ?? start + SLOT_MINUTES * MINUTE
+    if (
+      !Number.isFinite(start) ||
+      !Number.isFinite(normalizedEnd) ||
+      normalizedEnd - start < SLOT_MINUTES * MINUTE
+    ) {
       toast.error('Choose valid times at least 15 minutes apart.')
       return false
     }
-    const starts_at = new Date(start).toISOString(), ends_at = new Date(end).toISOString()
+    const starts_at = new Date(start).toISOString()
+    const ends_at = new Date(normalizedEnd).toISOString()
     return mutate(task.id, () => saveTimeBlock(task.id, starts_at, ends_at), blocks => [...blocks.filter(block => block.task_id !== task.id), { task_id: task.id, user_id: task.user_id, starts_at, ends_at, task }])
   }
   async function remove(taskId: string) {
@@ -151,20 +241,29 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
     const instant = snapInstant(day, (Number(target!.instant) - dayBounds(day).start) / MINUTE)
     if (source.kind === 'agenda-resize' && source.block) {
       const start = Date.parse(source.block.starts_at)
-      return { task: source.task, start, end: Math.max(start + 15 * MINUTE, instant + 15 * MINUTE) }
+      const end = Math.max(start + 15 * MINUTE, instant + 15 * MINUTE)
+      return { task: source.task, start, end, persistedEnd: end }
     }
-    const duration = source.block ? Date.parse(source.block.ends_at) - Date.parse(source.block.starts_at) : 30 * MINUTE
-    return { task: source.task, start: instant, end: instant + duration }
+    const persistedDuration = source.block?.ends_at
+      ? Date.parse(source.block.ends_at) - Date.parse(source.block.starts_at)
+      : null
+    const displayDuration = persistedDuration ?? SLOT_MINUTES * MINUTE
+    return {
+      task: source.task,
+      start: instant,
+      end: instant + displayDuration,
+      persistedEnd: instant + displayDuration,
+    }
   }
   function finishDrag(event: DragEndEvent) {
     const next = proposal(event)
     const source = event.active.data.current as AgendaDrag | undefined
-    if (next) void save(next.task, next.start, next.end)
+    if (next) void save(next.task, next.start, next.persistedEnd)
     else if (source && dragIntent(source, event.over?.data.current) === 'reorder' && event.over) source.reorder?.(source.task.id, String(event.over.id))
     setDrag(null); setPreview(null)
   }
 
-  return <AgendaContext.Provider value={{ open, setOpen, day, setDay, blocks: loaded.day === day ? loaded.blocks : [], lists: loaded.lists, categories: loaded.categories, loading: loading || (loaded.day !== day && !error), error, reload, save, remove, busy, preview }}>
+  return <AgendaContext.Provider value={{ open, setOpen, day, setDay, blocks: loaded.day === day ? loaded.blocks : [], dueTasks: loaded.day === day ? loaded.dueTasks : [], events: loaded.day === day ? loaded.events : [], lists: loaded.lists, categories: loaded.categories, loading: loading || (loaded.day !== day && !error), error, reload, save, remove, busy, preview }}>
     <DndContext sensors={sensors} collisionDetection={args => {
       // Pointer drags must actually enter a target; keyboard drags use nearest target.
       const candidates = args.droppableContainers.filter(container => dragIntent(args.active.data.current ?? {}, container.data.current) !== 'none')

@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { toAgendaBlock, toList } from '@/lib/supabase/domain-mappers'
-import { validateInterval } from '@/lib/agenda'
+import { MINUTE, SLOT_MINUTES, validateInterval, validateScheduledTime } from '@/lib/agenda'
 import type { TimeBlock } from '@/types'
 import { getUserCategories } from '@/components/categories/queries'
 
@@ -24,8 +24,11 @@ export async function getAgendaData(startsAt: string, endsAt: string) {
   if (end - start > 27 * 60 * 60_000) throw new Error('Request one local day at a time.')
   const { supabase, user } = await authenticatedClient()
   const [blocks, lists, categories] = await Promise.all([
-    supabase.from('task_time_blocks').select('*, task:tasks!task_time_blocks_owned_task(*, list:lists(id, title, emoji, default_view))')
-      .eq('user_id', user.id).lt('starts_at', endsAt).gt('ends_at', startsAt).order('starts_at'),
+    supabase.from('task_time_blocks').select('*, task:tasks!task_time_blocks_owned_task(*, list:lists(id, title, emoji, default_view, color))')
+      .eq('user_id', user.id)
+      .lt('starts_at', endsAt)
+      .or(`ends_at.gt.${startsAt},and(ends_at.is.null,starts_at.gte.${startsAt})`)
+      .order('starts_at'),
     supabase.from('lists').select('*').eq('user_id', user.id),
     getUserCategories(),
   ])
@@ -41,13 +44,23 @@ export async function getTaskTimeBlock(taskId: string) {
   return data as TimeBlock | null
 }
 
-export async function saveTimeBlock(taskId: string, startsAt: string, endsAt: string) {
-  validateInterval(startsAt, endsAt)
+export async function saveTimeBlock(
+  taskId: string,
+  startsAt: string,
+  endsAt: string | null,
+) {
+  const start = Date.parse(startsAt)
+  const normalizedEndsAt = endsAt ?? (
+    Number.isFinite(start)
+      ? new Date(start + SLOT_MINUTES * MINUTE).toISOString()
+      : null
+  )
+  validateScheduledTime(startsAt, normalizedEndsAt)
   const { supabase, user } = await authenticatedClient()
   const { data: task, error: taskError } = await supabase.from('tasks').select('id').eq('user_id', user.id).eq('id', taskId).maybeSingle()
   if (taskError) throw databaseError(taskError)
   if (!task) throw new Error('Task not found')
-  const { data, error } = await supabase.from('task_time_blocks').upsert({ task_id: taskId, user_id: user.id, starts_at: startsAt, ends_at: endsAt }, { onConflict: 'task_id' }).select('*').single()
+  const { data, error } = await supabase.from('task_time_blocks').upsert({ task_id: taskId, user_id: user.id, starts_at: startsAt, ends_at: normalizedEndsAt }, { onConflict: 'task_id' }).select('*').single()
   if (error) throw databaseError(error)
   return data as TimeBlock
 }

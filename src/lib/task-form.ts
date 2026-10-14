@@ -29,10 +29,10 @@ export function categoryBelongsToList(
 export function resolveLocalPlanTime(
   date: string,
   time: string,
-  duration: number,
+  duration: number | null,
   occurrence = '',
 ) {
-  if (!Number.isFinite(duration) || duration < 15) {
+  if (duration !== null && (!Number.isFinite(duration) || duration < 15)) {
     throw new Error('Choose a plan time duration of at least 15 minutes.')
   }
   const candidates = localTimeCandidates(date, time)
@@ -47,6 +47,8 @@ export function resolveLocalPlanTime(
   }
   return {
     startsAt: new Date(chosen).toISOString(),
-    endsAt: new Date(chosen + duration * MINUTE).toISOString(),
+    endsAt: duration === null
+      ? null
+      : new Date(chosen + duration * MINUTE).toISOString(),
   }
 }
