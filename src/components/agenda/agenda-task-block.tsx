@@ -5,7 +5,7 @@ import { GripVertical } from 'lucide-react'
 import { TaskEditDialog } from '@/components/tasks/task-item/task-edit/task-edit-dialog'
 import { TaskCheckbox } from '@/components/tasks/task-item/task-checkbox'
 import { updateTaskCompleted } from '@/components/tasks/mutations'
-import { MINUTE, PIXELS_PER_MINUTE, timeLabel } from '@/lib/agenda'
+import { MINUTE, PIXELS_PER_MINUTE, SLOT_MINUTES, timeLabel } from '@/lib/agenda'
 import { listColorStyle } from '@/lib/list-colors'
 import type { AgendaBlock } from '@/types'
 import { toast } from 'sonner'
@@ -21,7 +21,9 @@ export default function AgendaTaskBlock({ item, dayStart }: { item: { block: Age
   async function change(operation: () => Promise<unknown>) {
     try { await operation() } catch (cause) { toast.error(cause instanceof Error ? cause.message : 'Task was not saved.') }
   }
-  const description = `${task.title} · ${task.list?.title ?? 'Unsorted'} · ${timeLabel(Date.parse(block.starts_at))}${block.ends_at ? ` – ${timeLabel(Date.parse(block.ends_at))}` : ' · no duration'}`
+  const start = Date.parse(block.starts_at)
+  const end = block.ends_at ? Date.parse(block.ends_at) : start + SLOT_MINUTES * MINUTE
+  const description = `${task.title} · ${task.list?.title ?? 'Unsorted'} · ${timeLabel(start)} – ${timeLabel(end)}`
   return <div ref={setMoveRef} title={description} className={`planomy-scheduled-event agenda-task-block pointer-events-auto absolute overflow-hidden ${task.completed ? 'opacity-55' : ''} ${isMoving || isResizing ? 'opacity-40' : ''}`} style={{ ...listColorStyle(task.list?.color), top: (item.start - dayStart) / MINUTE * PIXELS_PER_MINUTE, height, left: `${item.column / item.columns * 100}%`, width: `calc(${100 / item.columns}% - 3px)` }}>
     <div className="flex min-w-0 items-center gap-1 px-1.5 pt-1">
       <button ref={setActivatorNodeRef} {...moveAttributes} {...moveListeners} aria-label={`Move scheduled time for ${task.title}`} className="shrink-0 touch-none cursor-grab rounded focus-visible:ring-2"><GripVertical className="size-3" /></button>

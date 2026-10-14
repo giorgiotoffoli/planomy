@@ -323,7 +323,7 @@ html.dark {
   --fc-list-event-hover-bg-color: var(--surface-hover);
   --fc-today-bg-color: color-mix(in oklab, var(--primary) 4%, transparent);
   --fc-now-indicator-color: var(--primary);
-  --fc-small-font-size: 0.75rem;
+  --fc-small-font-size: 0.82rem;
   background: var(--calendar-canvas);
   color: var(--text-primary);
   font-family: var(--font-inter-sans), ui-sans-serif, system-ui, sans-serif;
@@ -379,21 +379,21 @@ html.dark {
 
 .planomy-calendar-weekday {
   color: var(--text-muted);
-  font-size: 0.74rem;
+  font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.01em;
 }
 
 .planomy-calendar-day-number {
   display: inline-flex;
-  width: 1.85rem;
-  height: 1.85rem;
+  width: 2.05rem;
+  height: 2.05rem;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
   color: var(--text-primary);
   font-family: var(--font-dm-sans), var(--font-inter-sans), sans-serif;
-  font-size: 1.06rem;
+  font-size: 1.16rem;
   font-weight: 600;
   line-height: 1;
 }
@@ -405,14 +405,14 @@ html.dark {
 
 .planomy-month-day-number {
   display: inline-flex;
-  width: 1.65rem;
-  height: 1.65rem;
+  width: 1.8rem;
+  height: 1.8rem;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
   color: var(--text-secondary);
   font-family: var(--font-dm-sans), var(--font-inter-sans), sans-serif;
-  font-size: 0.84rem;
+  font-size: 0.94rem;
   font-weight: 600;
 }
 
@@ -430,26 +430,37 @@ html.dark {
 .planomy-calendar .fc-timegrid-slot-label-cushion {
   padding-right: 0.7rem;
   color: var(--text-tertiary);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 500;
 }
 
 .planomy-calendar .fc-timegrid-slot {
-  height: 2.45rem;
+  height: 1.225rem;
 }
 
 .planomy-calendar .fc-timegrid-slot-lane {
+  border-top-color: transparent;
+  border-top-style: none;
+}
+
+.planomy-calendar .fc-timegrid-slot-label {
+  border-top-color: transparent;
+  border-top-style: none;
+}
+
+.planomy-calendar .fc-timegrid-slot-lane:not(.fc-timegrid-slot-minor),
+.planomy-calendar .fc-timegrid-slot-label:not(.fc-timegrid-slot-minor) {
   border-top-color: var(--border-subtle);
+  border-top-style: solid;
 }
 
 .planomy-calendar .fc-timegrid-slot-minor {
-  border-top-color: color-mix(in oklab, var(--border-subtle) 48%, transparent);
-  border-top-style: solid;
+  border-top-color: transparent;
+  border-top-style: none;
 }
 
 .planomy-calendar .fc-timegrid-divider {
   border: 0;
-  border-top: 1px solid var(--border-subtle);
   background: var(--calendar-canvas);
   padding: 0;
 }
@@ -460,13 +471,13 @@ html.dark {
 
 .planomy-calendar .fc-timegrid-axis-frame-liquid {
   color: var(--text-tertiary);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 500;
 }
 
 .planomy-due-label {
   color: var(--text-tertiary);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 600;
 }
 
@@ -505,6 +516,9 @@ html.dark {
 
 .planomy-calendar .fc-timegrid-event-harness {
   margin-right: 0.15rem;
+  transition:
+    top 135ms cubic-bezier(0.22, 0.8, 0.32, 1),
+    bottom 135ms cubic-bezier(0.22, 0.8, 0.32, 1);
 }
 
 .planomy-calendar .planomy-due-event {
@@ -555,7 +569,7 @@ html.dark {
   flex: 1 1 auto;
   overflow: hidden;
   color: var(--text-primary);
-  font-size: 0.75rem;
+  font-size: 0.84rem;
   font-weight: 550;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -565,7 +579,7 @@ html.dark {
 .planomy-due-task-time {
   flex: 0 0 auto;
   color: var(--text-tertiary);
-  font-size: 0.64rem;
+  font-size: 0.72rem;
   font-weight: 500;
 }
 
@@ -582,7 +596,7 @@ html.dark {
 }
 
 .planomy-due-task.is-month .planomy-due-task-title {
-  font-size: 0.69rem;
+  font-size: 0.78rem;
 }
 
 .planomy-calendar .planomy-scheduled-event,
@@ -603,6 +617,70 @@ html.dark {
 .planomy-calendar .planomy-scheduled-event {
   border-style: solid;
   box-shadow: none;
+  cursor: grab;
+  touch-action: none;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    box-shadow 140ms ease,
+    opacity 120ms ease,
+    transform 140ms ease;
+}
+
+.planomy-calendar .planomy-scheduled-event:active {
+  cursor: grabbing;
+}
+
+.planomy-calendar .planomy-scheduled-event.is-selected {
+  border-color: color-mix(in oklab, var(--list-color) 72%, var(--text-primary));
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--list-color) 35%, transparent),
+    0 3px 10px rgb(0 0 0 / 10%);
+}
+
+.planomy-calendar .planomy-scheduled-event.is-saving {
+  cursor: progress;
+  opacity: 0.72;
+}
+
+.planomy-calendar .planomy-scheduled-event.is-interaction-preview,
+.planomy-calendar .planomy-scheduled-event.fc-event-dragging {
+  z-index: 12;
+  box-shadow: 0 8px 22px rgb(0 0 0 / 18%);
+  cursor: grabbing;
+  transform: scale(1.012);
+}
+
+.planomy-calendar .planomy-scheduled-event .fc-event-resizer-end {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 0.55rem;
+  cursor: ns-resize;
+}
+
+.planomy-calendar .planomy-scheduled-event .fc-event-resizer-end::after {
+  position: absolute;
+  right: 25%;
+  bottom: 2px;
+  left: 25%;
+  height: 2px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--list-color) 58%, var(--text-primary));
+  content: '';
+  opacity: 0;
+  transition: opacity 100ms ease;
+}
+
+.planomy-calendar .planomy-scheduled-event:hover .fc-event-resizer-end::after,
+.planomy-calendar .planomy-scheduled-event.is-selected .fc-event-resizer-end::after {
+  opacity: 0.72;
+}
+
+.planomy-calendar .planomy-scheduled-event.is-selected .fc-event-resizer {
+  display: block;
+  border: 0;
+  background: transparent;
 }
 
 .planomy-calendar .planomy-scheduled-event .fc-event-main,
@@ -612,12 +690,20 @@ html.dark {
   color: var(--text-primary);
 }
 
+/* Keep the drag range readable through the task preview without adding a
+   second tinted layer behind it. */
+.planomy-calendar .fc-highlight {
+  background: transparent;
+  box-shadow: none;
+}
+
 .planomy-calendar .planomy-scheduled-event:hover,
 .planomy-calendar .planomy-native-event:hover {
   background: color-mix(in oklab, var(--list-color) 19%, var(--calendar-canvas));
 }
 
 .planomy-calendar-block-content {
+  position: relative;
   display: flex;
   min-width: 0;
   height: 100%;
@@ -633,7 +719,7 @@ html.dark {
   align-items: center;
   gap: 0.28rem;
   overflow: hidden;
-  font-size: 0.74rem;
+  font-size: 0.84rem;
   font-weight: 600;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -643,19 +729,133 @@ html.dark {
 .planomy-calendar-block-time {
   overflow: hidden;
   color: var(--text-secondary);
-  font-size: 0.64rem;
+  font-size: 0.73rem;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.planomy-calendar .fc-timegrid-event-short .planomy-calendar-block-time {
+  display: none;
+}
+
+.planomy-calendar-block-time.is-live-preview {
+  width: fit-content;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--calendar-canvas) 82%, transparent);
+  padding: 0.08rem 0.28rem;
+  color: var(--text-primary);
+  font-weight: 650;
+}
+
+.planomy-calendar-task-menu {
+  position: absolute;
+  z-index: 5;
+  top: 0.15rem;
+  right: 0.15rem;
+  display: inline-flex;
+  width: 1.35rem;
+  height: 1.35rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.3rem;
+  background: color-mix(in oklab, var(--calendar-canvas) 86%, transparent);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.planomy-calendar-task-menu:hover,
+.planomy-calendar-task-menu:focus-visible {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  outline: 2px solid color-mix(in oklab, var(--ring) 45%, transparent);
+  outline-offset: 1px;
+}
+
+.planomy-calendar-task-menu svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.planomy-calendar .planomy-scheduled-event.is-selected .planomy-calendar-block-title {
+  padding-right: 1.25rem;
+}
+
+.planomy-calendar .planomy-create-draft {
+  --list-color: var(--list-color-neutral);
+  overflow: hidden;
+  border: 1px dashed color-mix(in oklab, var(--list-color) 70%, transparent);
+  border-radius: 0.4rem;
+  background: color-mix(in oklab, var(--list-color) 14%, var(--calendar-canvas));
+  box-shadow: 0 4px 14px rgb(0 0 0 / 9%);
+  color: var(--text-primary);
+  pointer-events: none;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    box-shadow 140ms ease,
+    opacity 120ms ease,
+    transform 150ms cubic-bezier(0.22, 0.8, 0.32, 1);
+}
+
+.planomy-calendar .planomy-create-draft .fc-event-main {
+  height: 100%;
+  padding: 0;
+  color: var(--text-primary);
+}
+
+.planomy-create-draft-content {
+  justify-content: center;
+}
+
+body.calendar-is-manipulating,
+body.calendar-is-manipulating * {
+  user-select: none !important;
+}
+
 .planomy-scheduled-task-marker {
+  display: inline-flex;
   width: 0.52rem;
   height: 0.52rem;
   flex: 0 0 auto;
   border: 1.4px solid var(--list-color, var(--list-color-neutral));
   border-radius: 999px;
   background: var(--calendar-canvas);
+}
+
+button.planomy-scheduled-task-marker {
+  width: 0.82rem;
+  height: 0.82rem;
+  align-items: center;
+  justify-content: center;
+  border-color: var(--list-color, var(--list-color-neutral));
+  color: var(--calendar-canvas);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+button.planomy-scheduled-task-marker:hover {
+  background: color-mix(in oklab, var(--list-color) 16%, var(--calendar-canvas));
+}
+
+button.planomy-scheduled-task-marker:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+button.planomy-scheduled-task-marker[aria-pressed='true'] {
+  background: var(--list-color, var(--primary));
+  color: #fff;
+  transform: scale(1.04);
+}
+
+button.planomy-scheduled-task-marker svg {
+  width: 0.58rem;
+  height: 0.58rem;
 }
 
 .planomy-calendar .fc-dayGridMonth-view .planomy-scheduled-event,
@@ -669,7 +869,7 @@ html.dark {
 }
 
 .planomy-calendar .fc-dayGridMonth-view .planomy-calendar-block-title {
-  font-size: 0.69rem;
+  font-size: 0.77rem;
 }
 
 .planomy-calendar .fc-dayGridMonth-view .fc-daygrid-day-top {
@@ -699,7 +899,7 @@ html.dark {
   margin: 0.1rem 0.25rem;
   border-radius: 0.3rem;
   color: var(--text-muted);
-  font-size: 0.68rem;
+  font-size: 0.76rem;
   font-weight: 600;
   text-decoration: none;
 }
@@ -794,8 +994,17 @@ html.dark {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .planomy-due-task {
+  .planomy-due-task,
+  .planomy-calendar .fc-timegrid-event-harness,
+  .planomy-calendar .planomy-scheduled-event,
+  .planomy-calendar .planomy-create-draft,
+  .planomy-calendar .planomy-scheduled-event .fc-event-resizer-end::after {
     transition: none;
+  }
+
+  .planomy-calendar .planomy-scheduled-event.is-interaction-preview,
+  .planomy-calendar .planomy-scheduled-event.fc-event-dragging {
+    transform: none;
   }
 }
 

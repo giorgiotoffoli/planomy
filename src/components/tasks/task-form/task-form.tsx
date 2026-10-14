@@ -27,12 +27,12 @@ import {
 import { ListEmoji } from '@/components/lists/list-emoji'
 import { localDateKey } from '@/lib/today'
 import { cn } from '@/lib/utils'
-import { localTimeCandidates, MINUTE, timeInput, timeLabel } from '@/lib/agenda'
+import { localTimeCandidates, MINUTE, SLOT_MINUTES, timeInput, timeLabel } from '@/lib/agenda'
 
 export type PlanTimeDraft = {
   date: string
   startTime: string
-  duration: number | null
+  duration: number
   occurrence: string
 }
 
@@ -88,20 +88,20 @@ function initialPlanTime(block?: TimeBlock | null): PlanTimeDraft | null {
     date: localDateKey(new Date(start)),
     startTime: timeInput(start),
     duration: block.ends_at
-      ? Math.max(15, (Date.parse(block.ends_at) - start) / MINUTE)
-      : null,
+      ? Math.max(SLOT_MINUTES, (Date.parse(block.ends_at) - start) / MINUTE)
+      : SLOT_MINUTES,
     occurrence: String(start),
   }
 }
 
 function planEndLabel(plan: PlanTimeDraft) {
-  if (plan.duration === null) return null
+  const duration = Math.max(SLOT_MINUTES, plan.duration)
   const candidates = localTimeCandidates(plan.date, plan.startTime)
   const chosen = candidates.length === 1
     ? candidates[0]
     : candidates.find((candidate) => String(candidate) === plan.occurrence)
   if (chosen === undefined) return null
-  return timeLabel(chosen + plan.duration * MINUTE)
+  return timeLabel(chosen + duration * MINUTE)
 }
 
 function MetadataRow({
@@ -227,7 +227,7 @@ export function TaskForm({
       setPlanTime({
         date: localDateKey(),
         startTime: '09:00',
-        duration: null,
+        duration: SLOT_MINUTES,
         occurrence: '',
       })
     }
@@ -462,28 +462,23 @@ export function TaskForm({
                   Duration
                   <Select
                     value={
-                      planTime.duration === null
-                        ? 'none'
-                        : durationOptions.includes(planTime.duration)
-                          ? String(planTime.duration)
+                      durationOptions.includes(planTime.duration)
+                        ? String(planTime.duration)
                           : 'custom'
                     }
                     onValueChange={(value) =>
                       setPlanTime({
                         ...planTime,
                         duration:
-                          value === 'none'
-                            ? null
-                            : value === 'custom'
-                              ? (planTime.duration ?? 30)
-                              : Number(value),
+                          value === 'custom'
+                            ? planTime.duration
+                            : Number(value),
                       })
                     }
                     disabled={disabled}
                   >
                     <SelectTrigger className="h-10 w-full border-blue-200/80 bg-background text-sm font-normal text-foreground dark:border-blue-900/60"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">No duration</SelectItem>
                       {durationOptions.map((duration) => (
                         <SelectItem key={duration} value={String(duration)}>{duration < 60 ? `${duration} min` : `${duration / 60} hour${duration === 60 ? '' : 's'}`}</SelectItem>
                       ))}
@@ -491,8 +486,7 @@ export function TaskForm({
                     </SelectContent>
                   </Select>
                 </label>
-                {planTime.duration !== null &&
-                  !durationOptions.includes(planTime.duration) && (
+                {!durationOptions.includes(planTime.duration) && (
                   <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">
                     Custom duration in minutes
                     <Input

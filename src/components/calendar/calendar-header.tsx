@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SidebarTrigger } from '@/components/ui/sidebar'
+import AgendaToggle from '@/components/agenda/agenda-toggle'
 
 export type CalendarNavigation = 'previous' | 'next' | 'today'
 export type CalendarViewMode = 'day' | 'week' | 'month'
@@ -108,6 +109,7 @@ export default function CalendarHeader({
             <span className="hidden sm:inline">Create</span>
             <span className="sr-only sm:hidden">Create</span>
           </Button>
+          <AgendaToggle />
         </div>
       </div>
     </header>

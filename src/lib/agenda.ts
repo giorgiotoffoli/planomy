@@ -83,7 +83,7 @@ export function layoutBlocks<T extends Interval>(blocks: T[], day: string) {
     const blockStart = Date.parse(block.starts_at)
     const displayEnd = block.ends_at
       ? Date.parse(block.ends_at)
-      : blockStart + 30 * MINUTE
+      : blockStart + SLOT_MINUTES * MINUTE
     return {
       block,
       start: Math.max(start, blockStart),

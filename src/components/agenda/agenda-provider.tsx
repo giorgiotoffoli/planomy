@@ -2,16 +2,17 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { DndContext, DragOverlay, KeyboardSensor, MouseSensor, TouchSensor, closestCenter, pointerWithin, useSensor, useSensors, type DragEndEvent, type DragOverEvent } from '@dnd-kit/core'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString } from '@/lib/crypto/e2ee'
-import { dayBounds, dragIntent, MINUTE, shiftDay, snapInstant, timeLabel } from '@/lib/agenda'
+import { dayBounds, dragIntent, MINUTE, shiftDay, SLOT_MINUTES, snapInstant, timeLabel } from '@/lib/agenda'
 import { localDateKey } from '@/lib/today'
 import type { AgendaBlock, CalendarEventWithList, Category, List, TaskWithList, TimeBlock } from '@/types'
 import { getCalendarRangeData } from '@/components/calendar/actions'
 import { removeTimeBlock, saveTimeBlock } from './actions'
 import { TASKS_CHANGED } from '@/components/tasks/mutations'
+import { PLAN_TIME_CHANGED, notifyPlanTimeChanged, planTimeChangeOrigin } from './mutations'
 import AgendaPanel from './agenda-panel'
 
 export type AgendaDrag = {
@@ -97,7 +98,6 @@ export function useAgenda() {
 
 export default function AgendaProvider({ children }: { children: ReactNode }) {
   const { masterKey } = useE2EE()
-  const pathname = usePathname()
   const router = useRouter()
   const [open, setOpenState] = useState(false)
   const [day, setDay] = useState(() => localDateKey())
@@ -117,7 +117,6 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
   const invalidate = useCallback(() => { generation.current++ }, [])
   const [drag, setDrag] = useState<AgendaDrag | null>(null)
   const [preview, setPreview] = useState<AgendaContextValue['preview']>(null)
-  const isCalendarPage = pathname === '/calendar'
   const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }), useSensor(KeyboardSensor))
 
   const setOpen = useCallback((value: boolean) => {
@@ -184,14 +183,21 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
   useEffect(() => { latestReload.current = reload }, [reload])
 
   useEffect(() => {
-    const timeout = setTimeout(() => { if (open && !isCalendarPage) void reload() }, 0)
+    const timeout = setTimeout(() => { if (open) void reload() }, 0)
     return () => { clearTimeout(timeout); invalidate() }
-  }, [open, isCalendarPage, reload, invalidate])
+  }, [open, reload, invalidate])
   useEffect(() => {
-    const changed = () => { router.refresh(); if (open && !isCalendarPage) void reload() }
+    const changed = () => { router.refresh(); if (open) void reload() }
+    const planTimeChanged = (event: Event) => {
+      if (open && planTimeChangeOrigin(event) !== 'agenda') void reload()
+    }
     window.addEventListener(TASKS_CHANGED, changed)
-    return () => window.removeEventListener(TASKS_CHANGED, changed)
-  }, [open, isCalendarPage, reload, router])
+    window.addEventListener(PLAN_TIME_CHANGED, planTimeChanged)
+    return () => {
+      window.removeEventListener(TASKS_CHANGED, changed)
+      window.removeEventListener(PLAN_TIME_CHANGED, planTimeChanged)
+    }
+  }, [open, reload, router])
 
   async function mutate(taskId: string, operation: () => Promise<unknown>, optimistic: (blocks: AgendaBlock[]) => AgendaBlock[]) {
     if (pending.current.has(taskId)) return false
@@ -200,6 +206,7 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
     setLoaded(current => ({ ...current, blocks: optimistic(current.blocks) }))
     try {
       await operation()
+      notifyPlanTimeChanged('agenda')
       return true
     } catch (cause) {
       setLoaded(current => ({ ...current, blocks: [...current.blocks.filter(block => block.task_id !== taskId), ...(previous && current.day === loaded.day ? [previous] : [])] }))
@@ -211,15 +218,17 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
     }
   }
   async function save(task: TaskWithList, start: number, end: number | null) {
+    const normalizedEnd = end ?? start + SLOT_MINUTES * MINUTE
     if (
       !Number.isFinite(start) ||
-      (end !== null && (!Number.isFinite(end) || end - start < 15 * MINUTE))
+      !Number.isFinite(normalizedEnd) ||
+      normalizedEnd - start < SLOT_MINUTES * MINUTE
     ) {
       toast.error('Choose valid times at least 15 minutes apart.')
       return false
     }
     const starts_at = new Date(start).toISOString()
-    const ends_at = end === null ? null : new Date(end).toISOString()
+    const ends_at = new Date(normalizedEnd).toISOString()
     return mutate(task.id, () => saveTimeBlock(task.id, starts_at, ends_at), blocks => [...blocks.filter(block => block.task_id !== task.id), { task_id: task.id, user_id: task.user_id, starts_at, ends_at, task }])
   }
   async function remove(taskId: string) {
@@ -238,12 +247,12 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
     const persistedDuration = source.block?.ends_at
       ? Date.parse(source.block.ends_at) - Date.parse(source.block.starts_at)
       : null
-    const displayDuration = persistedDuration ?? 30 * MINUTE
+    const displayDuration = persistedDuration ?? SLOT_MINUTES * MINUTE
     return {
       task: source.task,
       start: instant,
       end: instant + displayDuration,
-      persistedEnd: persistedDuration === null ? null : instant + persistedDuration,
+      persistedEnd: instant + displayDuration,
     }
   }
   function finishDrag(event: DragEndEvent) {
@@ -254,7 +263,7 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
     setDrag(null); setPreview(null)
   }
 
-  return <AgendaContext.Provider value={{ open: !isCalendarPage && open, setOpen, day, setDay, blocks: loaded.day === day ? loaded.blocks : [], dueTasks: loaded.day === day ? loaded.dueTasks : [], events: loaded.day === day ? loaded.events : [], lists: loaded.lists, categories: loaded.categories, loading: loading || (loaded.day !== day && !error), error, reload, save, remove, busy, preview }}>
+  return <AgendaContext.Provider value={{ open, setOpen, day, setDay, blocks: loaded.day === day ? loaded.blocks : [], dueTasks: loaded.day === day ? loaded.dueTasks : [], events: loaded.day === day ? loaded.events : [], lists: loaded.lists, categories: loaded.categories, loading: loading || (loaded.day !== day && !error), error, reload, save, remove, busy, preview }}>
     <DndContext sensors={sensors} collisionDetection={args => {
       // Pointer drags must actually enter a target; keyboard drags use nearest target.
       const candidates = args.droppableContainers.filter(container => dragIntent(args.active.data.current ?? {}, container.data.current) !== 'none')
@@ -264,7 +273,7 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
         <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background selection:bg-primary selection:text-primary-foreground">{children}</main>
         <AgendaPanel />
       </div>
-      <DragOverlay dropAnimation={null}>{drag && <div className="max-w-60 rounded-lg border bg-background p-3 text-sm shadow-lg"><p className="truncate font-medium">{drag.task.title}</p>{preview && <p className="text-xs text-muted-foreground">{timeLabel(preview.start)}{preview.persistedEnd === null ? ' · no duration' : ` – ${timeLabel(preview.end)}`}</p>}</div>}</DragOverlay>
+      <DragOverlay dropAnimation={null}>{drag && <div className="max-w-60 rounded-lg border bg-background p-3 text-sm shadow-lg"><p className="truncate font-medium">{drag.task.title}</p>{preview && <p className="text-xs text-muted-foreground">{timeLabel(preview.start)} – {timeLabel(preview.end)}</p>}</div>}</DragOverlay>
     </DndContext>
   </AgendaContext.Provider>
 }

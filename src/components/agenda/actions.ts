@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { toAgendaBlock, toList } from '@/lib/supabase/domain-mappers'
-import { validateInterval, validateScheduledTime } from '@/lib/agenda'
+import { MINUTE, SLOT_MINUTES, validateInterval, validateScheduledTime } from '@/lib/agenda'
 import type { TimeBlock } from '@/types'
 import { getUserCategories } from '@/components/categories/queries'
 
@@ -49,12 +49,18 @@ export async function saveTimeBlock(
   startsAt: string,
   endsAt: string | null,
 ) {
-  validateScheduledTime(startsAt, endsAt)
+  const start = Date.parse(startsAt)
+  const normalizedEndsAt = endsAt ?? (
+    Number.isFinite(start)
+      ? new Date(start + SLOT_MINUTES * MINUTE).toISOString()
+      : null
+  )
+  validateScheduledTime(startsAt, normalizedEndsAt)
   const { supabase, user } = await authenticatedClient()
   const { data: task, error: taskError } = await supabase.from('tasks').select('id').eq('user_id', user.id).eq('id', taskId).maybeSingle()
   if (taskError) throw databaseError(taskError)
   if (!task) throw new Error('Task not found')
-  const { data, error } = await supabase.from('task_time_blocks').upsert({ task_id: taskId, user_id: user.id, starts_at: startsAt, ends_at: endsAt }, { onConflict: 'task_id' }).select('*').single()
+  const { data, error } = await supabase.from('task_time_blocks').upsert({ task_id: taskId, user_id: user.id, starts_at: startsAt, ends_at: normalizedEndsAt }, { onConflict: 'task_id' }).select('*').single()
   if (error) throw databaseError(error)
   return data as TimeBlock
 }

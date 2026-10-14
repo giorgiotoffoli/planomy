@@ -21,13 +21,15 @@ export function TaskCheckbox({ task, handleOnComplete }: TaskCheckboxProps) {
       className={cn(
         `
         group/checkbox
+        task-checkbox
         relative
-        flex h-4 w-4 shrink-0
+        flex h-[1.125rem] w-[1.125rem] shrink-0
         items-center justify-center
         rounded-full
         border border-border
         bg-transparent
-        transition-all duration-200
+        touch-action-manipulation
+        transition-[background-color,border-color,transform] duration-200
         hover:border-primary
         hover:bg-primary/10
         focus-visible:outline-none
@@ -50,7 +52,7 @@ export function TaskCheckbox({ task, handleOnComplete }: TaskCheckboxProps) {
           duration-200
         "
       >
-        <Check strokeWidth={3} className="h-2.5 w-2.5" />
+        <Check strokeWidth={3} className="h-3 w-3" />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   )
