@@ -16,6 +16,7 @@ import type { Category, List, TaskWithList } from '@/types'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
 import { localDateKey } from '@/lib/today'
+import { applyTaskOrganizationChange } from '@/lib/tasks'
 import {
   deadlineTaskCount,
   getDeadlineDateLabel,
@@ -25,12 +26,14 @@ import {
 import { getDueTimeLabel } from '@/lib/home'
 import { getDeadlineTasks } from '@/components/tasks/queries'
 import {
+  TASK_ORGANIZATION_CHANGED,
   TASKS_CHANGED,
   deleteTask,
   notifyTasksChanged,
   renameTask,
   updateTaskDueDate,
   updateTaskNotes,
+  taskOrganizationChangeFromEvent,
 } from '@/components/tasks/mutations'
 import {
   updateTaskCompleted,
@@ -288,19 +291,35 @@ export default function DeadlinesPlanner({
     const onVisibility = () => {
       if (!document.hidden) refreshForDateOrChange()
     }
+    const organizationChanged = (event: Event) => {
+      const change = taskOrganizationChangeFromEvent(event)
+      if (!change) return
+
+      loadVersion.current++
+      setTasks((current) =>
+        current?.map((task) =>
+          applyTaskOrganizationChange(task, lists, change),
+        ) ?? null,
+      )
+    }
 
     const interval = window.setInterval(refreshCalendar, 60_000)
     window.addEventListener(TASKS_CHANGED, refreshForDateOrChange)
+    window.addEventListener(TASK_ORGANIZATION_CHANGED, organizationChanged)
     window.addEventListener('focus', refreshForDateOrChange)
     document.addEventListener('visibilitychange', onVisibility)
 
     return () => {
       window.clearInterval(interval)
       window.removeEventListener(TASKS_CHANGED, refreshForDateOrChange)
+      window.removeEventListener(
+        TASK_ORGANIZATION_CHANGED,
+        organizationChanged,
+      )
       window.removeEventListener('focus', refreshForDateOrChange)
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [refreshForDateOrChange])
+  }, [lists, refreshForDateOrChange])
 
   const buckets = useMemo(
     () => partitionDeadlineTasks(tasks ?? [], day),

@@ -4,7 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
-import { TASKS_CHANGED, notifyTasksChanged } from '@/components/tasks/mutations'
+import { applyTaskOrganizationChange } from '@/lib/tasks'
+import {
+  TASK_ORGANIZATION_CHANGED,
+  TASKS_CHANGED,
+  notifyTasksChanged,
+  taskOrganizationChangeFromEvent,
+} from '@/components/tasks/mutations'
 import { LISTS_CHANGED } from '@/components/lists/mutations'
 import {
   PLAN_TIME_CHANGED,
@@ -251,11 +257,29 @@ export default function CalendarPage({
     const refresh = () => {
       if (visibleRange.current) void loadRange(visibleRange.current)
     }
+    const organizationChanged = (event: Event) => {
+      const change = taskOrganizationChangeFromEvent(event)
+      if (!change) return
+
+      loadVersion.current++
+      commitDueTasks(
+        dueTasksRef.current?.map((task) =>
+          applyTaskOrganizationChange(task, lists, change),
+        ) ?? null,
+      )
+      commitScheduledTasks(
+        scheduledTasksRef.current.map((block) => ({
+          ...block,
+          task: applyTaskOrganizationChange(block.task, lists, change),
+        })),
+      )
+    }
     const onVisibility = () => {
       if (!document.hidden) refresh()
     }
 
     window.addEventListener(TASKS_CHANGED, refresh)
+    window.addEventListener(TASK_ORGANIZATION_CHANGED, organizationChanged)
     window.addEventListener(LISTS_CHANGED, refresh)
     const refreshPlanTime = (event: Event) => {
       if (planTimeChangeOrigin(event) !== 'calendar') refresh()
@@ -265,12 +289,16 @@ export default function CalendarPage({
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
       window.removeEventListener(TASKS_CHANGED, refresh)
+      window.removeEventListener(
+        TASK_ORGANIZATION_CHANGED,
+        organizationChanged,
+      )
       window.removeEventListener(LISTS_CHANGED, refresh)
       window.removeEventListener(PLAN_TIME_CHANGED, refreshPlanTime)
       window.removeEventListener('focus', refresh)
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [loadRange])
+  }, [commitDueTasks, commitScheduledTasks, lists, loadRange])
 
   const calendarItems = useMemo(
     () => projectCalendarItems(dueTasks ?? [], scheduledTasks, events),

@@ -117,6 +117,7 @@ export default function TaskDetail({
           lists={lists}
           currentListId={currentListId}
           taskListId={task.list_id}
+          taskCategoryId={task.category_id}
         />
       </DropdownMenuContent>
     </DropdownMenu>

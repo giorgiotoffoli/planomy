@@ -8,8 +8,9 @@ import type { DailySelection, List, TaskWithList } from '@/types'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
 import { clearTaskFocusOnCompletion, localDateKey, previousDateKey } from '@/lib/today'
+import { applyTaskOrganizationChange } from '@/lib/tasks'
 import { getTodayData, removeTaskFromDay, selectTaskForDay, setTaskFocused } from './actions'
-import { TASKS_CHANGED, deleteTask, notifyTasksChanged, renameTask, updateTaskCompleted, updateTaskDueDate, updateTaskNotes } from '@/components/tasks/mutations'
+import { TASK_ORGANIZATION_CHANGED, TASKS_CHANGED, deleteTask, notifyTasksChanged, renameTask, taskOrganizationChangeFromEvent, updateTaskCompleted, updateTaskDueDate, updateTaskNotes } from '@/components/tasks/mutations'
 import Header from '@/components/layout/header/app-header'
 import { TaskItem } from '@/components/tasks/task-item/task-item'
 import { Button } from '@/components/ui/button'
@@ -72,11 +73,23 @@ export default function TodayPlanner({ encryptedLists }: { encryptedLists: List[
     }
     const interval = window.setInterval(refreshDay, 60_000)
     const onVisibility = () => { if (!document.hidden) refreshDay() }
+    const organizationChanged = (event: Event) => {
+      const change = taskOrganizationChangeFromEvent(event)
+      if (!change) return
+      loadVersion.current++
+      setData(current => current && ({
+        ...current,
+        tasks: current.tasks.map(task =>
+          applyTaskOrganizationChange(task, lists, change),
+        ),
+      }))
+    }
     window.addEventListener(TASKS_CHANGED, refreshDay)
+    window.addEventListener(TASK_ORGANIZATION_CHANGED, organizationChanged)
     window.addEventListener('focus', refreshDay)
     document.addEventListener('visibilitychange', onVisibility)
-    return () => { window.removeEventListener(TASKS_CHANGED, refreshDay); window.clearInterval(interval); window.removeEventListener('focus', refreshDay); document.removeEventListener('visibilitychange', onVisibility) }
-  }, [day, load])
+    return () => { window.removeEventListener(TASKS_CHANGED, refreshDay); window.removeEventListener(TASK_ORGANIZATION_CHANGED, organizationChanged); window.clearInterval(interval); window.removeEventListener('focus', refreshDay); document.removeEventListener('visibilitychange', onVisibility) }
+  }, [day, lists, load])
 
   const todaySelections = useMemo(() => new Map(data?.selections.filter(s => s.selected_date === day).map(s => [s.task_id, s]) ?? []), [data, day])
   const yesterdayIds = useMemo(() => new Set(data?.selections.filter(s => s.selected_date === previousDateKey(day)).map(s => s.task_id) ?? []), [data, day])
