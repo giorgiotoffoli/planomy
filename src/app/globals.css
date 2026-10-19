@@ -3,6 +3,48 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Use the same geometry for the mobile task trigger and notification clearance.
+   Header-only pages keep the normal toast inset, with no reserved page space. */
+@media (width < 48rem) {
+  body {
+    --floating-task-size: 3rem;
+    --floating-task-inset: max(1.5rem, env(safe-area-inset-bottom, 0px));
+    --mobile-toast-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  body:has([data-floating-task-trigger]) {
+    --mobile-toast-bottom: calc(var(--floating-task-inset) + var(--floating-task-size) + 1rem);
+  }
+
+  .floating-task-trigger {
+    width: var(--floating-task-size);
+    height: var(--floating-task-size);
+    margin-bottom: var(--floating-task-inset);
+    margin-right: max(1.5rem, env(safe-area-inset-right, 0px));
+  }
+
+  /* Sonner's own mobile breakpoint is narrower than the app's md breakpoint.
+     Apply safe-area sizing throughout Planomy's mobile layout, including RTL. */
+  .toaster[data-sonner-toaster] {
+    left: max(1rem, env(safe-area-inset-left, 0px));
+    right: max(1rem, env(safe-area-inset-right, 0px));
+    width: auto;
+    transform: none;
+  }
+
+  .toaster[data-sonner-toaster][data-y-position='bottom'] {
+    bottom: var(--mobile-toast-bottom);
+  }
+
+  .toaster[data-sonner-toaster][data-y-position='top'] {
+    top: max(1rem, env(safe-area-inset-top, 0px));
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast] {
+    width: 100%;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

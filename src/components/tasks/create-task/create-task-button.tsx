@@ -30,8 +30,9 @@ export default function CreateTaskButton({
       <Button
         type="button"
         aria-label="Create task"
+        data-floating-task-trigger
         variant="default"
-        className="absolute bottom-0 right-0 m-6 h-12 w-12 rounded-full bg-primary transition hover:scale-105 hover:cursor-pointer hover:bg-accent-hover active:bg-accent-active"
+        className="floating-task-trigger absolute bottom-0 right-0 m-6 h-12 w-12 rounded-full bg-primary transition hover:scale-105 hover:cursor-pointer hover:bg-accent-hover active:bg-accent-active"
       >
         <PlusIcon className="size-6 sm:size-4" />
       </Button>

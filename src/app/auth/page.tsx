@@ -1,12 +1,44 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
+import { useFormStatus } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { Mail, Lock, ArrowRight } from 'lucide-react'
 import { signIn, signUp } from './actions'
 import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { PlanomyIcon } from '@/icons/planomy-icon'
+import { useIsMobile } from '@/hooks/use-mobile'
+
+function AuthSubmitButton({ isLogin, disabled }: { isLogin: boolean; disabled: boolean }) {
+  const { pending } = useFormStatus()
+  const isMobile = useIsMobile()
+
+  useEffect(() => {
+    // Keep mobile feedback in the form, away from the workspace controls.
+    if (!pending || isMobile) return
+
+    const toastId = toast(isLogin ? 'Logging in…' : 'Signing up…', {
+      position: 'top-center',
+    })
+    // The root toaster survives navigation; login feedback must not.
+    return () => { toast.dismiss(toastId) }
+  }, [isLogin, isMobile, pending])
+
+  return (
+    <button
+      type="submit"
+      disabled={disabled || pending}
+      aria-busy={pending}
+      className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-primary/60"
+    >
+      <span role="status" aria-live="polite">
+        {pending ? (isLogin ? 'Logging in…' : 'Signing up…') : (isLogin ? 'Sign in' : 'Create account')}
+      </span>
+      <ArrowRight aria-hidden="true" className="ml-2 h-4 w-4" />
+    </button>
+  )
+}
 
 function DisplayErrorMessage() {
   const searchParams = useSearchParams()
@@ -87,11 +119,6 @@ export default function AuthPage() {
               <form
                 className="space-y-5"
                 action={isLogin ? signIn : signUp}
-                onSubmit={() =>
-                  toast(`${isLogin ? 'Logging in...' : 'Signing up...'}`, {
-                    position: 'top-center',
-                  })
-                }
               >
                 <Suspense fallback={<div>Loading error message...</div>}>
                   <DisplayErrorMessage />
@@ -176,14 +203,7 @@ export default function AuthPage() {
                   </div>
                 )}
 
-                <button
-                  type="submit"
-                  className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-primary/60"
-                  disabled={!isLogin && !passwordsMatch}
-                >
-                  {isLogin ? 'Sign in' : 'Create account'}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </button>
+                <AuthSubmitButton isLogin={isLogin} disabled={!isLogin && !passwordsMatch} />
               </form>
             </motion.div>
           </AnimatePresence>
