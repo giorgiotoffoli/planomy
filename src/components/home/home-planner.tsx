@@ -22,7 +22,8 @@ import { toast } from 'sonner'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
 import { localDateKey } from '@/lib/today'
-import { applyTaskOrganizationChange } from '@/lib/tasks'
+import { applyTaskOrganizationChange, matchesTaskSearch } from '@/lib/tasks'
+import type { TaskCreationView } from '@/lib/task-creation'
 import TaskSortSelect from '@/components/lists/task-sort-select'
 import {
   isTaskSortOption,
@@ -538,16 +539,13 @@ export default function HomePlanner({
     [categories, homePreferences, tasks],
   )
 
-  const filteredTasks = useMemo(() => {
-    const query = searchQuery.trim().toLocaleLowerCase()
-    if (!query) return homeTasks
-
-    return homeTasks.filter((task) =>
-      [task.title, task.notes, task.list?.title]
-        .filter(Boolean)
-        .some((value) => value!.toLocaleLowerCase().includes(query)),
-    )
-  }, [homeTasks, searchQuery])
+  const filteredTasks = useMemo(
+    () => homeTasks.filter((task) => matchesTaskSearch(task, searchQuery)),
+    [homeTasks, searchQuery],
+  )
+  const creationView: TaskCreationView = {
+    type: 'home', preferences: homePreferences, categories, searchQuery,
+  }
 
   const buckets = useMemo(() => {
     const homeBuckets = getHomeBuckets(filteredTasks, day)
@@ -858,6 +856,7 @@ export default function HomePlanner({
           scrollRootRef={scrollRootRef}
           rightSlot={(isCollapsed) => (
             <CreateTaskAction
+              creationView={creationView}
               lists={lists}
               categories={categories}
               listId={null}
@@ -915,6 +914,7 @@ export default function HomePlanner({
                     />
                   </label>
                   <CreateTaskAction
+                    creationView={creationView}
                     lists={lists}
                     categories={categories}
                     listId={null}

@@ -2,12 +2,14 @@ import { Button } from '@/components/ui/button'
 import { PlusIcon } from 'lucide-react'
 import CreateTaskDialog from './create-task-dialog'
 import type { Category, List } from '@/types'
+import type { TaskCreationView } from '@/lib/task-creation'
 
 interface CreateTaskButtonProps {
   lists: List[]
   categories?: Category[]
   listId: string | null
   categoryId?: string | null
+  creationView?: TaskCreationView
 }
 
 export default function CreateTaskButton({
@@ -15,11 +17,13 @@ export default function CreateTaskButton({
   categories,
   listId,
   categoryId,
+  creationView,
 }: CreateTaskButtonProps) {
   return (
     <CreateTaskDialog
       listId={listId}
       categoryId={categoryId}
+      creationView={creationView}
       lists={lists}
       categories={categories}
     >

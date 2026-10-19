@@ -44,6 +44,8 @@ import CalendarHeader, {
 } from './calendar-header'
 import CalendarView from './calendar-view'
 import type { QuickCreateInput } from './calendar-quick-create'
+import { isCreatedScheduleVisible } from '@/lib/task-creation'
+import { showTaskCreatedToast } from '@/components/tasks/create-task/task-created-toast'
 
 function replaceScheduledBlock(
   blocks: AgendaBlock[],
@@ -545,6 +547,10 @@ export default function CalendarPage({
         )
         pendingSchedules.current.delete(savedTask.id)
         notifyPlanTimeChanged('calendar')
+        notifyTasksChanged()
+        if (!isCreatedScheduleVisible(savedBlock, visibleRange.current)) {
+          showTaskCreatedToast(localTask, lists)
+        }
         return true
       } catch (cause) {
         pendingSchedules.current.delete(tempId)
@@ -566,7 +572,7 @@ export default function CalendarPage({
         toast.error(
           cause instanceof Error
             ? `Couldn't create scheduled task. ${cause.message}`
-            : "Couldn't create scheduled task. The draft was removed.",
+            : "Couldn't create scheduled task. Try again.",
         )
         return false
       } finally {

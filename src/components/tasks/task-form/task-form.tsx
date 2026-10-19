@@ -57,6 +57,7 @@ type TaskFormProps = {
   initialTimeBlock?: TimeBlock | null
   focusPlanTime?: boolean
   disabled?: boolean
+  error?: string | null
   onCancel?: () => void
   onSubmit: (values: TaskFormValues) => void | Promise<void>
 }
@@ -154,17 +155,20 @@ function SectionToggle({
   label,
   summary,
   onClick,
+  disabled,
 }: {
   open: boolean
   label: string
   summary: string
   onClick: () => void
+  disabled?: boolean
 }) {
   return (
     <Button
       type="button"
       variant="ghost"
       onClick={onClick}
+      disabled={disabled}
       aria-expanded={open}
       className="h-auto min-h-8 w-full min-w-0 justify-start gap-3 px-0 py-0 text-left hover:bg-transparent"
     >
@@ -184,6 +188,7 @@ export function TaskForm({
   initialTimeBlock,
   focusPlanTime = false,
   disabled = false,
+  error,
   onCancel = () => {},
   onSubmit,
 }: TaskFormProps) {
@@ -235,6 +240,7 @@ export function TaskForm({
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (disabled || !title.trim()) return
     void onSubmit({
       title: title.trim(),
       notes,
@@ -248,7 +254,7 @@ export function TaskForm({
   }
 
   return (
-    <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
+    <form onSubmit={submit} aria-busy={disabled} className="flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         <div className="space-y-5">
           <div className="space-y-4">
@@ -344,6 +350,7 @@ export function TaskForm({
             summary={
               <SectionToggle
                 open={deadlineOpen}
+                disabled={disabled}
                 label="deadline"
                 summary={dueDate ? `${dateLabel(dueDate)}${dueTime ? ` · ${timeValueLabel(dueTime)}` : ''}` : ''}
                 onClick={openDeadline}
@@ -425,6 +432,7 @@ export function TaskForm({
             summary={
               <SectionToggle
                 open={planOpen}
+                disabled={disabled}
                 label="plan time"
                 summary={planTime ? `${dateLabel(planTime.date)} · ${timeValueLabel(planTime.startTime)}${planEndLabel(planTime) ? ` – ${planEndLabel(planTime)}` : ''}` : ''}
                 onClick={openPlanTime}
@@ -563,6 +571,7 @@ export function TaskForm({
       </div>
       </div>
 
+      {error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}
       <div className="mt-6 flex shrink-0 flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
         <Button type="button" variant="outline" onClick={onCancel} disabled={disabled}>
           Cancel
@@ -572,7 +581,7 @@ export function TaskForm({
           disabled={disabled || !title.trim()}
           className="bg-primary text-primary-foreground hover:bg-accent-hover active:bg-accent-active focus-visible:ring-primary/40"
         >
-          {mode === 'create' ? 'Add task' : 'Save changes'}
+          {disabled ? 'Saving…' : mode === 'create' ? 'Add task' : 'Save changes'}
         </Button>
       </div>
     </form>

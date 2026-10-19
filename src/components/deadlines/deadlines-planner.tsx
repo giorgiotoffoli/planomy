@@ -468,6 +468,7 @@ export default function DeadlinesPlanner({
 
   const taskDialog = (
     <CreateTaskDialog
+      creationView={{ type: 'deadlines' }}
       lists={lists}
       categories={categories}
       listId={null}
@@ -537,6 +538,7 @@ export default function DeadlinesPlanner({
                   <Link href="/home">Go to Home</Link>
                 </Button>
                 <CreateTaskDialog
+                  creationView={{ type: 'deadlines' }}
                   lists={lists}
                   categories={categories}
                   listId={null}

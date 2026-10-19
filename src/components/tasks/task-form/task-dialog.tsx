@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import {
   Dialog,
@@ -21,6 +21,8 @@ import {
 } from '@/components/tasks/mutations'
 import { getTaskTimeBlock, removeTimeBlock, saveTimeBlock } from '@/components/agenda/actions'
 import { resolveLocalPlanTime } from '@/lib/task-form'
+import { isCreatedTaskVisible, type TaskCreationView } from '@/lib/task-creation'
+import { showTaskCreatedToast } from '../create-task/task-created-toast'
 import { TaskForm, type TaskFormValues } from './task-form'
 
 type TaskDialogProps = {
@@ -34,6 +36,7 @@ type TaskDialogProps = {
   children?: ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  creationView?: TaskCreationView
 }
 
 function resolvePlanTime(values: TaskFormValues) {
@@ -53,16 +56,23 @@ export function TaskDialog({
   children,
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
+  creationView,
 }: TaskDialogProps) {
   const { masterKey } = useE2EE()
   const [internalOpen, setInternalOpen] = useState(false)
   const [timeBlock, setTimeBlock] = useState<TimeBlock | null>(null)
   const [loadingTimeBlock, setLoadingTimeBlock] = useState(mode === 'edit')
   const [saving, setSaving] = useState(false)
+  const submitting = useRef(false)
+  const createdTaskId = useRef<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const isControlled = controlledOpen !== undefined
   const open = controlledOpen ?? internalOpen
 
   function setOpen(nextOpen: boolean) {
+    if (submitting.current) return
+    setSaveError(null)
+    createdTaskId.current = null
     if (nextOpen && mode === 'edit') {
       setLoadingTimeBlock(true)
       setTimeBlock(null)
@@ -88,8 +98,10 @@ export function TaskDialog({
   }, [mode, open, task])
 
   async function submit(values: TaskFormValues) {
+    if (submitting.current) return
+    setSaveError(null)
     if (!masterKey) {
-      toast.error('Unlock your vault before saving a task.')
+      setSaveError('Unlock your vault before saving a task.')
       return
     }
 
@@ -97,10 +109,11 @@ export function TaskDialog({
     try {
       planTime = resolvePlanTime(values)
     } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : 'Plan time is invalid.')
+      setSaveError(cause instanceof Error ? cause.message : 'Plan time is invalid.')
       return
     }
 
+    submitting.current = true
     setSaving(true)
     const organizationChanged =
       mode === 'edit' &&
@@ -116,6 +129,7 @@ export function TaskDialog({
       })
     }
 
+    let taskSaved = false
     try {
       const encryptedTitle = await encryptString(values.title, masterKey)
       const encryptedNotes = values.notes ? await encryptString(values.notes, masterKey) : ''
@@ -128,40 +142,56 @@ export function TaskDialog({
         dueTime: values.dueTime,
         focused: values.focused,
       }
-      const savedTask = mode === 'create'
+      // A failed Plan time save must retry the existing task, not insert another.
+      const savedTask = mode === 'create' && !createdTaskId.current
         ? await createTask(input)
-        : await updateTask({ ...input, taskId: task!.id })
+        : await updateTask({ ...input, taskId: createdTaskId.current ?? task!.id })
 
       if (!savedTask) throw new Error('Task was not saved.')
+      taskSaved = true
+      if (mode === 'create') createdTaskId.current = savedTask.id
 
       if (planTime) {
         try {
           await saveTimeBlock(savedTask.id, planTime.startsAt, planTime.endsAt)
         } catch (cause) {
           const detail = cause instanceof Error ? ` ${cause.message}` : ''
-          toast.error(`Task created, but Plan time couldn't be saved.${detail}`)
+          throw new Error(`Task saved, but Plan time couldn't be saved. Try again to finish saving this task.${detail}`)
         }
       } else if (mode === 'edit') {
         try {
           await removeTimeBlock(savedTask.id)
         } catch (cause) {
           const detail = cause instanceof Error ? ` ${cause.message}` : ''
-          toast.error(`Task saved, but Plan time couldn't be removed.${detail}`)
+          throw new Error(`Task saved, but Plan time couldn't be removed.${detail}`)
         }
       }
 
       notifyTasksChanged()
+      if (mode === 'create') {
+        const localTask = {
+          ...savedTask,
+          title: values.title,
+          notes: values.notes,
+          list: lists.find((list) => list.id === savedTask.list_id) ?? null,
+        }
+        if (!isCreatedTaskVisible(localTask, creationView)) {
+          showTaskCreatedToast(localTask, lists, categories)
+        }
+      }
+      submitting.current = false
       setOpen(false)
     } catch (cause) {
-      if (organizationChanged) {
+      if (organizationChanged && !taskSaved) {
         notifyTaskOrganizationChanged({
           taskId: task.id,
           listId: task.list_id,
           categoryId: task.category_id ?? null,
         })
       }
-      toast.error(cause instanceof Error ? cause.message : 'Task could not be saved.')
+      setSaveError(cause instanceof Error ? cause.message : 'Task could not be saved. Try again.')
     } finally {
+      submitting.current = false
       setSaving(false)
     }
   }
@@ -190,6 +220,7 @@ export function TaskDialog({
           initialTimeBlock={timeBlock}
           focusPlanTime={focusPlanTime}
           disabled={saving}
+          error={saveError}
           onCancel={() => setOpen(false)}
           onSubmit={submit}
         />

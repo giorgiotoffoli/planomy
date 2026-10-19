@@ -27,6 +27,8 @@ import {
 } from '@/components/tasks/mutations'
 import { PLAN_TIME_CHANGED, notifyPlanTimeChanged, planTimeChangeOrigin } from './mutations'
 import AgendaPanel from './agenda-panel'
+import { isCreatedScheduleVisible } from '@/lib/task-creation'
+import { showTaskCreatedToast } from '@/components/tasks/create-task/task-created-toast'
 
 export type AgendaDrag = {
   kind: 'task' | 'agenda-block' | 'agenda-resize'
@@ -403,6 +405,13 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
       setTaskBusy(savedTask.id, false)
       notifyPlanTimeChanged('agenda')
       notifyTasksChanged()
+      const bounds = dayBounds(day)
+      if (!isCreatedScheduleVisible(savedBlock, {
+        startsAt: new Date(bounds.start).toISOString(),
+        endsAt: new Date(bounds.end).toISOString(),
+      })) {
+        showTaskCreatedToast(savedBlock.task, loaded.lists)
+      }
       return true
     } catch (cause) {
       setLoaded(current => ({
@@ -420,7 +429,7 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
       toast.error(
         cause instanceof Error
           ? `Couldn't create scheduled task. ${cause.message}`
-          : "Couldn't create scheduled task. The draft was removed.",
+          : "Couldn't create scheduled task. Try again.",
       )
       return false
     } finally {

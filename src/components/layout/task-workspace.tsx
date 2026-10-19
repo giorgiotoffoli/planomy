@@ -53,6 +53,7 @@ import CreateTaskAction from '../tasks/create-task/create-task-action'
 import { ListEmoji } from '../lists/list-emoji'
 import Header from './header/app-header'
 import { applyTaskOrganizationChange } from '@/lib/tasks'
+import type { TaskCreationView } from '@/lib/task-creation'
 
 interface TaskWorkspaceProps {
   tasks: TaskWithList[]
@@ -134,6 +135,9 @@ export default function TaskWorkspace({
   const taskLoadVersion = useRef(0)
   const listScrollRootRef = useRef<HTMLDivElement>(null)
   const taskView = pathName === '/completed' ? 'completed' : 'all'
+  const creationView: TaskCreationView = listId
+    ? { type: 'list', listId }
+    : { type: taskView }
 
   const refreshTasks = useCallback(async () => {
     if (!masterKey) return
@@ -627,6 +631,7 @@ export default function TaskWorkspace({
             scrollRootRef={listScrollRootRef}
             rightSlot={(isCollapsed) => (
               <CreateTaskAction
+                creationView={creationView}
                 lists={localLists}
                 categories={localCategories}
                 listId={listId}
@@ -668,6 +673,7 @@ export default function TaskWorkspace({
                     />
                   )}
                   <CreateTaskAction
+                    creationView={creationView}
                     lists={localLists}
                     categories={localCategories}
                     listId={listId}
@@ -691,6 +697,7 @@ export default function TaskWorkspace({
       <Header taskCount={workspaceTasks.length} headerTitle={localHeaderTitle} />
       {workspaceContent}
       <CreateTaskButton
+        creationView={creationView}
         listId={null}
         lists={localLists}
         categories={localCategories}

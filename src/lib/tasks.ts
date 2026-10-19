@@ -1,5 +1,12 @@
 import type { ListSummary, TaskWithList } from '@/types'
 
+export function matchesTaskSearch(task: TaskWithList, searchQuery: string) {
+  const query = searchQuery.trim().toLocaleLowerCase()
+  return !query || [task.title, task.notes, task.list?.title].some(
+    (value) => value?.toLocaleLowerCase().includes(query),
+  )
+}
+
 export type TaskOrganizationChange = {
   taskId: string
   listId: string | null

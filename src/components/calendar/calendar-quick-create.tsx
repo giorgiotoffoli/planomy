@@ -95,6 +95,8 @@ export default function CalendarQuickCreate({
     durationValue(draft.startsAt, draft.endsAt),
   )
   const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const submitting = useRef(false)
   const draftStart = draft.startsAt.getTime()
   const draftEnd = draft.endsAt?.getTime() ?? null
   const draftRangeKey = rangeKey(draft.startsAt, draft.endsAt)
@@ -153,8 +155,9 @@ export default function CalendarQuickCreate({
     onDraftRangeChange(resolvedRange.start, resolvedRange.end)
   }, [onDraftRangeChange, resolvedRange])
 
-  function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent) {
     event.preventDefault()
+    if (submitting.current) return
     const trimmedTitle = title.trim()
     if (!trimmedTitle) {
       setError('Add a task name.')
@@ -165,19 +168,28 @@ export default function CalendarQuickCreate({
       return
     }
 
-    // The parent installs an optimistic block synchronously. Closing now keeps
-    // the popover lightweight while persistence finishes in the background.
-    void onCreate({
-      title: trimmedTitle,
-      listId: listId === NO_LIST ? null : listId,
-      startsAt: resolvedRange.start,
-      endsAt: resolvedRange.end,
-    })
-    onCancel()
+    submitting.current = true
+    setSaving(true)
+    setError(null)
+    try {
+      const saved = await onCreate({
+        title: trimmedTitle,
+        listId: listId === NO_LIST ? null : listId,
+        startsAt: resolvedRange.start,
+        endsAt: resolvedRange.end,
+      })
+      if (saved) onCancel()
+      else setError('Task could not be saved. Your draft is still here. Try again.')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Task could not be saved. Try again.')
+    } finally {
+      submitting.current = false
+      setSaving(false)
+    }
   }
 
   return (
-    <Popover open onOpenChange={(open) => { if (!open) onCancel() }}>
+    <Popover open onOpenChange={(open) => { if (!open && !submitting.current) onCancel() }}>
       <PopoverAnchor asChild>
         <span
           aria-hidden="true"
@@ -205,7 +217,7 @@ export default function CalendarQuickCreate({
           }
         }}
       >
-        <form className="space-y-3" onSubmit={submit}>
+        <form className="space-y-3" aria-busy={saving} onSubmit={submit}>
           <PopoverHeader>
             <PopoverTitle>New task</PopoverTitle>
             <PopoverDescription>
@@ -217,6 +229,7 @@ export default function CalendarQuickCreate({
 
           <Input
             data-calendar-quick-title
+            disabled={saving}
             value={title}
             onChange={(event) => {
               setTitle(event.target.value)
@@ -228,6 +241,7 @@ export default function CalendarQuickCreate({
           />
 
           <Select
+            disabled={saving}
             value={listId}
             onValueChange={(value) => {
               setListId(value)
@@ -250,6 +264,7 @@ export default function CalendarQuickCreate({
           <div className="grid grid-cols-[1.25fr_1fr_0.8fr] gap-2">
             <Input
               type="date"
+              disabled={saving}
               value={date}
               onChange={(event) => {
                 setDate(event.target.value)
@@ -259,6 +274,7 @@ export default function CalendarQuickCreate({
             />
             <Input
               type="time"
+              disabled={saving}
               step={SLOT_MINUTES * 60}
               value={startTime}
               onChange={(event) => {
@@ -269,6 +285,7 @@ export default function CalendarQuickCreate({
             />
             <Input
               type="number"
+              disabled={saving}
               inputMode="numeric"
               min={SLOT_MINUTES}
               step={SLOT_MINUTES}
@@ -285,10 +302,10 @@ export default function CalendarQuickCreate({
           {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
 
           <div className="flex items-center justify-end gap-2 pt-1">
-            <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+            <Button type="button" variant="ghost" size="sm" disabled={saving} onClick={onCancel}>
               Cancel
             </Button>
-            <Button type="submit" size="sm">Add task</Button>
+            <Button type="submit" size="sm" disabled={saving}>{saving ? 'Saving…' : 'Add task'}</Button>
           </div>
         </form>
       </PopoverContent>

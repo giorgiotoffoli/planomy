@@ -174,7 +174,7 @@ export default function TodayPlanner({ encryptedLists }: { encryptedLists: List[
   }
 
   return <>
-    <Header headerTitle="Today" taskCount={chosen.length} rightSlot={<CreateTaskDialog lists={lists} listId={null}><Button size="sm"><Plus /> Quick capture</Button></CreateTaskDialog>} />
+    <Header headerTitle="Today" taskCount={chosen.length} rightSlot={<CreateTaskDialog creationView={{ type: 'today', day }} lists={lists} listId={null}><Button size="sm"><Plus /> Quick capture</Button></CreateTaskDialog>} />
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 overflow-y-auto pb-20">
       <div><h1 className="text-2xl font-semibold">{format(new Date(`${day}T12:00:00`), 'EEEE, MMMM d')}</h1><p className="text-sm text-muted-foreground">Your personal workspace for today</p></div>
       {retrySelection && <div role="alert" className="flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-400/25 dark:bg-amber-500/10 dark:text-amber-200"><span>The task was created, but could not be added to Today.</span><Button size="sm" onClick={() => retryAdd(retrySelection)}>Retry</Button></div>}

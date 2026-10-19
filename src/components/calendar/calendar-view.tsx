@@ -164,6 +164,8 @@ export default function CalendarView({
   const calendarRef = useRef<FullCalendar>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const [draft, setDraft] = useState<QuickCreateDraft | null>(null)
+  const [savingDraft, setSavingDraft] = useState(false)
+  const submittingDraft = useRef(false)
   const [openTaskMenuId, setOpenTaskMenuId] = useState<string | null>(null)
   const itemById = useMemo(
     () => new Map(calendarItems.map((item) => [item.id, item])),
@@ -171,6 +173,7 @@ export default function CalendarView({
   )
   const interactiveTimeGrid = viewMode === 'day' || viewMode === 'week'
   const clearInteraction = useCallback(() => {
+    if (submittingDraft.current) return
     setDraft(null)
     setOpenTaskMenuId(null)
     calendarRef.current?.getApi().unselect()
@@ -235,7 +238,7 @@ export default function CalendarView({
       }
     })
 
-    if (draft) {
+    if (draft && !savingDraft) {
       const selectedList = lists.find((list) => list.id === draft.listId)
       events.push({
         id: `calendar:create-draft:${draft.listId ?? 'none'}`,
@@ -253,7 +256,19 @@ export default function CalendarView({
       })
     }
     return events
-  }, [busyTaskIds, calendarItems, draft, interactiveTimeGrid, lists])
+  }, [busyTaskIds, calendarItems, draft, interactiveTimeGrid, lists, savingDraft])
+
+  async function createDraft(input: QuickCreateInput) {
+    if (submittingDraft.current) return false
+    submittingDraft.current = true
+    setSavingDraft(true)
+    try {
+      return await onQuickCreate(input)
+    } finally {
+      submittingDraft.current = false
+      setSavingDraft(false)
+    }
+  }
 
   useEffect(() => {
     if (!command) return
@@ -441,7 +456,7 @@ export default function CalendarView({
             })
           }}
           select={(info) => {
-            if (!interactiveTimeGrid || info.allDay) return
+            if (!interactiveTimeGrid || info.allDay || submittingDraft.current) return
             onTaskSelect(null)
             setDraft({
               startsAt: info.start,
@@ -453,7 +468,7 @@ export default function CalendarView({
             info.view.calendar.unselect()
           }}
           dateClick={(info) => {
-            if (!interactiveTimeGrid || info.allDay) return
+            if (!interactiveTimeGrid || info.allDay || submittingDraft.current) return
             onTaskSelect(null)
             setDraft({
               startsAt: info.date,
@@ -647,7 +662,7 @@ export default function CalendarView({
             onDraftListChange={changeDraftList}
             onDraftRangeChange={changeDraftRange}
           onCancel={() => setDraft(null)}
-          onCreate={onQuickCreate}
+          onCreate={createDraft}
         />
       ) : null}
     </div>
