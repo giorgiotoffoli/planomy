@@ -22,6 +22,7 @@ import { toast } from 'sonner'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
 import { localDateKey } from '@/lib/today'
+import { applyTaskOrganizationChange } from '@/lib/tasks'
 import TaskSortSelect from '@/components/lists/task-sort-select'
 import {
   isTaskSortOption,
@@ -56,12 +57,14 @@ import {
 import HomeSourcesPicker from './home-sources-picker'
 import { updateTaskCompleted as updateTaskCompletedAction } from '@/components/tasks/actions'
 import {
+  TASK_ORGANIZATION_CHANGED,
   TASKS_CHANGED,
   deleteTask,
   notifyTasksChanged,
   renameTask,
   updateTaskDueDate,
   updateTaskNotes,
+  taskOrganizationChangeFromEvent,
 } from '@/components/tasks/mutations'
 import CreateTaskAction from '@/components/tasks/create-task/create-task-action'
 import CollapsiblePageHeader from '@/components/layout/header/collapsible-page-header'
@@ -476,6 +479,17 @@ export default function HomePlanner({
       refreshCalendar()
       void load()
     }
+    const organizationChanged = (event: Event) => {
+      const change = taskOrganizationChangeFromEvent(event)
+      if (!change) return
+
+      loadVersion.current++
+      setTasks((current) =>
+        current?.map((task) =>
+          applyTaskOrganizationChange(task, lists, change),
+        ) ?? null,
+      )
+    }
 
     const interval = window.setInterval(refreshCalendar, 60_000)
     const onVisibility = () => {
@@ -483,16 +497,21 @@ export default function HomePlanner({
     }
 
     window.addEventListener(TASKS_CHANGED, refreshTasks)
+    window.addEventListener(TASK_ORGANIZATION_CHANGED, organizationChanged)
     window.addEventListener('focus', refreshTasks)
     document.addEventListener('visibilitychange', onVisibility)
 
     return () => {
       window.removeEventListener(TASKS_CHANGED, refreshTasks)
+      window.removeEventListener(
+        TASK_ORGANIZATION_CHANGED,
+        organizationChanged,
+      )
       window.removeEventListener('focus', refreshTasks)
       document.removeEventListener('visibilitychange', onVisibility)
       window.clearInterval(interval)
     }
-  }, [load])
+  }, [lists, load])
 
   const homeSources = useMemo(() => getHomeSources(lists), [lists])
   const uncategorizedListIds = useMemo(

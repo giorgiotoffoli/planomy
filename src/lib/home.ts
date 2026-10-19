@@ -3,6 +3,7 @@ import type { Category, List, TaskWithList } from '@/types'
 import {
   addCalendarDays,
   calendarDaysBetween,
+  calendarWeekEndKey,
   localDateKey,
 } from './today.ts'
 
@@ -443,7 +444,10 @@ export function getDeadlineLabel(
   if (difference === 0) return 'Today'
   if (difference === 1) return 'Tomorrow'
 
-  return format(new Date(`${dueDate}T12:00:00`), 'EEEE')
+  return format(
+    new Date(`${dueDate}T12:00:00`),
+    dueDate <= calendarWeekEndKey(day) ? 'EEEE' : 'MMM d',
+  )
 }
 
 export function getDueTimeLabel(dueTime: string | null) {

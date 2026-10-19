@@ -12,6 +12,7 @@ import {
 import TaskList from '../lists/task-list'
 import TaskBoard from '../boards/task-board'
 import {
+  TASK_ORGANIZATION_CHANGED,
   TASKS_CHANGED,
   deleteTask,
   notifyTasksChanged,
@@ -20,6 +21,7 @@ import {
   updateTaskDueDate,
   updateTaskNotes,
   changeTaskCategory,
+  taskOrganizationChangeFromEvent,
 } from '../tasks/mutations'
 import { updateTaskCompleted as updateTaskCompletedAction } from '../tasks/actions'
 import { getTasks } from '../tasks/queries'
@@ -50,6 +52,7 @@ import CreateTaskButton from '../tasks/create-task/create-task-button'
 import CreateTaskAction from '../tasks/create-task/create-task-action'
 import { ListEmoji } from '../lists/list-emoji'
 import Header from './header/app-header'
+import { applyTaskOrganizationChange } from '@/lib/tasks'
 
 interface TaskWorkspaceProps {
   tasks: TaskWithList[]
@@ -157,10 +160,31 @@ export default function TaskWorkspace({
     const handleTasksChanged = () => {
       void refreshTasks()
     }
+    const handleTaskOrganizationChanged = (event: Event) => {
+      const change = taskOrganizationChangeFromEvent(event)
+      if (!change) return
+
+      taskLoadVersion.current++
+      setLocalTasks((current) =>
+        current.map((task) =>
+          applyTaskOrganizationChange(task, localLists, change),
+        ),
+      )
+    }
 
     window.addEventListener(TASKS_CHANGED, handleTasksChanged)
-    return () => window.removeEventListener(TASKS_CHANGED, handleTasksChanged)
-  }, [refreshTasks])
+    window.addEventListener(
+      TASK_ORGANIZATION_CHANGED,
+      handleTaskOrganizationChanged,
+    )
+    return () => {
+      window.removeEventListener(TASKS_CHANGED, handleTasksChanged)
+      window.removeEventListener(
+        TASK_ORGANIZATION_CHANGED,
+        handleTaskOrganizationChanged,
+      )
+    }
+  }, [localLists, refreshTasks])
 
   useEffect(() => {
     if (!sortStorageKey) return
@@ -177,9 +201,16 @@ export default function TaskWorkspace({
     return () => window.clearTimeout(timeoutId)
   }, [sortStorageKey])
 
+  const workspaceTasks = useMemo(
+    () =>
+      listId
+        ? localTasks.filter((task) => task.list_id === listId)
+        : localTasks,
+    [listId, localTasks],
+  )
   const displayedTasks = useMemo(
-    () => sortTasks(localTasks, sortOption),
-    [localTasks, sortOption],
+    () => sortTasks(workspaceTasks, sortOption),
+    [sortOption, workspaceTasks],
   )
   const canReorderTasks =
     sortOption === 'manual' &&
@@ -502,17 +533,17 @@ export default function TaskWorkspace({
           : 'flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4'
       }
     >
-      {localTasks.length === 0 && pathName === '/inbox' && (
+      {workspaceTasks.length === 0 && pathName === '/inbox' && (
         <p>Nothing in Unsorted. Capture a task or enjoy the silence.</p>
       )}
 
-      {localTasks.length === 0 && pathName === '/all' && (
+      {workspaceTasks.length === 0 && pathName === '/all' && (
         <p>No tasks yet. Every good plan starts with one.</p>
       )}
-      {localTasks.length === 0 && pathName === '/completed' && (
+      {workspaceTasks.length === 0 && pathName === '/completed' && (
         <p>No completed tasks yet. Go plan something awesome.</p>
       )}
-      {localTasks.length === 0 && pathName.includes('/lists/') && (
+      {workspaceTasks.length === 0 && pathName.includes('/lists/') && (
         <p>This list is empty. Add a task to stay organized.</p>
       )}
 
@@ -567,7 +598,7 @@ export default function TaskWorkspace({
             />
           ) : (
             <TaskBoard
-              tasks={localTasks}
+              tasks={workspaceTasks}
               categories={localCategories}
               onTaskCategoryChange={handleOnChangeCategory}
               onCreateCategory={handleOnCreateCategory}
@@ -591,7 +622,7 @@ export default function TaskWorkspace({
         >
           <CollapsiblePageHeader
             headerTitle={localHeaderTitle}
-            taskCount={localTasks.length}
+            taskCount={workspaceTasks.length}
             headerEmoji={localHeaderEmoji}
             scrollRootRef={listScrollRootRef}
             rightSlot={(isCollapsed) => (
@@ -657,7 +688,7 @@ export default function TaskWorkspace({
 
   return (
     <>
-      <Header taskCount={localTasks.length} headerTitle={localHeaderTitle} />
+      <Header taskCount={workspaceTasks.length} headerTitle={localHeaderTitle} />
       {workspaceContent}
       <CreateTaskButton
         listId={null}

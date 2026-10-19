@@ -9,6 +9,7 @@ import { decryptString, encryptString } from '@/lib/crypto/e2ee'
 import { dayBounds, dragIntent, MINUTE, shiftDay, SLOT_MINUTES, snapInstant, timeLabel } from '@/lib/agenda'
 import { isSingleDayTimedRange, taskDisplayEnd } from '@/lib/calendar-interactions'
 import { localDateKey } from '@/lib/today'
+import { applyTaskOrganizationChange } from '@/lib/tasks'
 import type { AgendaBlock, CalendarEventWithList, Category, List, TaskWithList, TimeBlock } from '@/types'
 import { getCalendarRangeData } from '@/components/calendar/actions'
 import type { QuickCreateInput } from '@/components/calendar/calendar-quick-create'
@@ -18,7 +19,12 @@ import {
   updateTaskCompleted as updateTaskCompletedAction,
 } from '@/components/tasks/actions'
 import { removeTimeBlock, saveTimeBlock } from './actions'
-import { TASKS_CHANGED, notifyTasksChanged } from '@/components/tasks/mutations'
+import {
+  TASK_ORGANIZATION_CHANGED,
+  TASKS_CHANGED,
+  notifyTasksChanged,
+  taskOrganizationChangeFromEvent,
+} from '@/components/tasks/mutations'
 import { PLAN_TIME_CHANGED, notifyPlanTimeChanged, planTimeChangeOrigin } from './mutations'
 import AgendaPanel from './agenda-panel'
 
@@ -200,13 +206,39 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
   }, [open, plannerAvailable, reload, invalidate])
   useEffect(() => {
     const changed = () => { router.refresh(); if (open && plannerAvailable) void reload() }
+    const organizationChanged = (event: Event) => {
+      const change = taskOrganizationChangeFromEvent(event)
+      if (!change) return
+
+      generation.current++
+      setLoading(false)
+      setLoaded((current) => ({
+        ...current,
+        dueTasks: current.dueTasks.map((task) =>
+          applyTaskOrganizationChange(task, current.lists, change),
+        ),
+        blocks: current.blocks.map((block) => ({
+          ...block,
+          task: applyTaskOrganizationChange(
+            block.task,
+            current.lists,
+            change,
+          ),
+        })),
+      }))
+    }
     const planTimeChanged = (event: Event) => {
       if (open && plannerAvailable && planTimeChangeOrigin(event) !== 'agenda') void reload()
     }
     window.addEventListener(TASKS_CHANGED, changed)
+    window.addEventListener(TASK_ORGANIZATION_CHANGED, organizationChanged)
     window.addEventListener(PLAN_TIME_CHANGED, planTimeChanged)
     return () => {
       window.removeEventListener(TASKS_CHANGED, changed)
+      window.removeEventListener(
+        TASK_ORGANIZATION_CHANGED,
+        organizationChanged,
+      )
       window.removeEventListener(PLAN_TIME_CHANGED, planTimeChanged)
     }
   }, [open, plannerAvailable, reload, router])

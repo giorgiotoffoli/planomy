@@ -1,11 +1,41 @@
 'use client'
 
+import type { TaskOrganizationChange } from '@/lib/tasks'
 import * as actions from './actions'
 
 export const TASKS_CHANGED = 'planomy:tasks-changed'
+export const TASK_ORGANIZATION_CHANGED = 'planomy:task-organization-changed'
 
 export function notifyTasksChanged() {
   window.dispatchEvent(new Event(TASKS_CHANGED))
+}
+
+export function notifyTaskOrganizationChanged(
+  change: TaskOrganizationChange,
+) {
+  window.dispatchEvent(
+    new CustomEvent<TaskOrganizationChange>(TASK_ORGANIZATION_CHANGED, {
+      detail: change,
+    }),
+  )
+}
+
+export function taskOrganizationChangeFromEvent(
+  event: Event,
+): TaskOrganizationChange | null {
+  if (!(event instanceof CustomEvent)) return null
+
+  const change = event.detail as Partial<TaskOrganizationChange> | undefined
+  if (
+    !change ||
+    typeof change.taskId !== 'string' ||
+    (change.listId !== null && typeof change.listId !== 'string') ||
+    (change.categoryId !== null && typeof change.categoryId !== 'string')
+  ) {
+    return null
+  }
+
+  return change as TaskOrganizationChange
 }
 
 // A notification contains no decrypted content. Each consumer reloads its own data.

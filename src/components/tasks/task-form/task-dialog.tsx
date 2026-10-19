@@ -13,8 +13,12 @@ import {
 import type { Category, List, TaskWithList, TimeBlock } from '@/types'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { encryptString } from '@/lib/crypto/e2ee'
-import { createTask, updateTask } from '@/components/tasks/mutations'
-import { notifyTasksChanged } from '@/components/tasks/mutations'
+import {
+  createTask,
+  notifyTaskOrganizationChanged,
+  notifyTasksChanged,
+  updateTask,
+} from '@/components/tasks/mutations'
 import { getTaskTimeBlock, removeTimeBlock, saveTimeBlock } from '@/components/agenda/actions'
 import { resolveLocalPlanTime } from '@/lib/task-form'
 import { TaskForm, type TaskFormValues } from './task-form'
@@ -98,6 +102,20 @@ export function TaskDialog({
     }
 
     setSaving(true)
+    const organizationChanged =
+      mode === 'edit' &&
+      task &&
+      (values.listId !== task.list_id ||
+        values.categoryId !== (task.category_id ?? null))
+
+    if (organizationChanged) {
+      notifyTaskOrganizationChanged({
+        taskId: task.id,
+        listId: values.listId,
+        categoryId: values.categoryId,
+      })
+    }
+
     try {
       const encryptedTitle = await encryptString(values.title, masterKey)
       const encryptedNotes = values.notes ? await encryptString(values.notes, masterKey) : ''
@@ -135,6 +153,13 @@ export function TaskDialog({
       notifyTasksChanged()
       setOpen(false)
     } catch (cause) {
+      if (organizationChanged) {
+        notifyTaskOrganizationChanged({
+          taskId: task.id,
+          listId: task.list_id,
+          categoryId: task.category_id ?? null,
+        })
+      }
       toast.error(cause instanceof Error ? cause.message : 'Task could not be saved.')
     } finally {
       setSaving(false)
