@@ -77,39 +77,60 @@ export type Database = {
         Row: {
           all_day: boolean
           created_at: string
+          description: string | null
           ends_at: string | null
           ends_on: string | null
           id: string
           list_id: string | null
+          category_id: string | null
+          color: string | null
+          location: string | null
+          recurrence_rule: Json | null
+          show_in_upcoming: boolean
           starts_at: string | null
           starts_on: string | null
           title: string
+          time_zone: string
           updated_at: string
           user_id: string
         }
         Insert: {
           all_day?: boolean
           created_at?: string
+          description?: string | null
           ends_at?: string | null
           ends_on?: string | null
           id?: string
           list_id?: string | null
+          category_id?: string | null
+          color?: string | null
+          location?: string | null
+          recurrence_rule?: Json | null
+          show_in_upcoming?: boolean
           starts_at?: string | null
           starts_on?: string | null
           title: string
+          time_zone?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           all_day?: boolean
           created_at?: string
+          description?: string | null
           ends_at?: string | null
           ends_on?: string | null
           id?: string
           list_id?: string | null
+          category_id?: string | null
+          color?: string | null
+          location?: string | null
+          recurrence_rule?: Json | null
+          show_in_upcoming?: boolean
           starts_at?: string | null
           starts_on?: string | null
           title?: string
+          time_zone?: string
           updated_at?: string
           user_id?: string
         }
@@ -121,10 +142,109 @@ export type Database = {
             referencedRelation: "lists"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "events_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_occurrence_exceptions: {
+        Row: {
+          all_day: boolean | null
+          cancelled: boolean
+          created_at: string
+          description: string | null
+          ends_at: string | null
+          ends_on: string | null
+          event_id: string
+          id: string
+          list_id: string | null
+          category_id: string | null
+          color: string | null
+          location: string | null
+          show_in_upcoming: boolean | null
+          occurrence_key: string
+          time_zone: string | null
+          starts_at: string | null
+          starts_on: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          all_day?: boolean | null
+          cancelled?: boolean
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          ends_on?: string | null
+          event_id: string
+          id?: string
+          list_id?: string | null
+          category_id?: string | null
+          color?: string | null
+          location?: string | null
+          show_in_upcoming?: boolean | null
+          occurrence_key: string
+          time_zone?: string | null
+          starts_at?: string | null
+          starts_on?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          all_day?: boolean | null
+          cancelled?: boolean
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          ends_on?: string | null
+          event_id?: string
+          id?: string
+          list_id?: string | null
+          category_id?: string | null
+          color?: string | null
+          location?: string | null
+          show_in_upcoming?: boolean | null
+          occurrence_key?: string
+          time_zone?: string | null
+          starts_at?: string | null
+          starts_on?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_occurrence_exceptions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_occurrence_exceptions_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_occurrence_exceptions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
         ]
       }
       categories: {
         Row: {
+          color: string | null
           created_at: string | null
           id: string
           list_id: string
@@ -132,6 +252,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          color?: string | null
           created_at?: string | null
           id?: string
           list_id: string
@@ -139,6 +260,7 @@ export type Database = {
           title: string
         }
         Update: {
+          color?: string | null
           created_at?: string | null
           id?: string
           list_id?: string
@@ -157,26 +279,101 @@ export type Database = {
       }
       task_time_blocks: {
         Row: {
+          created_at: string
           ends_at: string | null
+          id: string
+          is_override: boolean
+          occurrence_id: string | null
+          session_index: number | null
           starts_at: string
+          status: string
           task_id: string
+          updated_at: string
           user_id: string
         }
         Insert: {
+          created_at?: string
           ends_at?: string | null
+          id?: string
+          is_override?: boolean
+          occurrence_id?: string | null
+          session_index?: number | null
           starts_at: string
+          status?: string
           task_id: string
+          updated_at?: string
           user_id: string
         }
         Update: {
+          created_at?: string
           ends_at?: string | null
+          id?: string
+          is_override?: boolean
+          occurrence_id?: string | null
+          session_index?: number | null
           starts_at?: string
+          status?: string
           task_id?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "task_time_blocks_owned_task"
+            columns: ["task_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "task_time_blocks_owned_occurrence"
+            columns: ["occurrence_id", "user_id", "task_id"]
+            isOneToOne: false
+            referencedRelation: "task_occurrences"
+            referencedColumns: ["id", "user_id", "task_id"]
+          },
+        ]
+      }
+      task_occurrences: {
+        Row: {
+          cancelled: boolean
+          completed: boolean
+          created_at: string
+          id: string
+          occurrence_date: string
+          override_data: Json | null
+          skipped: boolean
+          task_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancelled?: boolean
+          completed?: boolean
+          created_at?: string
+          id?: string
+          occurrence_date: string
+          override_data?: Json | null
+          skipped?: boolean
+          task_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cancelled?: boolean
+          completed?: boolean
+          created_at?: string
+          id?: string
+          occurrence_date?: string
+          override_data?: Json | null
+          skipped?: boolean
+          task_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_occurrences_owned_task"
             columns: ["task_id", "user_id"]
             isOneToOne: false
             referencedRelation: "tasks"
@@ -193,9 +390,11 @@ export type Database = {
           focused: boolean
           id: string
           list_id: string | null
+          color: string | null
           notes: string | null
           position: number
           category_id: string | null
+          recurrence_rule: Json | null
           stashed: boolean
           title: string | null
           user_id: string | null
@@ -208,9 +407,11 @@ export type Database = {
           focused?: boolean
           id?: string
           list_id?: string | null
+          color?: string | null
           notes?: string | null
           position?: number
           category_id?: string | null
+          recurrence_rule?: Json | null
           stashed?: boolean
           title?: string | null
           user_id?: string | null
@@ -223,9 +424,11 @@ export type Database = {
           focused?: boolean
           id?: string
           list_id?: string | null
+          color?: string | null
           notes?: string | null
           position?: number
           category_id?: string | null
+          recurrence_rule?: Json | null
           stashed?: boolean
           title?: string | null
           user_id?: string | null
@@ -288,29 +491,35 @@ export type Database = {
       }
       user_preferences: {
         Row: {
+          calendar_first_day: number
           created_at: string
           excluded_home_category_ids: string[]
           excluded_home_list_ids: string[]
           included_home_category_ids: string[]
           show_unsorted_on_home: boolean
+          time_format: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          calendar_first_day?: number
           created_at?: string
           excluded_home_category_ids?: string[]
           excluded_home_list_ids?: string[]
           included_home_category_ids?: string[]
           show_unsorted_on_home?: boolean
+          time_format?: string
           updated_at?: string
           user_id?: string
         }
         Update: {
+          calendar_first_day?: number
           created_at?: string
           excluded_home_category_ids?: string[]
           excluded_home_list_ids?: string[]
           included_home_category_ids?: string[]
           show_unsorted_on_home?: boolean
+          time_format?: string
           updated_at?: string
           user_id?: string
         }

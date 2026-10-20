@@ -11,6 +11,9 @@ import { clearTaskFocusOnCompletion, localDateKey, previousDateKey } from '@/lib
 import { applyTaskOrganizationChange } from '@/lib/tasks'
 import { getTodayData, removeTaskFromDay, selectTaskForDay, setTaskFocused } from './actions'
 import { TASK_ORGANIZATION_CHANGED, TASKS_CHANGED, deleteTask, notifyTasksChanged, renameTask, taskOrganizationChangeFromEvent, updateTaskCompleted, updateTaskDueDate, updateTaskNotes } from '@/components/tasks/mutations'
+import { taskVisualMutationFromEvent } from '@/components/tasks/mutations'
+import { LISTS_CHANGED, listMutationFromEvent } from '@/components/lists/mutations'
+import { applyListMutationToList, applyListMutationToTask, applyTaskVisualMutation } from '@/lib/live-mutations'
 import Header from '@/components/layout/header/app-header'
 import { TaskItem } from '@/components/tasks/task-item/task-item'
 import { Button } from '@/components/ui/button'
@@ -84,11 +87,39 @@ export default function TodayPlanner({ encryptedLists }: { encryptedLists: List[
         ),
       }))
     }
-    window.addEventListener(TASKS_CHANGED, refreshDay)
+    const handleTasksChanged = (event: Event) => {
+      const change = taskVisualMutationFromEvent(event)
+      if (change) {
+        if (!change.occurrenceId) {
+          setData((current) => current && ({
+            ...current,
+            tasks: current.tasks.map((task) => applyTaskVisualMutation(task, change, lists)),
+          }))
+        }
+        if (!change.phase) refreshDay()
+        return
+      }
+      refreshDay()
+    }
+    const handleListsChanged = (event: Event) => {
+      const change = listMutationFromEvent(event)
+      if (!change) {
+        refreshDay()
+        return
+      }
+      setLists((current) => current.map((list) => applyListMutationToList(list, change)))
+      setData((current) => current && ({
+        ...current,
+        tasks: current.tasks.map((task) => applyListMutationToTask(task, change)),
+      }))
+      if (!change.phase) refreshDay()
+    }
+    window.addEventListener(TASKS_CHANGED, handleTasksChanged)
+    window.addEventListener(LISTS_CHANGED, handleListsChanged)
     window.addEventListener(TASK_ORGANIZATION_CHANGED, organizationChanged)
     window.addEventListener('focus', refreshDay)
     document.addEventListener('visibilitychange', onVisibility)
-    return () => { window.removeEventListener(TASKS_CHANGED, refreshDay); window.removeEventListener(TASK_ORGANIZATION_CHANGED, organizationChanged); window.clearInterval(interval); window.removeEventListener('focus', refreshDay); document.removeEventListener('visibilitychange', onVisibility) }
+    return () => { window.removeEventListener(TASKS_CHANGED, handleTasksChanged); window.removeEventListener(LISTS_CHANGED, handleListsChanged); window.removeEventListener(TASK_ORGANIZATION_CHANGED, organizationChanged); window.clearInterval(interval); window.removeEventListener('focus', refreshDay); document.removeEventListener('visibilitychange', onVisibility) }
   }, [day, lists, load])
 
   const todaySelections = useMemo(() => new Map(data?.selections.filter(s => s.selected_date === day).map(s => [s.task_id, s]) ?? []), [data, day])
@@ -112,14 +143,24 @@ export default function TodayPlanner({ encryptedLists }: { encryptedLists: List[
   async function completeTask(taskId: string, completed: boolean) {
     loadVersion.current++
     const previous = data
+    const task = data?.tasks.find((candidate) => candidate.id === taskId)
+    const recurringCompletion = completed && Boolean(task?.recurrence_rule)
     setData(current => current && ({
       ...current,
-      tasks: current.tasks.map(task => task.id === taskId ? { ...task, completed } : task),
+      tasks: current.tasks.map(task => task.id === taskId
+        ? { ...task, completed: recurringCompletion ? false : completed }
+        : task),
       selections: clearTaskFocusOnCompletion(current.selections, taskId, completed),
     }))
 
     try {
-      await updateTaskCompleted(taskId, completed)
+      const result = await updateTaskCompleted(taskId, completed, localDateKey())
+      if (result.recurring && !result.taskCompleted) {
+        setData(current => current && ({
+          ...current,
+          tasks: current.tasks.map(task => task.id === taskId ? { ...task, completed: false } : task),
+        }))
+      }
     } catch (cause) {
       setData(previous)
       toast.error(cause instanceof Error ? cause.message : 'Change was not saved')

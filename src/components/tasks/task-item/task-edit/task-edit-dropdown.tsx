@@ -13,7 +13,7 @@ import { Category, List, TaskWithList } from '@/types'
 import { ReactNode } from 'react'
 import { useState } from 'react'
 import { TaskEditDialog } from './task-edit-dialog'
-import { Archive, ArchiveRestore, Check, Edit, ListEnd, Tag, Star } from 'lucide-react'
+import { Check, Edit, ListEnd, Package, PackageOpen, Tag, Star } from 'lucide-react'
 import { TaskEditMoveList } from './task-edit-move-list'
 import { TaskDeleteButton } from './task-delete-button'
 import { toast } from 'sonner'
@@ -150,7 +150,7 @@ export function TaskEditDropdown({
               <DropdownMenuItem
                 onSelect={() => handleOnStash(task.id, !task.stashed)}
               >
-                {task.stashed ? <ArchiveRestore /> : <Archive />}
+                {task.stashed ? <PackageOpen /> : <Package />}
                 {task.stashed ? 'Return to Home' : 'Stash'}
               </DropdownMenuItem>
           )}

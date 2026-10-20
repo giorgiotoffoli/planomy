@@ -18,6 +18,7 @@ export function TaskCheckbox({ task, handleOnComplete }: TaskCheckboxProps) {
       onCheckedChange={(checked) => {
         handleOnComplete(task.id, checked === true)
       }}
+      style={{ borderColor: 'var(--list-color)' }}
       className={cn(
         `
         group/checkbox

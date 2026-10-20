@@ -21,6 +21,36 @@ export function isListColor(value: unknown): value is ListColor {
   return typeof value === 'string' && listColorIds.has(value)
 }
 
+export function normalizeItemColor(value: unknown): ListColor | null {
+  if (value === null || value === undefined || value === '') return null
+  if (!isListColor(value)) throw new Error('Choose a color from the approved palette.')
+  return value
+}
+
+export function resolveItemColor(
+  itemColor: ListColor | null | undefined,
+  listColor: ListColor | null | undefined,
+) {
+  return itemColor ?? listColor ?? null
+}
+
+/** Resolve an item color from its optional Category override and parent List. */
+export function resolveInheritedColor(
+  categoryColor: ListColor | null | undefined,
+  listColor: ListColor | null | undefined,
+) {
+  return categoryColor ?? listColor ?? null
+}
+
+/** Resolve an Event's explicit override before its shared Category/List color. */
+export function resolveEventColor(
+  eventColor: ListColor | null | undefined,
+  categoryColor: ListColor | null | undefined,
+  listColor: ListColor | null | undefined,
+) {
+  return eventColor ?? resolveInheritedColor(categoryColor, listColor)
+}
+
 export function listColorCssValue(color: ListColor | null | undefined) {
   const definition = PLANOMY_LIST_COLORS.find((item) => item.id === color)
   return definition
@@ -30,4 +60,26 @@ export function listColorCssValue(color: ListColor | null | undefined) {
 
 export function listColorStyle(color: ListColor | null | undefined) {
   return { '--list-color': listColorCssValue(color) } as Record<string, string>
+}
+
+export function itemColorStyle(
+  itemColor: ListColor | null | undefined,
+  listColor: ListColor | null | undefined,
+) {
+  return listColorStyle(resolveItemColor(itemColor, listColor))
+}
+
+export function inheritedColorStyle(
+  categoryColor: ListColor | null | undefined,
+  listColor: ListColor | null | undefined,
+) {
+  return listColorStyle(resolveInheritedColor(categoryColor, listColor))
+}
+
+export function eventColorStyle(
+  eventColor: ListColor | null | undefined,
+  categoryColor: ListColor | null | undefined,
+  listColor: ListColor | null | undefined,
+) {
+  return listColorStyle(resolveEventColor(eventColor, categoryColor, listColor))
 }

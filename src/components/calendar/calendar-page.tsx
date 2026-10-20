@@ -9,9 +9,13 @@ import {
   TASK_ORGANIZATION_CHANGED,
   TASKS_CHANGED,
   notifyTasksChanged,
+  taskVisualMutationFromEvent,
   taskOrganizationChangeFromEvent,
 } from '@/components/tasks/mutations'
-import { LISTS_CHANGED } from '@/components/lists/mutations'
+import {
+  LISTS_CHANGED,
+  listMutationFromEvent,
+} from '@/components/lists/mutations'
 import {
   PLAN_TIME_CHANGED,
   notifyPlanTimeChanged,
@@ -22,7 +26,8 @@ import {
   deleteTask as deleteTaskAction,
   updateTaskCompleted as updateTaskCompletedAction,
 } from '@/components/tasks/actions'
-import { removeTimeBlock, saveTimeBlock } from '@/components/agenda/actions'
+import { updateTaskOccurrenceCompleted, updateTaskOccurrenceTimingWithScope } from '@/components/tasks/recurrence-actions'
+import { saveTimeBlock } from '@/components/agenda/actions'
 import { TaskEditDialog } from '@/components/tasks/task-item/task-edit/task-edit-dialog'
 import { projectCalendarItems } from '@/lib/calendar-items'
 import {
@@ -37,7 +42,7 @@ import type {
   List,
   TaskWithList,
 } from '@/types'
-import { getCalendarRangeData } from './actions'
+import { getCalendarBaseData, getRecurringCalendarData } from './actions'
 import CalendarHeader, {
   type CalendarNavigation,
   type CalendarViewMode,
@@ -46,13 +51,45 @@ import CalendarView from './calendar-view'
 import type { QuickCreateInput } from './calendar-quick-create'
 import { isCreatedScheduleVisible } from '@/lib/task-creation'
 import { showTaskCreatedToast } from '@/components/tasks/create-task/task-created-toast'
+import { localDateKey } from '@/lib/today'
+import {
+  EVENTS_CHANGED,
+  eventVisualMutationFromEvent,
+} from '@/components/events/mutations'
+import {
+  CATEGORIES_CHANGED,
+  categoryVisualMutationFromEvent,
+} from '@/components/categories/mutations'
+import { useCalendarPreferences } from '@/components/settings/calendar-preferences-provider'
+import type { RecurrenceScope } from '@/lib/recurrence-scope'
+import type { TaskOccurrenceContext } from '@/components/tasks/task-form/task-occurrence-context'
+import { applyTaskOccurrenceOverride } from '@/lib/task-occurrence-overrides'
+import {
+  readCalendarSnapshot,
+  writeCalendarSnapshot,
+} from '@/lib/calendar-client-cache'
+import {
+  applyEventVisualMutation,
+  applyCategoryMutationToCategory,
+  applyCategoryMutationToEvent,
+  applyCategoryMutationToTask,
+  applyListMutationToEvent,
+  applyListMutationToList,
+  applyListMutationToTask,
+  applyTaskVisualMutation,
+  eventMutationAppliesToScheduledTask,
+} from '@/lib/live-mutations'
+
+function sessionKey(block: Pick<AgendaBlock, 'id' | 'task_id' | 'starts_at'>) {
+  return block.id ?? `${block.task_id}:${block.starts_at}`
+}
 
 function replaceScheduledBlock(
   blocks: AgendaBlock[],
   next: AgendaBlock | null,
-  taskId: string,
+  sessionId: string,
 ) {
-  const remaining = blocks.filter((block) => block.task_id !== taskId)
+  const remaining = blocks.filter((block) => sessionKey(block) !== sessionId)
   return next ? [...remaining, next] : remaining
 }
 
@@ -61,8 +98,8 @@ function applyPendingSchedules(
   pending: Map<string, AgendaBlock | null>,
 ) {
   let merged = blocks
-  for (const [taskId, block] of pending) {
-    merged = replaceScheduledBlock(merged, block, taskId)
+  for (const [sessionId, block] of pending) {
+    merged = replaceScheduledBlock(merged, block, sessionId)
   }
   return merged
 }
@@ -103,11 +140,19 @@ async function decryptLists(lists: List[], masterKey: Uint8Array) {
 async function decryptScheduledTasks(
   blocks: AgendaBlock[],
   masterKey: Uint8Array,
+  lists: List[],
+  categories: Category[],
 ) {
   return Promise.all(
     blocks.map(async (block) => ({
       ...block,
-      task: (await decryptTasks([block.task], masterKey))[0],
+      task: await applyTaskOccurrenceOverride(
+        (await decryptTasks([block.task], masterKey))[0],
+        block.occurrence,
+        masterKey,
+        lists,
+        categories,
+      ),
     })),
   )
 }
@@ -120,6 +165,12 @@ async function decryptEvents(
     events.map(async (event) => ({
       ...event,
       title: await decryptString(event.title, masterKey),
+      description: event.description
+        ? await decryptString(event.description, masterKey)
+        : event.description,
+      location: event.location
+        ? await decryptString(event.location, masterKey)
+        : event.location,
       list: event.list
         ? {
             ...event.list,
@@ -154,6 +205,7 @@ export default function CalendarPage({
   initialLists: List[]
   initialCategories: Category[]
 }) {
+  const { preferences: calendarPreferences } = useCalendarPreferences()
   const { masterKey } = useE2EE()
   const [dueTasks, setDueTasks] = useState<TaskWithList[] | null>(null)
   const [scheduledTasks, setScheduledTasks] = useState<AgendaBlock[]>([])
@@ -164,11 +216,13 @@ export default function CalendarPage({
   const [rangeLabel, setRangeLabel] = useState('This week')
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [editingOccurrence, setEditingOccurrence] = useState<TaskOccurrenceContext | undefined>(undefined)
   const [busyTaskIds, setBusyTaskIds] = useState<Set<string>>(() => new Set())
   const [command, setCommand] = useState<{
     id: number
     navigation: CalendarNavigation
   } | null>(null)
+  const [createEventRequest, setCreateEventRequest] = useState<{ id: number } | null>(null)
   const loadVersion = useRef(0)
   const visibleRange = useRef<CalendarRangeInput | null>(null)
   const dueTasksRef = useRef<TaskWithList[] | null>(null)
@@ -197,21 +251,83 @@ export default function CalendarPage({
       if (!masterKey) return
       const version = ++loadVersion.current
 
+      const cached = readCalendarSnapshot(masterKey, range)
+      if (cached) {
+        commitDueTasks(cached.dueTasks)
+        commitScheduledTasks(
+          applyPendingSchedules(cached.scheduledTasks, pendingSchedules.current),
+        )
+        setEvents(cached.events)
+        setLists(cached.lists)
+        setCategories(cached.categories)
+      }
+
       try {
-        const result = await getCalendarRangeData(range)
-        const [nextDueTasks, nextScheduledTasks, nextEvents] =
+        const result = await getCalendarBaseData(range)
+        const [nextDueTasks, nextEvents, nextLists, nextCategories] =
           await Promise.all([
             decryptTasks(result.dueTasks, masterKey),
-            decryptScheduledTasks(result.scheduledTasks, masterKey),
             decryptEvents(result.events, masterKey),
+            decryptLists(result.lists, masterKey),
+            decryptCategories(result.categories, masterKey),
           ])
+        const nextScheduledTasks = await decryptScheduledTasks(
+          result.scheduledTasks,
+          masterKey,
+          nextLists,
+          nextCategories,
+        )
+        const baseSnapshot = {
+          dueTasks: nextDueTasks,
+          scheduledTasks: nextScheduledTasks,
+          events: nextEvents,
+          lists: nextLists,
+          categories: nextCategories,
+        }
+        // Store even if the user has already navigated away; this makes a
+        // quick return to the range instant without persisting plaintext.
+        writeCalendarSnapshot(masterKey, range, baseSnapshot)
         if (version === loadVersion.current) {
           commitDueTasks(nextDueTasks)
           commitScheduledTasks(
             applyPendingSchedules(nextScheduledTasks, pendingSchedules.current),
           )
           setEvents(nextEvents)
+          setLists(nextLists)
+          setCategories(nextCategories)
         }
+
+        // Recurring task sessions are materialized server-side. Let the fast
+        // base result paint first, then replace the schedule when expansion is
+        // complete instead of making events and due tasks wait for it.
+        void getRecurringCalendarData(range)
+          .then(async (recurring) => {
+            const nextRecurringTasks = await decryptScheduledTasks(
+              recurring.scheduledTasks,
+              masterKey,
+              nextLists,
+              nextCategories,
+            )
+            if (version !== loadVersion.current) return
+            const currentSnapshot = readCalendarSnapshot(masterKey, range)
+            const snapshot = {
+              ...(currentSnapshot ?? baseSnapshot),
+              scheduledTasks: nextRecurringTasks,
+            }
+            commitScheduledTasks(
+              applyPendingSchedules(nextRecurringTasks, pendingSchedules.current),
+            )
+            writeCalendarSnapshot(masterKey, range, snapshot)
+          })
+          .catch((cause) => {
+            if (version === loadVersion.current) {
+              toast.error(
+                cause instanceof Error
+                  ? cause.message
+                  : 'Recurring calendar tasks could not be loaded.',
+              )
+            }
+          })
       } catch (cause) {
         if (version === loadVersion.current) {
           toast.error(
@@ -256,8 +372,87 @@ export default function CalendarPage({
   }, [commitDueTasks, initialCategories, initialLists, initialTasks, masterKey])
 
   useEffect(() => {
+    document.title = rangeLabel === 'This week'
+      ? 'Planomy'
+      : `Planomy · ${rangeLabel}`
+
+    return () => {
+      document.title = 'Planomy'
+    }
+  }, [rangeLabel])
+
+  useEffect(() => {
     const refresh = () => {
       if (visibleRange.current) void loadRange(visibleRange.current)
+    }
+    const handleListsChanged = (event: Event) => {
+      const change = listMutationFromEvent(event)
+      if (!change) {
+        refresh()
+        return
+      }
+
+      setLists((current) => current.map((list) => applyListMutationToList(list, change)))
+      commitDueTasks(
+        dueTasksRef.current?.map((task) => applyListMutationToTask(task, change)) ?? null,
+      )
+      commitScheduledTasks(
+        scheduledTasksRef.current.map((block) => ({
+          ...block,
+          task: applyListMutationToTask(block.task, change),
+        })),
+      )
+      setEvents((current) => current.map((item) => applyListMutationToEvent(item, change)))
+      if (!change.phase) refresh()
+    }
+    const handleTasksChanged = (event: Event) => {
+      const change = taskVisualMutationFromEvent(event)
+      if (!change) {
+        refresh()
+        return
+      }
+
+      commitDueTasks(
+        dueTasksRef.current?.map((task) =>
+          change.occurrenceId ? task : applyTaskVisualMutation(task, change, lists),
+        ) ?? null,
+      )
+      commitScheduledTasks(
+        scheduledTasksRef.current.map((block) => {
+          if (!eventMutationAppliesToScheduledTask(block.occurrence_id, change)) {
+            return block
+          }
+          return {
+            ...block,
+            task: applyTaskVisualMutation(block.task, change, lists),
+          }
+        }),
+      )
+      if (!change.phase) refresh()
+    }
+    const handleEventsChanged = (event: Event) => {
+      const change = eventVisualMutationFromEvent(event)
+      if (!change) {
+        refresh()
+        return
+      }
+
+      setEvents((current) =>
+        current.map((item) => applyEventVisualMutation(item, change, lists)),
+      )
+      if (!change.phase) refresh()
+    }
+    const handleCategoriesChanged = (event: Event) => {
+      const change = categoryVisualMutationFromEvent(event)
+      if (!change) {
+        refresh()
+        return
+      }
+      setCategories((current) => current.map((category) => applyCategoryMutationToCategory(category, change)))
+      commitDueTasks(dueTasksRef.current?.map((task) => applyCategoryMutationToTask(task, change)) ?? null)
+      commitScheduledTasks(scheduledTasksRef.current.map((block) => ({ ...block, task: applyCategoryMutationToTask(block.task, change) })))
+      setEvents((current) => current.map((item) => applyCategoryMutationToEvent(item, change)))
+      if (!change.phase) refresh()
     }
     const organizationChanged = (event: Event) => {
       const change = taskOrganizationChangeFromEvent(event)
@@ -280,9 +475,11 @@ export default function CalendarPage({
       if (!document.hidden) refresh()
     }
 
-    window.addEventListener(TASKS_CHANGED, refresh)
+    window.addEventListener(TASKS_CHANGED, handleTasksChanged)
+    window.addEventListener(EVENTS_CHANGED, handleEventsChanged)
     window.addEventListener(TASK_ORGANIZATION_CHANGED, organizationChanged)
-    window.addEventListener(LISTS_CHANGED, refresh)
+    window.addEventListener(LISTS_CHANGED, handleListsChanged)
+    window.addEventListener(CATEGORIES_CHANGED, handleCategoriesChanged)
     const refreshPlanTime = (event: Event) => {
       if (planTimeChangeOrigin(event) !== 'calendar') refresh()
     }
@@ -290,12 +487,14 @@ export default function CalendarPage({
     window.addEventListener('focus', refresh)
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
-      window.removeEventListener(TASKS_CHANGED, refresh)
+      window.removeEventListener(TASKS_CHANGED, handleTasksChanged)
+      window.removeEventListener(EVENTS_CHANGED, handleEventsChanged)
       window.removeEventListener(
         TASK_ORGANIZATION_CHANGED,
         organizationChanged,
       )
-      window.removeEventListener(LISTS_CHANGED, refresh)
+      window.removeEventListener(LISTS_CHANGED, handleListsChanged)
+      window.removeEventListener(CATEGORIES_CHANGED, handleCategoriesChanged)
       window.removeEventListener(PLAN_TIME_CHANGED, refreshPlanTime)
       window.removeEventListener('focus', refresh)
       document.removeEventListener('visibilitychange', onVisibility)
@@ -303,8 +502,8 @@ export default function CalendarPage({
   }, [commitDueTasks, commitScheduledTasks, lists, loadRange])
 
   const calendarItems = useMemo(
-    () => projectCalendarItems(dueTasks ?? [], scheduledTasks, events),
-    [dueTasks, events, scheduledTasks],
+    () => projectCalendarItems(dueTasks ?? [], scheduledTasks, events, calendarPreferences.timeFormat),
+    [calendarPreferences.timeFormat, dueTasks, events, scheduledTasks],
   )
   const editingTask = useMemo(() => {
     if (!editingTaskId) return null
@@ -331,7 +530,7 @@ export default function CalendarPage({
   )
 
   const handleTaskSchedule = useCallback(
-    async (task: TaskWithList, startsAt: Date, endsAt: Date | null) => {
+    async (task: TaskWithList, startsAt: Date, endsAt: Date | null, sessionId?: string, occurrenceId?: string | null, sessionIndex?: number | null, scope: RecurrenceScope = 'this') => {
       const normalizedEndsAt = taskDisplayEnd(startsAt, endsAt)
       if (
         pendingTasks.current.has(task.id) ||
@@ -339,32 +538,64 @@ export default function CalendarPage({
       )
         return false
 
-      const previous =
-        scheduledTasksRef.current.find((block) => block.task_id === task.id) ??
-        null
+      if (scope !== 'this' && occurrenceId && sessionId) {
+        try {
+          await updateTaskOccurrenceTimingWithScope({
+            taskId: task.id,
+            occurrenceId,
+            sessionId,
+            sessionIndex,
+            startsAt: startsAt.toISOString(),
+            endsAt: normalizedEndsAt.toISOString(),
+            scope,
+          })
+          notifyPlanTimeChanged('calendar')
+          if (visibleRange.current) void loadRange(visibleRange.current)
+          return true
+        } catch (cause) {
+          toast.error(cause instanceof Error ? cause.message : "Couldn't update recurring schedule.")
+          return false
+        }
+      }
+
+      const optimisticSessionId = sessionId ?? `pending:${crypto.randomUUID()}`
+      const previous = sessionId
+        ? scheduledTasksRef.current.find((block) => sessionKey(block) === sessionId) ?? null
+        : null
       const next: AgendaBlock = {
+        id: optimisticSessionId,
         task_id: task.id,
         user_id: task.user_id,
         starts_at: startsAt.toISOString(),
         ends_at: normalizedEndsAt.toISOString(),
+        status: 'scheduled',
         task,
       }
 
-      pendingSchedules.current.set(task.id, next)
+      pendingSchedules.current.set(optimisticSessionId, next)
       setTaskBusy(task.id, true)
       commitScheduledTasks(
-        replaceScheduledBlock(scheduledTasksRef.current, next, task.id),
+        replaceScheduledBlock(scheduledTasksRef.current, next, optimisticSessionId),
       )
 
       try {
-        await saveTimeBlock(task.id, next.starts_at, next.ends_at)
-        pendingSchedules.current.delete(task.id)
+        const saved = await saveTimeBlock(task.id, next.starts_at, next.ends_at, sessionId, occurrenceId)
+        const savedBlock: AgendaBlock = {
+          ...next,
+          id: saved.id,
+          occurrence_id: saved.occurrence_id,
+          status: saved.status,
+        }
+        pendingSchedules.current.delete(optimisticSessionId)
+        commitScheduledTasks(
+          replaceScheduledBlock(scheduledTasksRef.current, savedBlock, optimisticSessionId),
+        )
         notifyPlanTimeChanged('calendar')
         return true
       } catch (cause) {
-        pendingSchedules.current.delete(task.id)
+        pendingSchedules.current.delete(optimisticSessionId)
         commitScheduledTasks(
-          replaceScheduledBlock(scheduledTasksRef.current, previous, task.id),
+          replaceScheduledBlock(scheduledTasksRef.current, previous, optimisticSessionId),
         )
         toast.error(
           cause instanceof Error
@@ -376,66 +607,29 @@ export default function CalendarPage({
         setTaskBusy(task.id, false)
       }
     },
-    [commitScheduledTasks, setTaskBusy],
-  )
-
-  const handleTaskUnschedule = useCallback(
-    async (task: TaskWithList) => {
-      if (pendingTasks.current.has(task.id)) return false
-      const previous =
-        scheduledTasksRef.current.find((block) => block.task_id === task.id) ??
-        null
-      if (!previous) return true
-
-      pendingSchedules.current.set(task.id, null)
-      setTaskBusy(task.id, true)
-      commitScheduledTasks(
-        replaceScheduledBlock(scheduledTasksRef.current, null, task.id),
-      )
-      setSelectedTaskId(null)
-
-      try {
-        await removeTimeBlock(task.id)
-        pendingSchedules.current.delete(task.id)
-        notifyPlanTimeChanged('calendar')
-        return true
-      } catch (cause) {
-        pendingSchedules.current.delete(task.id)
-        commitScheduledTasks(
-          replaceScheduledBlock(scheduledTasksRef.current, previous, task.id),
-        )
-        toast.error(
-          cause instanceof Error
-            ? `Couldn't unschedule task. ${cause.message}`
-            : "Couldn't unschedule task. Changes were reverted.",
-        )
-        return false
-      } finally {
-        setTaskBusy(task.id, false)
-      }
-    },
-    [commitScheduledTasks, setTaskBusy],
+    [commitScheduledTasks, loadRange, setTaskBusy],
   )
 
   const handleTaskComplete = useCallback(
-    async (task: TaskWithList) => {
+    async (task: TaskWithList, occurrenceId?: string | null) => {
       if (pendingTasks.current.has(task.id)) return false
       const completed = !task.completed
       const updateTask = (candidate: TaskWithList) =>
         candidate.id === task.id ? { ...candidate, completed } : candidate
 
       setTaskBusy(task.id, true)
-      commitDueTasks(dueTasksRef.current?.map(updateTask) ?? null)
+      commitDueTasks(occurrenceId ? dueTasksRef.current : dueTasksRef.current?.map(updateTask) ?? null)
       commitScheduledTasks(
         scheduledTasksRef.current.map((block) =>
-          block.task_id === task.id
+          block.task_id === task.id && (!occurrenceId || block.occurrence_id === occurrenceId)
             ? { ...block, task: { ...block.task, completed } }
             : block,
         ),
       )
 
       try {
-        await updateTaskCompletedAction(task.id, completed)
+        if (occurrenceId) await updateTaskOccurrenceCompleted(occurrenceId, completed)
+        else await updateTaskCompletedAction(task.id, completed, localDateKey())
         notifyTasksChanged()
         return true
       } catch (cause) {
@@ -443,10 +637,10 @@ export default function CalendarPage({
           candidate.id === task.id
             ? { ...candidate, completed: task.completed }
             : candidate
-        commitDueTasks(dueTasksRef.current?.map(restoreTask) ?? null)
+        commitDueTasks(occurrenceId ? dueTasksRef.current : dueTasksRef.current?.map(restoreTask) ?? null)
         commitScheduledTasks(
           scheduledTasksRef.current.map((block) =>
-            block.task_id === task.id
+            block.task_id === task.id && (!occurrenceId || block.occurrence_id === occurrenceId)
               ? { ...block, task: { ...block.task, completed: task.completed } }
               : block,
           ),
@@ -492,10 +686,12 @@ export default function CalendarPage({
         list: selectedList,
       }
       const optimisticBlock: AgendaBlock = {
+        id: tempId,
         task_id: tempId,
         user_id: optimisticTask.user_id,
         starts_at: input.startsAt.toISOString(),
         ends_at: endsAt.toISOString(),
+        status: 'scheduled',
         task: optimisticTask,
       }
 
@@ -524,28 +720,33 @@ export default function CalendarPage({
         }
         const savedBlock: AgendaBlock = {
           ...optimisticBlock,
+          id: `pending-session:${crypto.randomUUID()}`,
           task_id: savedTask.id,
           user_id: savedTask.user_id,
           task: localTask,
         }
 
         pendingSchedules.current.delete(tempId)
-        pendingSchedules.current.set(savedTask.id, savedBlock)
+        pendingSchedules.current.set(savedBlock.id!, savedBlock)
         setTaskBusy(tempId, false)
         setTaskBusy(savedTask.id, true)
         commitScheduledTasks([
           ...scheduledTasksRef.current.filter(
-            (block) => block.task_id !== tempId,
+            (block) => block.id !== tempId,
           ),
           savedBlock,
         ])
 
-        await saveTimeBlock(
+        const savedSession = await saveTimeBlock(
           savedTask.id,
           savedBlock.starts_at,
           savedBlock.ends_at,
         )
-        pendingSchedules.current.delete(savedTask.id)
+        const persistedBlock = { ...savedBlock, id: savedSession.id, status: savedSession.status }
+        pendingSchedules.current.delete(savedBlock.id!)
+        commitScheduledTasks(
+          replaceScheduledBlock(scheduledTasksRef.current, persistedBlock, savedBlock.id!),
+        )
         notifyPlanTimeChanged('calendar')
         notifyTasksChanged()
         if (!isCreatedScheduleVisible(savedBlock, visibleRange.current)) {
@@ -554,7 +755,11 @@ export default function CalendarPage({
         return true
       } catch (cause) {
         pendingSchedules.current.delete(tempId)
-        if (createdTaskId) pendingSchedules.current.delete(createdTaskId)
+        if (createdTaskId) {
+          for (const key of pendingSchedules.current.keys()) {
+            if (key.includes(createdTaskId)) pendingSchedules.current.delete(key)
+          }
+        }
         commitScheduledTasks(
           scheduledTasksRef.current.filter(
             (block) =>
@@ -590,9 +795,7 @@ export default function CalendarPage({
         viewMode={viewMode}
         onNavigate={navigate}
         onViewChange={setViewMode}
-        onCreate={() =>
-          toast.info('Click or drag an empty time to add a task.')
-        }
+          onCreate={() => setCreateEventRequest((current) => ({ id: (current?.id ?? 0) + 1 }))}
       />
       <div
         className="flex min-h-0 flex-1 flex-col bg-surface pb-2 pt-2 sm:pb-3 lg:pb-4"
@@ -604,16 +807,21 @@ export default function CalendarPage({
             command={command}
             calendarItems={calendarItems}
             lists={lists}
+            categories={categories}
             selectedTaskId={selectedTaskId}
             busyTaskIds={busyTaskIds}
             onRangeLabelChange={setRangeLabel}
             onRangeChange={handleRangeChange}
             onTaskSelect={setSelectedTaskId}
-            onTaskOpen={setEditingTaskId}
+            onTaskOpen={(taskId, occurrence) => {
+              setEditingTaskId(taskId)
+              setEditingOccurrence(occurrence)
+            }}
             onTaskSchedule={handleTaskSchedule}
-            onTaskUnschedule={handleTaskUnschedule}
             onTaskComplete={handleTaskComplete}
             onQuickCreate={handleQuickCreate}
+            createEventRequest={createEventRequest}
+            compactGrid
           />
         </div>
       </div>
@@ -626,8 +834,12 @@ export default function CalendarPage({
           currentListId={editingTask.list_id}
           open
           onOpenChange={(open) => {
-            if (!open) setEditingTaskId(null)
+            if (!open) {
+              setEditingTaskId(null)
+              setEditingOccurrence(undefined)
+            }
           }}
+          occurrence={editingOccurrence}
         />
       ) : null}
     </div>

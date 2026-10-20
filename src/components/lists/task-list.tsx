@@ -1,5 +1,6 @@
 import { TaskItem } from '../tasks/task-item/task-item'
 import { Category, List, TaskWithList } from '../../types'
+import type { ListColor } from '@/lib/list-colors'
 import { useSearchParams } from 'next/navigation'
 import { useId } from 'react'
 
@@ -22,12 +23,13 @@ interface TaskListProps {
   handleOnReorder: (activeId: string, overId: string) => void
   canReorder: boolean
   categories?: Category[]
+  listColor?: ListColor
   handleOnChangeCategory?: (
     taskId: string,
     categoryId: string | null,
   ) => Promise<void>
-  handleOnCreateCategory?: (title: string) => Promise<void>
-  handleOnRenameCategory?: (category: Category, title: string) => Promise<void>
+  handleOnCreateCategory?: (title: string, color: ListColor | null) => Promise<void>
+  handleOnRenameCategory?: (category: Category, title: string, color: ListColor | null) => Promise<void>
   handleOnDeleteCategory?: (category: Category) => Promise<void>
   handleOnMoveCategory?: (
     category: Category,
@@ -49,6 +51,7 @@ export default function TaskList({
   handleOnReorder,
   canReorder,
   categories,
+  listColor,
   handleOnChangeCategory,
   handleOnCreateCategory,
   handleOnRenameCategory,
@@ -120,6 +123,7 @@ export default function TaskList({
               categoryIndex={categoryIndex}
               categoryCount={sortedCategories.length}
               onRename={handleOnRenameCategory}
+              listColor={listColor}
               onDelete={handleOnDeleteCategory}
               onMove={handleOnMoveCategory}
             />
@@ -137,12 +141,12 @@ export default function TaskList({
         {renderTasks(localTasks.filter((task) => task.category_id === null))}
       </section>
 
-      <AddCategoryButton onCreate={handleOnCreateCategory!} />
+      <AddCategoryButton onCreate={handleOnCreateCategory!} listColor={listColor!} />
     </div>
   ) : canManageCategories ? (
     <div className="flex flex-col gap-4">
       {renderTasks(localTasks)}
-      <AddCategoryButton onCreate={handleOnCreateCategory!} />
+      <AddCategoryButton onCreate={handleOnCreateCategory!} listColor={listColor!} />
     </div>
   ) : (
     renderTasks(localTasks)

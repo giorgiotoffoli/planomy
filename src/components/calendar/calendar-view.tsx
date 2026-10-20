@@ -12,18 +12,48 @@ import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import timeGridPlugin from '@fullcalendar/timegrid'
-import { isListColor, listColorCssValue } from '@/lib/list-colors'
-import type { CalendarItem } from '@/lib/calendar-items'
+import { toast } from 'sonner'
+import { isListColor, listColorCssValue, resolveEventColor, resolveInheritedColor } from '@/lib/list-colors'
+import {
+  isTaskDeadlineOverdue,
+  isCalendarEventPast,
+  scheduledTaskProgress,
+  scheduledTaskPhase,
+  scheduledTaskState,
+  type CalendarItem,
+} from '@/lib/calendar-items'
 import type { CalendarRangeInput } from '@/lib/events'
 import {
-  durationEnd,
   isSingleDayTimedRange,
   moveTimedRange,
+  snapCreationStart,
+  TASK_DRAG_DISTANCE,
+  TASK_TOUCH_DELAY,
   taskDisplayEnd,
 } from '@/lib/calendar-interactions'
 import { localDateKey } from '@/lib/today'
-import type { List, TaskWithList } from '@/types'
+import type { CalendarEventWithList, Category, List, TaskWithList } from '@/types'
+import { addCalendarDays } from '@/lib/today'
+import {
+  deleteEvent,
+  deleteEventOccurrenceWithScope,
+  updateEventTiming,
+} from '@/components/events/actions'
+import { notifyEventsChanged } from '@/components/events/mutations'
+import { useCalendarPreferences } from '@/components/settings/calendar-preferences-provider'
+import { formatTime } from '@/lib/calendar-preferences'
+import EventDialog from '@/components/events/event-dialog'
+import type { EventFormInitialValues } from '@/components/events/event-form'
+import { deleteTask } from '@/components/tasks/actions'
+import { notifyTasksChanged } from '@/components/tasks/mutations'
+import { deleteTaskOccurrenceWithScope } from '@/components/tasks/recurrence-actions'
+import { TaskDialog } from '@/components/tasks/task-form/task-dialog'
+import type { TaskFormInitialValues } from '@/components/tasks/task-form/task-form'
+import type { TaskOccurrenceContext } from '@/components/tasks/task-form/task-occurrence-context'
+import { RecurrenceScopeDialog } from '@/components/recurrence/recurrence-scope-dialog'
+import type { RecurrenceScope } from '@/lib/recurrence-scope'
 import CalendarItemContent from './calendar-item-content'
+import CalendarItemMenu from './calendar-item-menu'
 import CalendarQuickCreate, {
   type QuickCreateDraft,
   type QuickCreateInput,
@@ -55,6 +85,85 @@ const fullCalendarView: Record<CalendarViewMode, string> = {
   day: 'timeGridDay',
   week: 'timeGridWeek',
   month: 'dayGridMonth',
+}
+const calendarSnapDuration = '00:05:00'
+const calendarCreationStartSnapDuration = '00:15:00'
+
+function isRecurringCalendarItem(item: CalendarItem) {
+  if (item.kind === 'event') {
+    return Boolean(
+      item.event.occurrence_key &&
+        item.event.source_event_id &&
+        item.event.recurrence_rule,
+    )
+  }
+
+  return item.kind === 'scheduled-task' && Boolean(item.occurrenceId && item.task.recurrence_rule)
+}
+
+function eventLocalStart(event: CalendarEventWithList) {
+  if (!event.starts_at) return { date: event.starts_on ?? localDateKey(), time: null }
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: event.time_zone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(event.starts_at))
+  const values = Object.fromEntries(
+    parts
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value]),
+  )
+  return {
+    date: `${values.year}-${values.month}-${values.day}`,
+    time: `${values.hour}:${values.minute}`,
+  }
+}
+
+function eventToTaskValues(event: CalendarEventWithList): TaskFormInitialValues {
+  const start = eventLocalStart(event)
+  return {
+    title: event.title,
+    notes: event.description ?? '',
+    listId: event.list_id,
+    categoryId: event.category_id ?? null,
+    dueDate: start.date,
+    dueTime: event.all_day ? null : start.time,
+    focused: false,
+    repeatRule: event.recurrence_rule,
+  }
+}
+
+function taskToEventValues(item: Exclude<CalendarItem, { kind: 'event' }>): EventFormInitialValues {
+  const task = item.task
+  const shared = {
+    title: task.title,
+    description: task.notes ?? '',
+    location: '',
+    listId: task.list_id,
+    categoryId: task.category_id ?? null,
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    recurrenceRule: task.recurrence_rule,
+  }
+
+  if (item.kind === 'scheduled-task') {
+    return {
+      ...shared,
+      allDay: false,
+      startsAt: item.startsAt,
+      endsAt: item.endsAt ?? '',
+    }
+  }
+
+  return {
+    ...shared,
+    allDay: true,
+    startsOn: item.dateKey,
+    endsOn: addCalendarDays(item.dateKey, 1),
+  }
 }
 
 function formatWeekRange(start: Date, exclusiveEnd: Date) {
@@ -127,6 +236,7 @@ export default function CalendarView({
   command,
   calendarItems,
   lists,
+  categories,
   selectedTaskId,
   busyTaskIds,
   onRangeLabelChange,
@@ -134,50 +244,129 @@ export default function CalendarView({
   onTaskSelect,
   onTaskOpen,
   onTaskSchedule,
-  onTaskUnschedule,
   onTaskComplete,
   onQuickCreate,
+  createEventRequest,
   date,
   showDayHeader = true,
-  openTaskMenuOnClick = false,
+  compactGrid = false,
   renderSlotLaneContent,
 }: {
   viewMode: CalendarViewMode
   command: CalendarCommand | null
   calendarItems: CalendarItem[]
   lists: List[]
+  categories: Category[]
   selectedTaskId: string | null
   busyTaskIds: Set<string>
   onRangeLabelChange: (label: string) => void
   onRangeChange: (range: CalendarRangeInput) => void
   onTaskSelect: (taskId: string | null) => void
-  onTaskOpen: (taskId: string) => void
-  onTaskSchedule: (task: TaskWithList, startsAt: Date, endsAt: Date | null) => Promise<boolean>
-  onTaskUnschedule: (task: TaskWithList) => Promise<boolean>
-  onTaskComplete: (task: TaskWithList) => Promise<boolean>
+  onTaskOpen: (taskId: string, occurrence?: TaskOccurrenceContext) => void
+  onTaskSchedule: (task: TaskWithList, startsAt: Date, endsAt: Date | null, sessionId?: string, occurrenceId?: string | null, sessionIndex?: number | null, scope?: RecurrenceScope) => Promise<boolean>
+  onTaskComplete: (task: TaskWithList, occurrenceId?: string | null) => Promise<boolean>
   onQuickCreate: (input: QuickCreateInput) => Promise<boolean>
+  createEventRequest?: { id: number; startsAt?: Date; endsAt?: Date | null } | null
   date?: string
   showDayHeader?: boolean
-  openTaskMenuOnClick?: boolean
+  compactGrid?: boolean
   renderSlotLaneContent?: (date: Date) => ReactNode
 }) {
+  const { preferences: calendarPreferences } = useCalendarPreferences()
   const calendarRef = useRef<FullCalendar>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const [draft, setDraft] = useState<QuickCreateDraft | null>(null)
   const [savingDraft, setSavingDraft] = useState(false)
   const submittingDraft = useRef(false)
-  const [openTaskMenuId, setOpenTaskMenuId] = useState<string | null>(null)
+  const [eventDialog, setEventDialog] = useState<{
+    event?: CalendarEventWithList
+    startsAt?: Date
+    endsAt?: Date | null
+    initialValues?: EventFormInitialValues
+  } | null>(null)
+  const [taskDialog, setTaskDialog] = useState<{
+    initialValues: TaskFormInitialValues
+  } | null>(null)
+  const [itemMenu, setItemMenu] = useState<{
+    item: CalendarItem
+    anchor: { x: number; y: number }
+  } | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<CalendarItem | null>(null)
+  const [deleteScopeOpen, setDeleteScopeOpen] = useState(false)
+  const [deleteSaving, setDeleteSaving] = useState(false)
+  const [pendingEventTiming, setPendingEventTiming] = useState<{
+    item: Extract<CalendarItem, { kind: 'event' }>
+    start: Date
+    end: Date | null
+    allDay: boolean
+    preservePoint: boolean
+  } | null>(null)
+  const [eventTimingScopeOpen, setEventTimingScopeOpen] = useState(false)
+  const [eventTimingSaving, setEventTimingSaving] = useState(false)
+  const [pendingTaskTiming, setPendingTaskTiming] = useState<{
+    item: Extract<CalendarItem, { kind: 'scheduled-task' }>
+    start: Date
+    end: Date | null
+  } | null>(null)
+  const [taskTimingScopeOpen, setTaskTimingScopeOpen] = useState(false)
+  const [taskTimingSaving, setTaskTimingSaving] = useState(false)
+  const [busyEventIds, setBusyEventIds] = useState<Set<string>>(() => new Set())
+  const [now, setNow] = useState(() => new Date())
+  const suppressTaskClickRef = useRef(false)
+  const initialScrollApplied = useRef(false)
+  const creationSnapPendingRef = useRef(false)
   const itemById = useMemo(
     () => new Map(calendarItems.map((item) => [item.id, item])),
     [calendarItems],
   )
   const interactiveTimeGrid = viewMode === 'day' || viewMode === 'week'
+
+  useEffect(() => {
+    if (!createEventRequest) return
+    const request = window.setTimeout(() => setEventDialog({
+      startsAt: createEventRequest.startsAt,
+      endsAt: createEventRequest.endsAt,
+    }), 0)
+    return () => window.clearTimeout(request)
+  }, [createEventRequest])
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 60_000)
+    return () => window.clearInterval(interval)
+  }, [])
   const clearInteraction = useCallback(() => {
     if (submittingDraft.current) return
     setDraft(null)
-    setOpenTaskMenuId(null)
+    setItemMenu(null)
     calendarRef.current?.getApi().unselect()
   }, [])
+  const clearCreationSurface = useCallback(() => {
+    if (submittingDraft.current) return
+    setDraft(null)
+    setEventDialog(null)
+    setTaskDialog(null)
+    setItemMenu(null)
+    calendarRef.current?.getApi().unselect()
+  }, [])
+  const restoreCalendarSnap = useCallback(() => {
+    creationSnapPendingRef.current = false
+    calendarRef.current?.getApi().setOption('snapDuration', calendarSnapDuration)
+  }, [])
+  const handleCalendarPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const target = event.target
+    if (!(target instanceof Element)) return
+    if (target.closest('.fc-event')) return
+    if (!target.closest('.fc-timegrid-slot-lane, .fc-timegrid-col')) return
+
+    clearCreationSurface()
+    calendarRef.current?.getApi().setOption('snapDuration', calendarCreationStartSnapDuration)
+    creationSnapPendingRef.current = true
+    onTaskSelect(null)
+  }, [clearCreationSurface, onTaskSelect])
+  const handleCalendarPointerMove = useCallback(() => {
+    if (!creationSnapPendingRef.current) return
+    restoreCalendarSnap()
+  }, [restoreCalendarSnap])
   const changeDraftTitle = useCallback((title: string) => {
     setDraft((current) =>
       current && current.title !== title ? { ...current, title } : current,
@@ -220,7 +409,7 @@ export default function CalendarView({
           editable: interactive,
           startEditable: interactive,
           durationEditable: interactive,
-          extendedProps: { kind: item.kind },
+          extendedProps: { kind: item.kind, sessionId: item.sessionId },
         }
       }
       return {
@@ -233,7 +422,9 @@ export default function CalendarView({
           ? item.event.ends_on ?? undefined
           : item.event.ends_at ?? undefined,
         allDay: item.event.all_day,
-        editable: false,
+        editable: !busyEventIds.has(item.event.source_event_id ?? item.event.id),
+        startEditable: true,
+        durationEditable: true,
         extendedProps: { kind: item.kind },
       }
     })
@@ -256,7 +447,7 @@ export default function CalendarView({
       })
     }
     return events
-  }, [busyTaskIds, calendarItems, draft, interactiveTimeGrid, lists, savingDraft])
+  }, [busyEventIds, busyTaskIds, calendarItems, draft, interactiveTimeGrid, lists, savingDraft])
 
   async function createDraft(input: QuickCreateInput) {
     if (submittingDraft.current) return false
@@ -267,6 +458,139 @@ export default function CalendarView({
     } finally {
       submittingDraft.current = false
       setSavingDraft(false)
+    }
+  }
+
+  async function moveEvent(
+    item: Extract<CalendarItem, { kind: 'event' }>,
+    start: Date,
+    end: Date | null,
+    allDay: boolean,
+    preservePoint = false,
+    scope: RecurrenceScope = 'this',
+  ) {
+    const event = item.event
+    const sourceId = event.source_event_id ?? event.id
+    const busyId = sourceId
+    setBusyEventIds((current) => new Set(current).add(busyId))
+    try {
+      if (allDay) {
+        const startsOn = localDateKey(start)
+        const endsOn = localDateKey(end ?? new Date(start.getTime() + 86_400_000))
+        await updateEventTiming(sourceId, event.occurrence_key ?? null, {
+          allDay: true,
+          startsOn,
+          endsOn,
+        }, scope)
+      } else {
+        await updateEventTiming(sourceId, event.occurrence_key ?? null, {
+          allDay: false,
+          startsAt: start.toISOString(),
+          endsAt: preservePoint && event.ends_at === null ? null : end?.toISOString() ?? null,
+        }, scope)
+      }
+      notifyEventsChanged()
+      return true
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : 'Event time could not be saved.')
+      return false
+    } finally {
+      setBusyEventIds((current) => {
+        const next = new Set(current)
+        next.delete(busyId)
+        return next
+      })
+    }
+  }
+
+  function openItemEditor(item: CalendarItem) {
+    setItemMenu(null)
+    clearInteraction()
+    if (item.kind === 'event') {
+      setEventDialog({ event: item.event })
+      return
+    }
+
+    onTaskSelect(item.task.id)
+    onTaskOpen(
+      item.task.id,
+      item.kind === 'scheduled-task' && item.occurrenceId
+        ? {
+            occurrenceId: item.occurrenceId,
+            occurrenceDate: localDateKey(new Date(item.startsAt)),
+            sessionId: item.sessionId,
+            sessionIndex: item.sessionIndex,
+            startsAt: item.startsAt,
+            endsAt: item.endsAt,
+          }
+        : undefined,
+    )
+  }
+
+  function convertItem(item: CalendarItem) {
+    setItemMenu(null)
+    clearInteraction()
+    if (item.kind === 'event') {
+      setTaskDialog({ initialValues: eventToTaskValues(item.event) })
+      return
+    }
+
+    setEventDialog({
+      initialValues: taskToEventValues(item),
+      ...(item.kind === 'scheduled-task'
+        ? {
+            startsAt: new Date(item.startsAt),
+            endsAt: item.endsAt ? new Date(item.endsAt) : null,
+          }
+        : {}),
+    })
+  }
+
+  function requestDelete(item: CalendarItem) {
+    setItemMenu(null)
+    if (!isRecurringCalendarItem(item)) {
+      void deleteItem(item, 'this')
+      return
+    }
+    setPendingDelete(item)
+    setDeleteScopeOpen(true)
+  }
+
+  async function deleteItem(item: CalendarItem, scope: RecurrenceScope) {
+    if (deleteSaving) return
+    setDeleteSaving(true)
+    try {
+      if (item.kind === 'event') {
+        if (item.event.occurrence_key && item.event.source_event_id) {
+          await deleteEventOccurrenceWithScope(
+            item.event.source_event_id,
+            item.event.occurrence_key,
+            scope,
+          )
+        } else {
+          await deleteEvent(item.event.id)
+        }
+        notifyEventsChanged()
+        toast.success('Event deleted')
+      } else if (
+        item.kind === 'scheduled-task' &&
+        item.occurrenceId &&
+        item.task.recurrence_rule
+      ) {
+        await deleteTaskOccurrenceWithScope(item.task.id, item.occurrenceId, scope)
+        notifyTasksChanged()
+        toast.success('Task occurrence deleted')
+      } else {
+        await deleteTask(item.task.id)
+        notifyTasksChanged()
+        toast.success('Task deleted')
+      }
+      setPendingDelete(null)
+      setDeleteScopeOpen(false)
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : 'Item could not be deleted.')
+    } finally {
+      setDeleteSaving(false)
     }
   }
 
@@ -300,6 +624,14 @@ export default function CalendarView({
       api.gotoDate(date)
     }
   }, [clearInteraction, date, onTaskSelect])
+
+  useEffect(() => {
+    const api = calendarRef.current?.getApi()
+    if (!api || !interactiveTimeGrid || initialScrollApplied.current) return
+
+    api.scrollToTime(compactGrid ? '08:00:00' : '00:00:00')
+    initialScrollApplied.current = true
+  }, [compactGrid, interactiveTimeGrid])
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -336,14 +668,8 @@ export default function CalendarView({
           'aria-selected',
           String(isSelected),
         )
-        if (openTaskMenuOnClick) {
-          element.setAttribute(
-            'aria-expanded',
-            String(element.dataset.calendarTaskId === openTaskMenuId),
-          )
-        }
       })
-  }, [calendarItems, openTaskMenuId, openTaskMenuOnClick, selectedTaskId])
+  }, [calendarItems, selectedTaskId])
 
   useEffect(() => () => {
     document.body.classList.remove('calendar-is-manipulating')
@@ -354,14 +680,21 @@ export default function CalendarView({
   }
 
   return (
-    <div ref={rootRef} className="calendar-grid-scroll min-h-0 flex-1 overflow-x-auto overscroll-contain">
-      <div className={`planomy-calendar h-full ${calendarMinimumWidth(viewMode)}`}>
+    <div
+      ref={rootRef}
+      onPointerDownCapture={handleCalendarPointerDown}
+      onPointerMoveCapture={handleCalendarPointerMove}
+      onPointerUpCapture={restoreCalendarSnap}
+      onPointerCancelCapture={restoreCalendarSnap}
+      className="calendar-grid-scroll min-h-0 flex-1 overflow-x-auto overscroll-contain"
+    >
+      <div className={`planomy-calendar h-full ${compactGrid ? 'is-compact' : ''} ${calendarMinimumWidth(viewMode)}`}>
         <FullCalendar
           ref={calendarRef}
           plugins={calendarPlugins}
           initialView={fullCalendarView[viewMode]}
           initialDate={date}
-          firstDay={0}
+          firstDay={calendarPreferences.firstDay}
           headerToolbar={false}
           height="100%"
           nowIndicator
@@ -395,19 +728,27 @@ export default function CalendarView({
           }
           slotMinTime="00:00:00"
           slotMaxTime="24:00:00"
-          scrollTime="07:30:00"
+          scrollTime={compactGrid ? '08:00:00' : '00:00:00'}
           scrollTimeReset={false}
-          slotDuration="00:15:00"
-          snapDuration="00:15:00"
+          slotDuration="00:30:00"
+          snapDuration={calendarSnapDuration}
           defaultTimedEventDuration="00:15:00"
           forceEventDuration={false}
           slotLabelInterval="01:00:00"
           slotLabelFormat={{
-            hour: 'numeric',
+            hour: calendarPreferences.timeFormat === '12h' ? 'numeric' : '2-digit',
             minute: '2-digit',
-            omitZeroMinute: true,
-            meridiem: 'short',
+            hour12: calendarPreferences.timeFormat === '12h',
           }}
+          slotLaneClassNames={(info) =>
+            info.isToday && info.isPast ? ['is-past'] : []
+          }
+          slotLabelClassNames={(info) =>
+            localDateKey(info.date) === localDateKey(now) &&
+            info.date.getTime() < now.getTime()
+              ? ['is-past']
+              : []
+          }
           slotLaneContent={renderSlotLaneContent
             ? (info) => info.date ? renderSlotLaneContent(info.date) : null
             : undefined}
@@ -415,23 +756,23 @@ export default function CalendarView({
           weekends
           editable={false}
           eventResizableFromStart={false}
-          eventDragMinDistance={6}
+          eventDragMinDistance={TASK_DRAG_DISTANCE}
           dragScroll
           dragRevertDuration={140}
-          longPressDelay={250}
-          eventLongPressDelay={220}
+          longPressDelay={TASK_TOUCH_DELAY}
+          eventLongPressDelay={TASK_TOUCH_DELAY}
           selectable={interactiveTimeGrid}
           selectMirror
-          selectMinDistance={6}
-          selectLongPressDelay={250}
+          selectMinDistance={TASK_DRAG_DISTANCE}
+          selectLongPressDelay={TASK_TOUCH_DELAY}
           selectAllow={(info) => !info.allDay && isSingleDayTimedRange(info.start, info.end)}
-          eventAllow={(dropInfo, draggedEvent) =>
-            ['create-draft', 'scheduled-task'].includes(
-              draggedEvent?.extendedProps.kind,
-            ) &&
-            !dropInfo.allDay &&
-            isSingleDayTimedRange(dropInfo.start, dropInfo.end)
-          }
+          eventAllow={(dropInfo, draggedEvent) => {
+            const kind = draggedEvent?.extendedProps.kind
+            if (kind === 'event') return true
+            return ['create-draft', 'scheduled-task'].includes(kind) &&
+              !dropInfo.allDay &&
+              isSingleDayTimedRange(dropInfo.start, dropInfo.end)
+          }}
           displayEventTime={false}
           eventDisplay="block"
           events={fullCalendarEvents}
@@ -457,9 +798,12 @@ export default function CalendarView({
           }}
           select={(info) => {
             if (!interactiveTimeGrid || info.allDay || submittingDraft.current) return
+            restoreCalendarSnap()
+            clearCreationSurface()
             onTaskSelect(null)
+            const startsAt = snapCreationStart(info.start)
             setDraft({
-              startsAt: info.start,
+              startsAt,
               endsAt: info.end,
               anchor: anchorFromEvent(info.jsEvent, rootRef.current),
               title: '',
@@ -469,6 +813,8 @@ export default function CalendarView({
           }}
           dateClick={(info) => {
             if (!interactiveTimeGrid || info.allDay || submittingDraft.current) return
+            restoreCalendarSnap()
+            clearCreationSurface()
             onTaskSelect(null)
             setDraft({
               startsAt: info.date,
@@ -481,6 +827,14 @@ export default function CalendarView({
           eventClassNames={(info) => {
             const item = itemById.get(info.event.id)
             const kind = info.event.extendedProps.kind
+            const deadlineOverdue =
+              (item?.kind === 'due-task' || item?.kind === 'scheduled-task') &&
+              isTaskDeadlineOverdue(item.task, now)
+            const phase =
+              item?.kind === 'scheduled-task'
+                ? scheduledTaskPhase(item, now)
+                : null
+            const eventPast = item?.kind === 'event' && isCalendarEventPast(item.event, now)
             return [
               kind === 'create-draft' || (!item && info.isMirror)
                 ? 'planomy-create-draft'
@@ -491,8 +845,16 @@ export default function CalendarView({
                     : 'planomy-native-event',
               info.view.type === 'dayGridMonth' ? 'is-month' : 'is-time-grid',
               kind === 'create-draft' ? 'is-draggable' : '',
+              phase === 'past' ? 'is-plan-past' : '',
+              eventPast ? 'is-plan-past' : '',
+              phase === 'in-progress' ? 'is-in-progress' : '',
+              item?.kind === 'scheduled-task' && scheduledTaskState(item, now) === 'missed' ? 'is-missed' : '',
+              item?.kind === 'scheduled-task' && scheduledTaskState(item, now) === 'skipped' ? 'is-skipped' : '',
+              item?.kind === 'scheduled-task' && scheduledTaskState(item, now) === 'completed' ? 'is-session-completed' : '',
+              deadlineOverdue ? 'is-deadline-overdue' : '',
               item?.kind === 'scheduled-task' && item.task.id === selectedTaskId ? 'is-selected' : '',
               item?.kind === 'scheduled-task' && busyTaskIds.has(item.task.id) ? 'is-saving' : '',
+              info.event.allDay ? 'is-all-day' : '',
               info.isMirror || info.isDragging || info.isResizing ? 'is-interaction-preview' : '',
             ]
           }}
@@ -503,11 +865,11 @@ export default function CalendarView({
                 <div className="planomy-calendar-block-content planomy-create-draft-content">
                   <div className="planomy-calendar-block-title">{info.event.title || 'New task'}</div>
                   <span className="planomy-calendar-block-time">
-                    {info.event.start?.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                    {` – ${taskDisplayEnd(
+                    {info.event.start ? formatTime(info.event.start, calendarPreferences.timeFormat) : null}
+                    {` – ${formatTime(taskDisplayEnd(
                       info.event.start ?? new Date(),
                       info.event.end ?? null,
-                    ).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}
+                    ), calendarPreferences.timeFormat)}`}
                   </span>
                 </div>
               )
@@ -517,8 +879,8 @@ export default function CalendarView({
                 <div className="planomy-calendar-block-content planomy-create-draft-content">
                   <div className="planomy-calendar-block-title">New task</div>
                   <span className="planomy-calendar-block-time">
-                    {info.event.start?.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                    {` – ${taskDisplayEnd(info.event.start ?? new Date(), info.event.end ?? null).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}
+                    {info.event.start ? formatTime(info.event.start, calendarPreferences.timeFormat) : null}
+                    {` – ${formatTime(taskDisplayEnd(info.event.start ?? new Date(), info.event.end ?? null), calendarPreferences.timeFormat)}`}
                   </span>
                 </div>
               )
@@ -529,36 +891,21 @@ export default function CalendarView({
             return (
               <CalendarItemContent
                 item={item}
+                timeFormat={calendarPreferences.timeFormat}
                 compact={info.view.type === 'dayGridMonth'}
                 displayStartsAt={livePreview ? info.event.start?.toISOString() : undefined}
                 displayEndsAt={livePreview ? info.event.end?.toISOString() ?? null : undefined}
                 interactionPreview={livePreview}
-                selected={item.kind === 'scheduled-task' && item.task.id === selectedTaskId}
-                menuOpen={
-                  openTaskMenuOnClick && item.kind === 'scheduled-task'
-                    ? item.task.id === openTaskMenuId
+                planProgress={
+                  item.kind === 'scheduled-task'
+                    ? scheduledTaskProgress(item, now)
                     : undefined
                 }
-                onMenuOpenChange={
-                  openTaskMenuOnClick && item.kind === 'scheduled-task'
-                    ? (open) => {
-                        setOpenTaskMenuId(open ? item.task.id : null)
-                        if (open) onTaskSelect(item.task.id)
-                      }
-                    : undefined
-                }
-                onOpenTask={item.kind === 'scheduled-task' ? () => onTaskOpen(item.task.id) : undefined}
-                onUnschedule={item.kind === 'scheduled-task' ? async () => {
-                  const removed = await onTaskUnschedule(item.task)
-                  if (removed) {
-                    setOpenTaskMenuId(null)
-                    onTaskSelect(null)
-                  }
-                } : undefined}
-                onSetDuration={item.kind === 'scheduled-task' ? (minutes) => {
-                  void onTaskSchedule(item.task, new Date(item.startsAt), durationEnd(new Date(item.startsAt), minutes))
-                } : undefined}
-                onToggleComplete={item.kind === 'scheduled-task' ? () => { void onTaskComplete(item.task) } : undefined}
+                onToggleComplete={item.kind === 'scheduled-task'
+                  ? () => { void onTaskComplete(item.task, item.occurrenceId) }
+                  : item.kind === 'due-task'
+                    ? () => { void onTaskComplete(item.task) }
+                    : undefined}
               />
             )
           }}
@@ -570,7 +917,9 @@ export default function CalendarView({
               : null
             if (!item && !draftColor) return
             const color = item
-              ? item.kind === 'event' ? item.event.list?.color : item.task.list?.color
+              ? item.kind === 'event'
+                ? resolveEventColor(item.event.color, item.event.category?.color, item.event.list?.color)
+                : resolveInheritedColor(item.task.category?.color, item.task.list?.color)
               : draftColor
             info.el.style.setProperty('--list-color', listColorCssValue(color))
             if (!item) return
@@ -581,34 +930,60 @@ export default function CalendarView({
             if (item.kind === 'scheduled-task') {
               info.el.setAttribute('aria-label', `Scheduled task: ${item.task.title}`)
               info.el.dataset.calendarTaskId = item.task.id
+              info.el.dataset.calendarSessionId = item.sessionId
               info.el.setAttribute('aria-selected', String(item.task.id === selectedTaskId))
-              if (openTaskMenuOnClick) info.el.setAttribute('aria-haspopup', 'menu')
               info.el.querySelector<HTMLElement>('.fc-event-resizer-end')?.setAttribute(
                 'aria-label',
                 `Resize scheduled duration for ${item.task.title}`,
               )
             }
+            if (item.kind === 'event') {
+              info.el.setAttribute('aria-label', `${item.event.title}${item.event.all_day ? ', all day' : ''}`)
+              info.el.dataset.calendarEventId = item.id
+            }
           }}
           eventClick={(info) => {
             info.jsEvent.preventDefault()
+            if (suppressTaskClickRef.current) return
             const item = itemById.get(info.event.id)
-            if (item?.kind === 'scheduled-task' && interactiveTimeGrid) {
+            if (item?.kind === 'scheduled-task' || item?.kind === 'due-task') {
               clearInteraction()
               onTaskSelect(item.task.id)
-              if (openTaskMenuOnClick) setOpenTaskMenuId(item.task.id)
+              setItemMenu({
+                item,
+                anchor: anchorFromEvent(info.jsEvent, info.el),
+              })
               info.el.focus()
-            } else if (item?.kind === 'due-task' || item?.kind === 'scheduled-task') {
-              onTaskOpen(item.task.id)
+              return
+            }
+            if (item && isRecurringCalendarItem(item)) {
+              clearInteraction()
+              setItemMenu({
+                item,
+                anchor: anchorFromEvent(info.jsEvent, info.el),
+              })
+              info.el.focus()
+              return
+            }
+            if (item?.kind === 'event') {
+              openItemEditor(item)
+              info.el.focus()
             }
           }}
           eventDragStart={(info) => {
+            suppressTaskClickRef.current = true
             const kind = info.event.extendedProps.kind
             if (kind !== 'create-draft') clearInteraction()
             const item = itemById.get(info.event.id)
             if (item?.kind === 'scheduled-task') onTaskSelect(item.task.id)
             setManipulating(true)
           }}
-          eventDragStop={() => setManipulating(false)}
+          eventDragStop={() => {
+            setManipulating(false)
+            window.setTimeout(() => {
+              suppressTaskClickRef.current = false
+            }, 0)
+          }}
           eventDrop={(info) => {
             if (
               info.event.extendedProps.kind === 'create-draft' &&
@@ -625,35 +1000,101 @@ export default function CalendarView({
             }
 
             const item = itemById.get(info.event.id)
+            if (item?.kind === 'event' && info.event.start) {
+              if (item.event.occurrence_key && item.event.source_event_id && item.event.recurrence_rule) {
+                info.revert()
+                setPendingEventTiming({
+                  item,
+                  start: info.event.start,
+                  end: info.event.end,
+                  allDay: info.event.allDay,
+                  preservePoint: true,
+                })
+                setEventTimingScopeOpen(true)
+                return
+              }
+              void moveEvent(item, info.event.start, info.event.end, info.event.allDay, true).then((saved) => {
+                if (!saved) info.revert()
+              })
+              return
+            }
             if (item?.kind !== 'scheduled-task' || !info.event.start) {
               info.revert()
               return
             }
             const end = taskDisplayEnd(info.event.start, info.event.end ?? null)
-            void onTaskSchedule(item.task, info.event.start, end).then((saved) => {
+            if (item.occurrenceId && item.task.recurrence_rule) {
+              info.revert()
+              setPendingTaskTiming({ item, start: info.event.start, end })
+              setTaskTimingScopeOpen(true)
+              return
+            }
+            void onTaskSchedule(item.task, info.event.start, end, item.sessionId, item.occurrenceId, item.sessionIndex).then((saved) => {
               if (!saved) info.revert()
             })
           }}
           eventResizeStart={(info) => {
+            suppressTaskClickRef.current = true
             clearInteraction()
             const item = itemById.get(info.event.id)
             if (item?.kind === 'scheduled-task') onTaskSelect(item.task.id)
             setManipulating(true)
           }}
-          eventResizeStop={() => setManipulating(false)}
+          eventResizeStop={() => {
+            setManipulating(false)
+            window.setTimeout(() => {
+              suppressTaskClickRef.current = false
+            }, 0)
+          }}
           eventResize={(info) => {
             const item = itemById.get(info.event.id)
+            if (item?.kind === 'event' && info.event.start) {
+              if (item.event.occurrence_key && item.event.source_event_id && item.event.recurrence_rule) {
+                info.revert()
+                setPendingEventTiming({
+                  item,
+                  start: info.event.start,
+                  end: info.event.end,
+                  allDay: info.event.allDay,
+                  preservePoint: false,
+                })
+                setEventTimingScopeOpen(true)
+                return
+              }
+              void moveEvent(item, info.event.start, info.event.end, info.event.allDay).then((saved) => {
+                if (!saved) info.revert()
+              })
+              return
+            }
             if (item?.kind !== 'scheduled-task' || !info.event.start || !info.event.end) {
               info.revert()
               return
             }
-            void onTaskSchedule(item.task, info.event.start, info.event.end).then((saved) => {
+            if (item.occurrenceId && item.task.recurrence_rule) {
+              info.revert()
+              setPendingTaskTiming({ item, start: info.event.start, end: info.event.end })
+              setTaskTimingScopeOpen(true)
+              return
+            }
+            void onTaskSchedule(item.task, info.event.start, info.event.end, item.sessionId, item.occurrenceId, item.sessionIndex).then((saved) => {
               if (!saved) info.revert()
             })
           }}
         />
       </div>
 
+      {itemMenu ? (
+        <CalendarItemMenu
+          item={itemMenu.item}
+          anchor={itemMenu.anchor}
+          onOpenChange={(open) => {
+            if (!open) setItemMenu(null)
+          }}
+          onEdit={() => openItemEditor(itemMenu.item)}
+          onConvert={() => convertItem(itemMenu.item)}
+          onDelete={() => requestDelete(itemMenu.item)}
+        />
+      ) : null}
       {draft ? (
         <CalendarQuickCreate
             draft={draft}
@@ -663,8 +1104,106 @@ export default function CalendarView({
             onDraftRangeChange={changeDraftRange}
           onCancel={() => setDraft(null)}
           onCreate={createDraft}
+          onCreateEvent={(input) => {
+            setDraft(null)
+            setEventDialog({
+              startsAt: input.startsAt,
+              endsAt: input.endsAt,
+              initialValues: { title: input.title, listId: input.listId },
+            })
+          }}
         />
       ) : null}
+      {eventDialog ? (
+        <EventDialog
+          lists={lists}
+          categories={categories}
+          event={eventDialog.event}
+          seed={{ startsAt: eventDialog.startsAt, endsAt: eventDialog.endsAt }}
+          initialValues={eventDialog.initialValues}
+          open
+          onOpenChange={(open) => { if (!open) setEventDialog(null) }}
+        />
+      ) : null}
+      {taskDialog ? (
+        <TaskDialog
+          mode="create"
+          lists={lists}
+          categories={categories}
+          initialValues={taskDialog.initialValues}
+          open
+          onOpenChange={(open) => {
+            if (!open) setTaskDialog(null)
+          }}
+        />
+      ) : null}
+      <RecurrenceScopeDialog
+        open={deleteScopeOpen && Boolean(pendingDelete)}
+        action="delete"
+        itemLabel={pendingDelete?.kind === 'event' ? 'event' : 'task'}
+        busy={deleteSaving}
+        onCancel={() => {
+          if (deleteSaving) return
+          setDeleteScopeOpen(false)
+          setPendingDelete(null)
+        }}
+        onConfirm={(scope) => {
+          if (pendingDelete) void deleteItem(pendingDelete, scope)
+        }}
+      />
+      <RecurrenceScopeDialog
+        open={eventTimingScopeOpen}
+        action="edit"
+        itemLabel="event"
+        busy={eventTimingSaving}
+        onCancel={() => {
+          if (eventTimingSaving) return
+          setEventTimingScopeOpen(false)
+          setPendingEventTiming(null)
+        }}
+        onConfirm={(scope) => {
+          if (!pendingEventTiming) return
+          const pending = pendingEventTiming
+          setEventTimingSaving(true)
+          void moveEvent(pending.item, pending.start, pending.end, pending.allDay, pending.preservePoint, scope)
+            .then(() => {
+              setEventTimingScopeOpen(false)
+              setPendingEventTiming(null)
+            })
+            .finally(() => setEventTimingSaving(false))
+        }}
+      />
+      <RecurrenceScopeDialog
+        open={taskTimingScopeOpen}
+        action="edit"
+        itemLabel="task"
+        availableScopes={pendingTaskTiming?.item.sessionIndex === null ? ['this'] : undefined}
+        busy={taskTimingSaving}
+        onCancel={() => {
+          if (taskTimingSaving) return
+          setTaskTimingScopeOpen(false)
+          setPendingTaskTiming(null)
+        }}
+        onConfirm={(scope) => {
+          if (!pendingTaskTiming) return
+          const pending = pendingTaskTiming
+          setTaskTimingSaving(true)
+          void onTaskSchedule(
+            pending.item.task,
+            pending.start,
+            pending.end,
+            pending.item.sessionId,
+            pending.item.occurrenceId,
+            pending.item.sessionIndex,
+            scope,
+          ).then((saved) => {
+            if (saved) {
+              setTaskTimingScopeOpen(false)
+              setPendingTaskTiming(null)
+            }
+          }).finally(() => setTaskTimingSaving(false))
+        }}
+      />
     </div>
   )
 }

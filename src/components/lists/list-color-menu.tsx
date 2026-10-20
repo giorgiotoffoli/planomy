@@ -34,6 +34,11 @@ export function ListColorMenu({
 
     const previous = color
     onChange(nextColor)
+    notifyListsChanged({
+      listId,
+      color: nextColor,
+      phase: 'optimistic',
+    })
     startTransition(async () => {
       try {
         await updateListColor(listId, nextColor)
@@ -41,6 +46,11 @@ export function ListColorMenu({
         router.refresh()
       } catch (cause) {
         onChange(previous)
+        notifyListsChanged({
+          listId,
+          color: previous,
+          phase: 'rollback',
+        })
         toast.error(
           cause instanceof Error ? cause.message : 'List color was not saved.',
         )

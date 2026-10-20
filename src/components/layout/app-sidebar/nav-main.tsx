@@ -8,9 +8,9 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import {
-  CheckCircle,
+  AlarmClock,
+  Archive,
   CalendarDays,
-  CalendarClock,
   Home,
   SearchIcon,
 } from 'lucide-react'
@@ -38,12 +38,12 @@ const tabs: Tab[] = [
   {
     title: 'Deadlines',
     link: '/deadlines',
-    icon: <CalendarClock />,
+    icon: <AlarmClock />,
   },
   {
-    title: 'Completed',
+    title: 'Archive',
     link: '/completed',
-    icon: <CheckCircle />,
+    icon: <Archive />,
   },
 ]
 

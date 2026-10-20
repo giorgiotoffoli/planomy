@@ -1,6 +1,7 @@
 'use server'
 
 import type { Category } from '@/types'
+import { isListColor } from '@/lib/list-colors'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
@@ -35,6 +36,7 @@ export async function getUserCategories(): Promise<Category[]> {
     list_id: category.list_id,
     title: category.title,
     position: category.position,
+    color: isListColor(category.color) ? category.color : null,
     created_at: category.created_at,
   }))
 }

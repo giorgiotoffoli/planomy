@@ -13,6 +13,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Category } from '@/types'
+import { type ListColor } from '@/lib/list-colors'
+import CategoryColorPicker from './category-color-picker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -46,7 +48,9 @@ type CategoryNameDialogProps = {
   onOpenChange: (open: boolean) => void
   title: string
   initialValue?: string
-  onSubmit: (title: string) => Promise<void>
+  listColor: ListColor
+  initialColor?: ListColor | null
+  onSubmit: (title: string, color: ListColor | null) => Promise<void>
 }
 
 export function CategoryNameDialog({
@@ -54,9 +58,12 @@ export function CategoryNameDialog({
   onOpenChange,
   title,
   initialValue = '',
+  listColor,
+  initialColor = null,
   onSubmit,
 }: CategoryNameDialogProps) {
   const [value, setValue] = useState(initialValue)
+  const [color, setColor] = useState<ListColor | null>(initialColor)
   const [isSaving, setIsSaving] = useState(false)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -70,7 +77,7 @@ export function CategoryNameDialog({
 
     setIsSaving(true)
     try {
-      await onSubmit(trimmedValue)
+      await onSubmit(trimmedValue, color)
       onOpenChange(false)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Category was not saved.')
@@ -98,6 +105,15 @@ export function CategoryNameDialog({
             maxLength={120}
             disabled={isSaving}
           />
+          <div className="mt-3 flex items-center justify-between rounded-lg border border-border/60 px-2 py-1">
+            <span className="text-sm text-muted-foreground">Color</span>
+            <CategoryColorPicker
+              value={color}
+              listColor={listColor}
+              disabled={isSaving}
+              onChange={setColor}
+            />
+          </div>
           <DialogFooter className="mt-5">
             <Button
               type="button"
@@ -122,7 +138,8 @@ type CategoryHeaderMenuProps = {
   category: Category
   categoryIndex: number
   categoryCount: number
-  onRename: (category: Category, title: string) => Promise<void>
+  listColor: ListColor
+  onRename: (category: Category, title: string, color: ListColor | null) => Promise<void>
   onDelete: (category: Category) => Promise<void>
   onMove: (category: Category, direction: 'up' | 'down') => Promise<void>
 }
@@ -131,6 +148,7 @@ export function CategoryHeaderMenu({
   category,
   categoryIndex,
   categoryCount,
+  listColor,
   onRename,
   onDelete,
   onMove,
@@ -210,7 +228,9 @@ export function CategoryHeaderMenu({
         onOpenChange={setRenameOpen}
         title="Rename category"
         initialValue={category.title}
-        onSubmit={(title) => onRename(category, title)}
+        initialColor={category.color ?? null}
+        listColor={listColor}
+        onSubmit={(title, color) => onRename(category, title, color)}
       />
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
@@ -248,7 +268,8 @@ type CategoryHeaderProps = {
   headingId?: string
   categoryIndex?: number
   categoryCount?: number
-  onRename?: (category: Category, title: string) => Promise<void>
+  listColor?: ListColor
+  onRename?: (category: Category, title: string, color: ListColor | null) => Promise<void>
   onDelete?: (category: Category) => Promise<void>
   onMove?: (category: Category, direction: 'up' | 'down') => Promise<void>
   children?: ReactNode
@@ -260,6 +281,7 @@ export function CategoryHeader({
   headingId,
   categoryIndex,
   categoryCount,
+  listColor,
   onRename,
   onDelete,
   onMove,
@@ -290,6 +312,7 @@ export function CategoryHeader({
           category={category}
           categoryIndex={categoryIndex}
           categoryCount={categoryCount}
+          listColor={listColor!}
           onRename={onRename}
           onDelete={onDelete}
           onMove={onMove}
@@ -301,8 +324,10 @@ export function CategoryHeader({
 
 export function AddCategoryButton({
   onCreate,
+  listColor,
 }: {
-  onCreate: (title: string) => Promise<void>
+  onCreate: (title: string, color: ListColor | null) => Promise<void>
+  listColor: ListColor
 }) {
   const [open, setOpen] = useState(false)
 
@@ -323,6 +348,7 @@ export function AddCategoryButton({
         open={open}
         onOpenChange={setOpen}
         title="Add category"
+        listColor={listColor}
         onSubmit={onCreate}
       />
     </>

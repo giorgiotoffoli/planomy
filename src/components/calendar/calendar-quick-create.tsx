@@ -25,6 +25,8 @@ import {
   taskDisplayEnd,
 } from '@/lib/calendar-interactions'
 import { MINUTE, SLOT_MINUTES, timeLabel } from '@/lib/agenda'
+import type { TimeFormat } from '@/lib/calendar-preferences'
+import { useCalendarPreferences } from '@/components/settings/calendar-preferences-provider'
 import type { List } from '@/types'
 
 export type QuickCreateDraft = {
@@ -44,14 +46,14 @@ export type QuickCreateInput = {
 
 const NO_LIST = '__none__'
 
-function rangeLabel(start: Date, end: Date | null) {
+function rangeLabel(start: Date, end: Date | null, timeFormat: TimeFormat) {
   const day = start.toLocaleDateString(undefined, {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
   })
   const displayedEnd = taskDisplayEnd(start, end)
-  return `${day} · ${timeLabel(start.getTime())}–${timeLabel(displayedEnd.getTime())}`
+  return `${day} · ${timeLabel(start.getTime(), timeFormat)}–${timeLabel(displayedEnd.getTime(), timeFormat)}`
 }
 
 function durationValue(start: Date, end: Date | null) {
@@ -77,6 +79,7 @@ export default function CalendarQuickCreate({
   onDraftRangeChange,
   onCancel,
   onCreate,
+  onCreateEvent,
 }: {
   draft: QuickCreateDraft
   lists: List[]
@@ -85,7 +88,9 @@ export default function CalendarQuickCreate({
   onDraftRangeChange: (startsAt: Date, endsAt: Date | null) => void
   onCancel: () => void
   onCreate: (input: QuickCreateInput) => Promise<boolean>
+  onCreateEvent?: (input: QuickCreateInput) => void
 }) {
+  const { preferences: calendarPreferences } = useCalendarPreferences()
   const initial = localInputValue(draft.startsAt)
   const [title, setTitle] = useState(draft.title)
   const [listId, setListId] = useState(draft.listId ?? NO_LIST)
@@ -122,8 +127,6 @@ export default function CalendarQuickCreate({
   }, [draftEnd, draftRangeKey, draftStart])
 
   const resolvedRange = useMemo(() => {
-    const minute = Number(startTime.split(':')[1])
-    if (!Number.isFinite(minute) || minute % SLOT_MINUTES !== 0) return null
     const start = resolveLocalCalendarTime(date, startTime, draft.startsAt.getTime())
     if (start === null) return null
 
@@ -131,7 +134,7 @@ export default function CalendarQuickCreate({
     if (
       !Number.isFinite(minutes) ||
       minutes < SLOT_MINUTES ||
-      minutes % SLOT_MINUTES !== 0
+      !Number.isInteger(minutes)
     ) {
       return null
     }
@@ -164,7 +167,7 @@ export default function CalendarQuickCreate({
       return
     }
     if (!resolvedRange) {
-      setError('Choose a valid time and a duration in 15-minute steps.')
+      setError('Choose a valid time and a duration of at least 15 minutes.')
       return
     }
 
@@ -222,7 +225,7 @@ export default function CalendarQuickCreate({
             <PopoverTitle>New task</PopoverTitle>
             <PopoverDescription>
               {resolvedRange
-                ? rangeLabel(resolvedRange.start, resolvedRange.end)
+                ? rangeLabel(resolvedRange.start, resolvedRange.end, calendarPreferences.timeFormat)
                 : 'Choose a valid time range.'}
             </PopoverDescription>
           </PopoverHeader>
@@ -275,7 +278,7 @@ export default function CalendarQuickCreate({
             <Input
               type="time"
               disabled={saving}
-              step={SLOT_MINUTES * 60}
+              step={60}
               value={startTime}
               onChange={(event) => {
                 setStartTime(event.target.value)
@@ -288,7 +291,7 @@ export default function CalendarQuickCreate({
               disabled={saving}
               inputMode="numeric"
               min={SLOT_MINUTES}
-              step={SLOT_MINUTES}
+              step={1}
               value={duration}
               onChange={(event) => {
                 setDuration(event.target.value)
@@ -305,6 +308,7 @@ export default function CalendarQuickCreate({
             <Button type="button" variant="ghost" size="sm" disabled={saving} onClick={onCancel}>
               Cancel
             </Button>
+            {onCreateEvent ? <Button type="button" variant="outline" size="sm" disabled={saving || !resolvedRange} onClick={() => { if (resolvedRange) onCreateEvent({ title: title.trim(), listId: listId === NO_LIST ? null : listId, startsAt: resolvedRange.start, endsAt: resolvedRange.end }) }}>Add event</Button> : null}
             <Button type="submit" size="sm" disabled={saving}>{saving ? 'Saving…' : 'Add task'}</Button>
           </div>
         </form>

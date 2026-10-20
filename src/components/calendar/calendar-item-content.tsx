@@ -1,49 +1,26 @@
-import { CalendarX, Check, CheckCircle2, Clock3, ExternalLink, MoreHorizontal } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Check } from 'lucide-react'
+import type { CSSProperties } from 'react'
 import type { CalendarItem } from '@/lib/calendar-items'
 import { taskDisplayEnd } from '@/lib/calendar-interactions'
-
-function timeLabel(value: string) {
-  return new Date(value).toLocaleTimeString([], {
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-}
+import { formatTime, type TimeFormat } from '@/lib/calendar-preferences'
 
 export default function CalendarItemContent({
   item,
+  timeFormat,
   compact,
   displayStartsAt,
   displayEndsAt,
+  planProgress,
   interactionPreview = false,
-  selected = false,
-  menuOpen,
-  onMenuOpenChange,
-  onOpenTask,
-  onUnschedule,
-  onSetDuration,
   onToggleComplete,
 }: {
   item: CalendarItem
+  timeFormat: TimeFormat
   compact: boolean
   displayStartsAt?: string
   displayEndsAt?: string | null
+  planProgress?: number
   interactionPreview?: boolean
-  selected?: boolean
-  menuOpen?: boolean
-  onMenuOpenChange?: (open: boolean) => void
-  onOpenTask?: () => void
-  onUnschedule?: () => void
-  onSetDuration?: (minutes: number) => void
   onToggleComplete?: () => void
 }) {
   if (item.kind === 'due-task') {
@@ -63,7 +40,12 @@ export default function CalendarItemContent({
     const endsAt = displayEndsAt === undefined ? item.endsAt : displayEndsAt
     const displayedEnd = taskDisplayEnd(new Date(startsAt), endsAt ? new Date(endsAt) : null)
     return (
-      <div className="planomy-calendar-block-content">
+      <div
+        className="planomy-calendar-block-content"
+        style={planProgress === undefined
+          ? undefined
+          : { '--plan-progress': `${planProgress}%` } as CSSProperties}
+      >
         <div className="planomy-calendar-block-title">
           {onToggleComplete ? (
             <button
@@ -91,63 +73,13 @@ export default function CalendarItemContent({
         </div>
         {!compact ? (
           <span className={`planomy-calendar-block-time ${interactionPreview ? 'is-live-preview' : ''}`}>
-            {timeLabel(startsAt)}
-            {` – ${timeLabel(displayedEnd.toISOString())}`}
+            {formatTime(startsAt, timeFormat)}
+            {` – ${formatTime(displayedEnd.toISOString(), timeFormat)}`}
           </span>
         ) : null}
 
-        {selected && !compact && onOpenTask && onUnschedule && onSetDuration ? (
-          <DropdownMenu open={menuOpen} onOpenChange={onMenuOpenChange}>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="planomy-calendar-task-menu"
-                aria-label={`Actions for ${item.task.title}`}
-                onMouseDownCapture={(event) => event.stopPropagation()}
-                onTouchStartCapture={(event) => event.stopPropagation()}
-                onPointerDownCapture={(event) => event.stopPropagation()}
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={(event) => event.stopPropagation()}
-              >
-                <MoreHorizontal aria-hidden="true" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={6}>
-              <DropdownMenuItem onSelect={onOpenTask}>
-                <ExternalLink /> Open task
-              </DropdownMenuItem>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <Clock3 /> Set duration
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  {[15, 30, 45, 60, 90, 120].map((minutes) => (
-                    <DropdownMenuItem key={minutes} onSelect={() => onSetDuration(minutes)}>
-                      {minutes < 60
-                        ? `${minutes} minutes`
-                        : `${minutes / 60} hour${minutes === 60 ? '' : 's'}`}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              {onToggleComplete ? (
-                <DropdownMenuItem onSelect={onToggleComplete}>
-                  <CheckCircle2 />
-                  {item.task.completed ? 'Mark incomplete' : 'Complete'}
-                </DropdownMenuItem>
-              ) : null}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={() => {
-                  // Let Radix finish closing the menu before removing the
-                  // event that owns its trigger.
-                  window.setTimeout(() => onUnschedule(), 0)
-                }}
-              >
-                <CalendarX /> Unschedule
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {item.sessionState === 'missed' && !compact ? (
+          <span className="planomy-calendar-block-status">Missed · choose what’s next</span>
         ) : null}
       </div>
     )
@@ -156,10 +88,10 @@ export default function CalendarItemContent({
   const { event } = item
   return (
     <div className="planomy-calendar-block-content">
-      <div className="planomy-calendar-block-title">{event.title}</div>
+      <div className="planomy-calendar-block-title"><span>{event.title}</span></div>
       {!compact && !event.all_day && event.starts_at && event.ends_at ? (
         <span className="planomy-calendar-block-time">
-          {timeLabel(event.starts_at)} – {timeLabel(event.ends_at)}
+          {formatTime(event.starts_at, timeFormat)} – {formatTime(event.ends_at, timeFormat)}
         </span>
       ) : null}
     </div>

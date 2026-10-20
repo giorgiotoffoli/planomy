@@ -1,4 +1,4 @@
-import { getList, getListTasks, getUserLists } from '@/components/lists/queries'
+import { getList, getListEvents, getListTasks, getUserLists } from '@/components/lists/queries'
 import getCategories from '@/components/boards/queries'
 import TaskWorkspace from '@/components/layout/task-workspace'
 
@@ -14,16 +14,20 @@ export default async function ListPage({
   const { 'list-id': listId } = await params
   const { view } = await searchParams
 
-  const tasks = await getListTasks(listId)
-  const lists = await getUserLists()
-  const currentList = await getList(listId)
-  const categories = await getCategories(listId)
+  const [tasks, events, lists, currentList, categories] = await Promise.all([
+    getListTasks(listId),
+    getListEvents(listId),
+    getUserLists(),
+    getList(listId),
+    getCategories(listId),
+  ])
 
   const currentView = view === 'board' ? 'board' : 'list'
 
   return (
     <TaskWorkspace
-      tasks={tasks}
+    tasks={tasks}
+    events={events}
       currentView={currentView}
       listId={listId}
       lists={lists}

@@ -165,7 +165,7 @@ export default function HomeSourcesPicker({
                       </span>
                     </span>
                     <span className="mt-0.5 block pl-6 text-xs text-slate-500 dark:text-muted-foreground">
-                      Tasks not assigned to a list
+                      Tasks and events not assigned to a list
                     </span>
                   </label>
                 </div>

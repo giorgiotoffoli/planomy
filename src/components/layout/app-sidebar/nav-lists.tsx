@@ -22,6 +22,8 @@ import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString } from '@/lib/crypto/e2ee'
 import { ListEmoji } from '@/components/lists/list-emoji'
 import { ListColorMenu } from '@/components/lists/list-color-menu'
+import { LISTS_CHANGED, listMutationFromEvent } from '@/components/lists/mutations'
+import { applyListMutationToList } from '@/lib/live-mutations'
 
 export function NavLists({ lists }: { lists: List[] }) {
   const { masterKey } = useE2EE()
@@ -57,6 +59,19 @@ export function NavLists({ lists }: { lists: List[] }) {
       isCancelled = true
     }
   }, [lists, masterKey])
+
+  useEffect(() => {
+    const handleListsChanged = (event: Event) => {
+      const change = listMutationFromEvent(event)
+      if (!change) return
+      setLocalLists((current) =>
+        current.map((list) => applyListMutationToList(list, change)),
+      )
+    }
+
+    window.addEventListener(LISTS_CHANGED, handleListsChanged)
+    return () => window.removeEventListener(LISTS_CHANGED, handleListsChanged)
+  }, [])
 
   return (
     <SidebarMenu>

@@ -1,15 +1,17 @@
 import { Card, CardContent } from '../ui/card'
 import { useDroppable } from '@dnd-kit/react'
 import { Category, TaskWithList } from '@/types'
+import type { ListColor } from '@/lib/list-colors'
 import BoardTaskCard from './board-task-card'
 import { CategoryHeader } from '@/components/categories/category-controls'
 
 interface BoardColumnProps {
   tasks: TaskWithList[]
   category: Category | null
+  listColor: ListColor
   categoryIndex?: number
   categoryCount?: number
-  onRenameCategory?: (category: Category, title: string) => Promise<void>
+  onRenameCategory?: (category: Category, title: string, color: ListColor | null) => Promise<void>
   onDeleteCategory?: (category: Category) => Promise<void>
   onMoveCategory?: (
     category: Category,
@@ -21,6 +23,7 @@ interface BoardColumnProps {
 export default function BoardColumn({
   tasks,
   category,
+  listColor,
   categoryIndex,
   categoryCount,
   onRenameCategory,
@@ -46,6 +49,7 @@ export default function BoardColumn({
           count={filteredTasks.length}
           categoryIndex={categoryIndex}
           categoryCount={categoryCount}
+          listColor={listColor}
           onRename={onRenameCategory}
           onDelete={onDeleteCategory}
           onMove={onMoveCategory}

@@ -1,13 +1,24 @@
 'use client'
 
 import type { TaskOrganizationChange } from '@/lib/tasks'
+import type { TaskVisualMutation } from '@/lib/live-mutations'
 import * as actions from './actions'
 
 export const TASKS_CHANGED = 'planomy:tasks-changed'
 export const TASK_ORGANIZATION_CHANGED = 'planomy:task-organization-changed'
 
-export function notifyTasksChanged() {
-  window.dispatchEvent(new Event(TASKS_CHANGED))
+export function notifyTasksChanged(change?: TaskVisualMutation) {
+  window.dispatchEvent(new CustomEvent<TaskVisualMutation | undefined>(TASKS_CHANGED, {
+    detail: change,
+  }))
+}
+
+export function taskVisualMutationFromEvent(
+  event: Event,
+): TaskVisualMutation | null {
+  if (!(event instanceof CustomEvent)) return null
+  const change = event.detail as TaskVisualMutation | undefined
+  return change && typeof change.taskId === 'string' ? change : null
 }
 
 export function notifyTaskOrganizationChanged(

@@ -1,6 +1,11 @@
 import { MINUTE, SLOT_MINUTES, dayBounds, localTimeCandidates, timeInput } from './agenda.ts'
 import { localDateKey } from './today.ts'
 
+/** Keep task gesture thresholds aligned across the Calendar and Planner. */
+export const TASK_DRAG_DISTANCE = 6
+export const TASK_TOUCH_DELAY = 250
+export const TASK_TOUCH_TOLERANCE = 8
+
 export const DEFAULT_TASK_DISPLAY_MINUTES = SLOT_MINUTES
 
 export type CalendarDraftRange = {
@@ -10,6 +15,19 @@ export type CalendarDraftRange = {
 
 export function taskDisplayEnd(start: Date, end: Date | null) {
   return end ?? new Date(start.getTime() + DEFAULT_TASK_DISPLAY_MINUTES * MINUTE)
+}
+
+/**
+ * Give a new calendar selection a predictable start boundary while leaving
+ * later moving/resizing on the finer calendar snap.
+ */
+export function snapCreationStart(start: Date, intervalMinutes = SLOT_MINUTES) {
+  const snapped = new Date(start)
+  snapped.setSeconds(0, 0)
+  snapped.setMinutes(
+    Math.floor(snapped.getMinutes() / intervalMinutes) * intervalMinutes,
+  )
+  return snapped
 }
 
 export function moveTimedRange(

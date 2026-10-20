@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import type { Category, List, TaskWithList } from '@/types'
+import type { CalendarEventWithList, Category, List, TaskWithList } from '@/types'
 import {
   addCalendarDays,
   calendarDaysBetween,
@@ -9,6 +9,7 @@ import {
 
 export const MAX_FOCUS_TASKS = 3
 export const DUE_SOON_DAYS = 2
+export const HOME_UPCOMING_DAYS = 7
 
 export type HomeSource =
   | { type: 'unsorted' }
@@ -317,6 +318,31 @@ export function filterHomeTasks(
   return tasks.filter((task) =>
     isTaskVisibleOnHome(task, preferences, categories),
   )
+}
+
+export function isEventVisibleOnHome(
+  event: Pick<CalendarEventWithList, 'list_id' | 'category_id' | 'show_in_upcoming'>,
+  preferences: HomeSourcePreferences,
+  categories: Pick<Category, 'id' | 'list_id'>[] = [],
+) {
+  if (event.show_in_upcoming === false) return false
+  if (event.list_id === null) return preferences.showUnsortedOnHome
+  if (preferences.excludedHomeListIds.includes(event.list_id)) return false
+  if (event.category_id == null) return true
+
+  return isHomeCategoryEnabled(
+    { id: event.category_id, list_id: event.list_id },
+    categories,
+    preferences,
+  )
+}
+
+export function filterHomeEvents(
+  events: CalendarEventWithList[],
+  preferences: HomeSourcePreferences,
+  categories: Pick<Category, 'id' | 'list_id'>[] = [],
+) {
+  return events.filter((event) => isEventVisibleOnHome(event, preferences, categories))
 }
 
 function categoryIdsForList(

@@ -1,4 +1,5 @@
 import type { TaskWithList } from '@/types'
+import { formatTime, type TimeFormat } from './calendar-preferences.ts'
 import { isDateKey } from './today.ts'
 
 export type CalendarTask = {
@@ -10,6 +11,7 @@ export type CalendarTask = {
 export function formatTaskDueTime(
   dueTime: string | null,
   locales?: Intl.LocalesArgument,
+  timeFormat: TimeFormat = '12h',
 ) {
   if (!dueTime) return null
 
@@ -20,13 +22,17 @@ export function formatTaskDueTime(
   const minutes = Number(match[2])
   if (hours > 23 || minutes > 59) return null
 
-  return new Intl.DateTimeFormat(locales, {
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(2000, 0, 1, hours, minutes))
+  const date = new Date(2000, 0, 1, hours, minutes)
+  return locales
+    ? new Intl.DateTimeFormat(locales, {
+        hour: timeFormat === '12h' ? 'numeric' : '2-digit',
+        minute: '2-digit',
+        hour12: timeFormat === '12h',
+      }).format(date)
+    : formatTime(date, timeFormat)
 }
 
-export function projectCalendarTasks(tasks: TaskWithList[]): CalendarTask[] {
+export function projectCalendarTasks(tasks: TaskWithList[], timeFormat: TimeFormat = '12h'): CalendarTask[] {
   return tasks
     .filter(
       (task): task is TaskWithList & { due_date: string } =>
@@ -37,7 +43,7 @@ export function projectCalendarTasks(tasks: TaskWithList[]): CalendarTask[] {
     .map((task) => ({
       task,
       dateKey: task.due_date,
-      dueTimeLabel: formatTaskDueTime(task.due_time),
+      dueTimeLabel: formatTaskDueTime(task.due_time, undefined, timeFormat),
     }))
     .sort((left, right) => {
       const dateOrder = left.dateKey.localeCompare(right.dateKey)

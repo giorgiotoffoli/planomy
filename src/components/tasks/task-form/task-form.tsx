@@ -9,11 +9,13 @@ import {
   FolderOpen,
   ListX,
   NotebookPen,
+  Repeat,
   Star,
   Tag,
+  Trash2,
   Type,
 } from 'lucide-react'
-import type { Category, List, TaskWithList, TimeBlock } from '@/types'
+import type { Category, List, RecurrenceRule, TaskWithList, TimeBlock } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -28,8 +30,14 @@ import { ListEmoji } from '@/components/lists/list-emoji'
 import { localDateKey } from '@/lib/today'
 import { cn } from '@/lib/utils'
 import { localTimeCandidates, MINUTE, SLOT_MINUTES, timeInput, timeLabel } from '@/lib/agenda'
+import { formatTime, type TimeFormat } from '@/lib/calendar-preferences'
+import { useCalendarPreferences } from '@/components/settings/calendar-preferences-provider'
+import { recurrenceLabel } from '@/lib/recurrence'
 
 export type PlanTimeDraft = {
+  id?: string
+  templateId?: string
+  timeZone?: string
   date: string
   startTime: string
   duration: number
@@ -43,9 +51,12 @@ export type TaskFormValues = {
   categoryId: string | null
   dueDate: string | null
   dueTime: string | null
-  planTime: PlanTimeDraft | null
+  planTimes: PlanTimeDraft[]
   focused: boolean
+  repeatRule: RecurrenceRule | null
 }
+
+export type TaskFormInitialValues = Partial<TaskFormValues>
 
 type TaskFormProps = {
   mode: 'create' | 'edit'
@@ -54,15 +65,27 @@ type TaskFormProps = {
   categories: Category[]
   initialListId?: string | null
   initialCategoryId?: string | null
+  initialValues?: TaskFormInitialValues
   initialTimeBlock?: TimeBlock | null
+  initialTimeBlocks?: TimeBlock[]
   focusPlanTime?: boolean
   disabled?: boolean
   error?: string | null
   onCancel?: () => void
+  onCreateEvent?: (values: TaskFormValues) => void
   onSubmit: (values: TaskFormValues) => void | Promise<void>
 }
 
 const durationOptions = [15, 30, 45, 60, 90, 120]
+const weekdayOptions = [
+  { value: 1, short: 'Mon', label: 'Monday' },
+  { value: 2, short: 'Tue', label: 'Tuesday' },
+  { value: 3, short: 'Wed', label: 'Wednesday' },
+  { value: 4, short: 'Thu', label: 'Thursday' },
+  { value: 5, short: 'Fri', label: 'Friday' },
+  { value: 6, short: 'Sat', label: 'Saturday' },
+  { value: 7, short: 'Sun', label: 'Sunday' },
+]
 
 function dateLabel(value: string | null) {
   if (!value) return ''
@@ -74,11 +97,16 @@ function dateLabel(value: string | null) {
   }).format(new Date(year, month - 1, day, 12))
 }
 
-function timeValueLabel(value: string | null) {
+function timeValueLabel(value: string | null, timeFormat: TimeFormat) {
   if (!value) return ''
   const [hours, minutes] = value.split(':').map(Number)
   const date = new Date(2000, 0, 1, hours, minutes)
-  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  return formatTime(date, timeFormat)
+}
+
+function weekdayForDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+  return ((new Date(year, month - 1, day, 12).getDay() + 6) % 7) + 1
 }
 
 function initialPlanTime(block?: TimeBlock | null): PlanTimeDraft | null {
@@ -86,6 +114,7 @@ function initialPlanTime(block?: TimeBlock | null): PlanTimeDraft | null {
   const start = Date.parse(block.starts_at)
   if (!Number.isFinite(start)) return null
   return {
+    id: block.id,
     date: localDateKey(new Date(start)),
     startTime: timeInput(start),
     duration: block.ends_at
@@ -95,14 +124,35 @@ function initialPlanTime(block?: TimeBlock | null): PlanTimeDraft | null {
   }
 }
 
-function planEndLabel(plan: PlanTimeDraft) {
+function initialPlanTimes(
+  blocks: TimeBlock[],
+  fallback?: TimeBlock | null,
+  recurrenceRule?: RecurrenceRule | null,
+) {
+  const recurringSessions = recurrenceRule?.scheduledSessions
+  if (recurringSessions?.length) {
+    const startDate = recurrenceRule?.startDate ?? ''
+    return recurringSessions.map((session) => ({
+      templateId: session.id,
+      timeZone: session.timeZone,
+      date: startDate,
+      startTime: session.startTime,
+      duration: session.durationMinutes ?? SLOT_MINUTES,
+      occurrence: '',
+    }))
+  }
+  const source = blocks.length ? blocks : fallback ? [fallback] : []
+  return source.map(initialPlanTime).filter((plan): plan is PlanTimeDraft => Boolean(plan))
+}
+
+function planEndLabel(plan: PlanTimeDraft, timeFormat: TimeFormat) {
   const duration = Math.max(SLOT_MINUTES, plan.duration)
   const candidates = localTimeCandidates(plan.date, plan.startTime)
   const chosen = candidates.length === 1
     ? candidates[0]
     : candidates.find((candidate) => String(candidate) === plan.occurrence)
   if (chosen === undefined) return null
-  return timeLabel(chosen + duration * MINUTE)
+  return timeLabel(chosen + duration * MINUTE, timeFormat)
 }
 
 function MetadataRow({
@@ -185,26 +235,35 @@ export function TaskForm({
   categories,
   initialListId = null,
   initialCategoryId = null,
+  initialValues,
   initialTimeBlock,
+  initialTimeBlocks = [],
   focusPlanTime = false,
   disabled = false,
   error,
   onCancel = () => {},
+  onCreateEvent,
   onSubmit,
 }: TaskFormProps) {
-  const initialPlan = initialPlanTime(initialTimeBlock)
-  const [title, setTitle] = useState(task?.title ?? '')
-  const [notes, setNotes] = useState(task?.notes ?? '')
-  const [listId, setListId] = useState(task?.list_id ?? initialListId ?? null)
-  const [categoryId, setCategoryId] = useState(
-    task?.category_id ?? initialCategoryId ?? null,
+  const { preferences: calendarPreferences } = useCalendarPreferences()
+  const initialPlanList = initialValues?.planTimes ?? initialPlanTimes(
+    initialTimeBlocks ?? [],
+    initialTimeBlock,
+    initialValues?.repeatRule ?? task?.recurrence_rule,
   )
-  const [dueDate, setDueDate] = useState(task?.due_date ?? null)
-  const [dueTime, setDueTime] = useState(task?.due_time ?? null)
-  const [planTime, setPlanTime] = useState<PlanTimeDraft | null>(initialPlan)
-  const [deadlineOpen, setDeadlineOpen] = useState(Boolean(task?.due_date))
-  const [planOpen, setPlanOpen] = useState(Boolean(initialPlan) || focusPlanTime)
-  const [focused, setFocused] = useState(task?.focused ?? false)
+  const [title, setTitle] = useState(initialValues?.title ?? task?.title ?? '')
+  const [notes, setNotes] = useState(initialValues?.notes ?? task?.notes ?? '')
+  const [listId, setListId] = useState(initialValues?.listId ?? task?.list_id ?? initialListId ?? null)
+  const [categoryId, setCategoryId] = useState(
+    initialValues?.categoryId ?? task?.category_id ?? initialCategoryId ?? null,
+  )
+  const [dueDate, setDueDate] = useState(initialValues?.dueDate ?? task?.due_date ?? null)
+  const [dueTime, setDueTime] = useState(initialValues?.dueTime ?? task?.due_time ?? null)
+  const [planTimes, setPlanTimes] = useState<PlanTimeDraft[]>(initialPlanList)
+  const [deadlineOpen, setDeadlineOpen] = useState(Boolean(initialValues?.dueDate ?? task?.due_date))
+  const [planOpen, setPlanOpen] = useState(initialPlanList.length > 0 || focusPlanTime)
+  const [focused, setFocused] = useState(initialValues?.focused ?? task?.focused ?? false)
+  const [repeatRule, setRepeatRule] = useState<RecurrenceRule | null>(initialValues?.repeatRule ?? task?.recurrence_rule ?? null)
 
   const availableCategories = useMemo(
     () => categories
@@ -213,6 +272,8 @@ export function TaskForm({
     [categories, listId],
   )
   const selectedCategory = availableCategories.find((category) => category.id === categoryId)
+  const weekdayRepeat = repeatRule?.frequency === 'weekly' || repeatRule?.frequency === 'custom'
+  const customRepeat = repeatRule?.frequency === 'custom'
 
   function changeList(value: string) {
     const nextListId = value === 'inbox' ? null : value
@@ -228,29 +289,64 @@ export function TaskForm({
 
   function openPlanTime() {
     setPlanOpen((open) => !open)
-    if (!planTime) {
-      setPlanTime({
-        date: localDateKey(),
+    if (!planTimes.length) {
+      setPlanTimes([{
+        date: repeatRule?.startDate ?? localDateKey(),
         startTime: '09:00',
         duration: SLOT_MINUTES,
         occurrence: '',
-      })
+      }])
     }
+  }
+
+  function addPlanTime() {
+    setPlanOpen(true)
+    setPlanTimes((current) => [...current, {
+      date: repeatRule?.startDate ?? localDateKey(),
+      startTime: '09:00',
+      duration: SLOT_MINUTES,
+      occurrence: '',
+    }])
+  }
+
+  function toggleRepeatWeekday(day: number) {
+    setRepeatRule((current) => {
+      if (!current) return current
+      const selected = current.weekdays ?? [weekdayForDate(current.startDate)]
+      const next = selected.includes(day)
+        ? selected.filter((value) => value !== day)
+        : [...selected, day]
+      // Weekly repeats need at least one selected day. Custom repeats may be
+      // cleared to keep their legacy every-N-days behavior.
+      if (current.frequency === 'weekly' && next.length === 0) return current
+      return { ...current, weekdays: next.length ? [...new Set(next)].sort() : undefined }
+    })
+  }
+
+  function updatePlanTime(index: number, change: Partial<PlanTimeDraft>) {
+    setPlanTimes((current) => current.map((plan, planIndex) =>
+      planIndex === index ? { ...plan, ...change } : plan,
+    ))
   }
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (disabled || !title.trim()) return
-    void onSubmit({
+    void onSubmit(currentValues())
+  }
+
+  function currentValues(): TaskFormValues {
+    return {
       title: title.trim(),
       notes,
       listId,
       categoryId: listId ? categoryId : null,
       dueDate,
       dueTime: dueDate ? dueTime : null,
-      planTime,
+      planTimes,
       focused,
-    })
+      repeatRule,
+    }
   }
 
   return (
@@ -315,6 +411,145 @@ export function TaskForm({
           />
 
           <MetadataRow
+            icon={<Repeat className="size-4" />}
+            label="Repeat"
+            summary={
+              <Select
+                value={repeatRule?.frequency ?? 'never'}
+                onValueChange={(value) => {
+                  if (value === 'never') {
+                    setRepeatRule(null)
+                    return
+                  }
+                  const frequency = value as RecurrenceRule['frequency']
+                  const startDate = repeatRule?.startDate ?? planTimes[0]?.date ?? dueDate ?? localDateKey()
+                  setRepeatRule({
+                    frequency,
+                    startDate,
+                    interval: repeatRule?.interval ?? 1,
+                    weekdays: frequency === 'weekly' || frequency === 'custom'
+                      ? repeatRule?.weekdays ?? [weekdayForDate(startDate)]
+                      : undefined,
+                    endDate: repeatRule?.endDate ?? null,
+                    count: repeatRule?.count ?? null,
+                    scheduledSessions: repeatRule?.scheduledSessions,
+                  })
+                  setPlanTimes((current) => current.map((plan) => ({
+                    ...plan,
+                    date: startDate,
+                    occurrence: '',
+                  })))
+                }}
+                disabled={disabled}
+              >
+                <SelectTrigger className="h-8 w-full max-w-none border-0 bg-transparent px-0 text-sm shadow-none focus:ring-0">
+                  <SelectValue placeholder="Never" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="never">Never</SelectItem>
+                  <SelectItem value="daily">Every day</SelectItem>
+                  <SelectItem value="weekday">Every weekday</SelectItem>
+                  <SelectItem value="weekly">Every week</SelectItem>
+                  <SelectItem value="monthly">Every month</SelectItem>
+                  <SelectItem value="yearly">Every year</SelectItem>
+                  <SelectItem value="custom">Custom interval</SelectItem>
+                </SelectContent>
+              </Select>
+            }
+            description={repeatRule ? `${recurrenceLabel(repeatRule)} · each occurrence keeps its own completion state.` : 'Keep this task one-time, or choose a repeat pattern.'}
+            expanded={repeatRule && (
+              <div className="grid gap-3 rounded-xl border border-border/70 bg-background/60 p-3 sm:grid-cols-2">
+                {customRepeat && (
+                  <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground sm:col-span-2">
+                    <span>Repeat every</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={repeatRule.interval ?? 1}
+                      onChange={(event) => setRepeatRule({
+                        ...repeatRule,
+                        interval: event.target.value ? Math.max(1, Number(event.target.value)) : 1,
+                      })}
+                      disabled={disabled}
+                      className="h-9 w-20 bg-background text-sm font-normal text-foreground"
+                      aria-label="Custom repeat interval"
+                    />
+                    <span className="font-normal">{repeatRule.weekdays?.length ? 'week(s)' : 'day(s)'}</span>
+                  </label>
+                )}
+                {weekdayRepeat && (
+                  <fieldset className="space-y-2 sm:col-span-2">
+                    <legend className="text-xs font-medium text-muted-foreground">Repeat on</legend>
+                    <div className="grid grid-cols-7 gap-1.5">
+                      {weekdayOptions.map((day) => {
+                        const selected = repeatRule.weekdays?.includes(day.value) ?? false
+                        return (
+                          <Button
+                            key={day.value}
+                            type="button"
+                            size="sm"
+                            variant={selected ? 'default' : 'outline'}
+                            className="h-9 min-w-0 px-1 text-[11px] sm:text-xs"
+                            aria-label={`Repeat on ${day.label}`}
+                            aria-pressed={selected}
+                            onClick={() => toggleRepeatWeekday(day.value)}
+                            disabled={disabled}
+                          >
+                            {day.short}
+                          </Button>
+                        )
+                      })}
+                    </div>
+                    {customRepeat && (
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        Choose days for a weekly pattern, or clear them to repeat every number of days.
+                      </p>
+                    )}
+                  </fieldset>
+                )}
+                <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">
+                  Starts on
+                  <Input
+                    type="date"
+                    required
+                    value={repeatRule.startDate}
+                    onChange={(event) => {
+                      const startDate = event.target.value
+                      setRepeatRule({ ...repeatRule, startDate })
+                      setPlanTimes((current) => current.map((plan) => ({ ...plan, date: startDate, occurrence: '' })))
+                    }}
+                    disabled={disabled}
+                    className="h-10 bg-background text-sm font-normal text-foreground"
+                  />
+                </label>
+                <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">
+                  Repeat until <span className="font-normal">(optional)</span>
+                  <Input
+                    type="date"
+                    value={repeatRule.endDate ?? ''}
+                    onChange={(event) => setRepeatRule({ ...repeatRule, endDate: event.target.value || null })}
+                    disabled={disabled}
+                    className="h-10 bg-background text-sm font-normal text-foreground"
+                  />
+                </label>
+                <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">
+                  Occurrences <span className="font-normal">(optional)</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={repeatRule.count ?? ''}
+                    onChange={(event) => setRepeatRule({ ...repeatRule, count: event.target.value ? Number(event.target.value) : null })}
+                    disabled={disabled}
+                    className="h-10 bg-background text-sm font-normal text-foreground"
+                  />
+                </label>
+              </div>
+            )}
+          />
+
+          <MetadataRow
             icon={<Tag className="size-4" />}
             label="Category"
             summary={
@@ -345,18 +580,18 @@ export function TaskForm({
 
           <MetadataRow
             icon={<CalendarDays className="size-4" />}
-            label="Deadline"
+            label="Finish by"
             tone="deadline"
             summary={
               <SectionToggle
                 open={deadlineOpen}
                 disabled={disabled}
-                label="deadline"
-                summary={dueDate ? `${dateLabel(dueDate)}${dueTime ? ` · ${timeValueLabel(dueTime)}` : ''}` : ''}
+                label="finish by"
+                summary={dueDate ? `${dateLabel(dueDate)}${dueTime ? ` · ${timeValueLabel(dueTime, calendarPreferences.timeFormat)}` : ''}` : ''}
                 onClick={openDeadline}
               />
             }
-            description="When this needs to be finished. This does not add an Agenda block."
+            description="Optional final target for completing the task. It does not add a scheduled session."
             expanded={deadlineOpen && (
               <div className="rounded-xl border border-rose-200/70 bg-background/70 p-3.5 dark:border-rose-900/40 dark:bg-background/30">
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -427,119 +662,117 @@ export function TaskForm({
 
           <MetadataRow
             icon={<Clock3 className="size-4" />}
-            label="Plan time"
+            label="Schedule"
             tone="plan"
             summary={
               <SectionToggle
                 open={planOpen}
                 disabled={disabled}
-                label="plan time"
-                summary={planTime ? `${dateLabel(planTime.date)} · ${timeValueLabel(planTime.startTime)}${planEndLabel(planTime) ? ` – ${planEndLabel(planTime)}` : ''}` : ''}
+                label="schedule"
+                summary={planTimes.length
+                  ? `${planTimes.length} session${planTimes.length === 1 ? '' : 's'} · ${planTimes.map((plan) => timeValueLabel(plan.startTime, calendarPreferences.timeFormat)).join(', ')}`
+                  : ''}
                 onClick={openPlanTime}
               />
             }
-            description="When you intend to work on it."
-            expanded={planOpen && planTime && (
+            description="When you intend to work on it. Add as many separate sessions as you need."
+            expanded={planOpen && (
               <div className="space-y-3 rounded-xl border border-blue-200/70 bg-background/70 p-3.5 dark:border-blue-900/40 dark:bg-background/30">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">
-                    Date
-                    <Input
-                      type="date"
-                      required
-                      value={planTime.date}
-                      onChange={(event) => setPlanTime({ ...planTime, date: event.target.value, occurrence: '' })}
-                      disabled={disabled}
-                      className="h-10 rounded-lg border-blue-200/80 bg-background text-sm font-normal text-foreground focus-visible:border-blue-400 focus-visible:ring-blue-500/30 dark:border-blue-900/60"
-                    />
-                  </label>
-                  <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">
-                    Start time
-                    <Input
-                      type="time"
-                      required
-                      step={60}
-                      value={planTime.startTime}
-                      onChange={(event) => setPlanTime({ ...planTime, startTime: event.target.value, occurrence: '' })}
-                      disabled={disabled}
-                      className="h-10 rounded-lg border-blue-200/80 bg-background text-sm font-normal text-foreground focus-visible:border-blue-400 focus-visible:ring-blue-500/30 dark:border-blue-900/60"
-                    />
-                  </label>
-                </div>
-                <label className="block max-w-[12rem] space-y-1.5 text-xs font-medium text-muted-foreground">
-                  Duration
-                  <Select
-                    value={
-                      durationOptions.includes(planTime.duration)
-                        ? String(planTime.duration)
-                          : 'custom'
-                    }
-                    onValueChange={(value) =>
-                      setPlanTime({
-                        ...planTime,
-                        duration:
-                          value === 'custom'
-                            ? planTime.duration
-                            : Number(value),
-                      })
-                    }
-                    disabled={disabled}
-                  >
-                    <SelectTrigger className="h-10 w-full border-blue-200/80 bg-background text-sm font-normal text-foreground dark:border-blue-900/60"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {durationOptions.map((duration) => (
-                        <SelectItem key={duration} value={String(duration)}>{duration < 60 ? `${duration} min` : `${duration / 60} hour${duration === 60 ? '' : 's'}`}</SelectItem>
-                      ))}
-                      <SelectItem value="custom">Custom</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </label>
-                {!durationOptions.includes(planTime.duration) && (
-                  <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">
-                    Custom duration in minutes
-                    <Input
-                      type="number"
-                      min={15}
-                      step={15}
-                      value={planTime.duration}
-                      onChange={(event) => setPlanTime({ ...planTime, duration: Number(event.target.value) })}
-                      disabled={disabled}
-                      className="h-10 rounded-lg border-blue-200/80 bg-background text-sm font-normal text-foreground focus-visible:border-blue-400 focus-visible:ring-blue-500/30 dark:border-blue-900/60"
-                    />
-                  </label>
-                  )}
-                {(() => {
+                {planTimes.map((planTime, index) => {
                   const candidates = localTimeCandidates(planTime.date, planTime.startTime)
-                  if (candidates.length === 0) {
-                    return <p role="alert" className="text-xs text-destructive">This local time does not exist. Choose another time.</p>
-                  }
-                  if (candidates.length > 1) {
-                    return (
-                      <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">
-                        This time occurs twice. Choose an occurrence.
-                        <Select value={planTime.occurrence} onValueChange={(value) => setPlanTime({ ...planTime, occurrence: value })} disabled={disabled}>
-                          <SelectTrigger className="h-10 border-blue-200/80 bg-background text-sm font-normal text-foreground dark:border-blue-900/60"><SelectValue placeholder="Choose an occurrence" /></SelectTrigger>
+                  return (
+                    <div key={planTime.id ?? `new-${index}`} className="space-y-3 rounded-lg border border-blue-200/60 p-3 dark:border-blue-900/40">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-muted-foreground">Session {index + 1}</p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`Remove session ${index + 1}`}
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={() => setPlanTimes((current) => current.filter((_, planIndex) => planIndex !== index))}
+                          disabled={disabled}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {!repeatRule && (
+                          <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">
+                            Date
+                            <Input
+                              type="date"
+                              required
+                              value={planTime.date}
+                              onChange={(event) => updatePlanTime(index, { date: event.target.value, occurrence: '' })}
+                              disabled={disabled}
+                              className="h-10 rounded-lg border-blue-200/80 bg-background text-sm font-normal text-foreground focus-visible:border-blue-400 focus-visible:ring-blue-500/30 dark:border-blue-900/60"
+                            />
+                          </label>
+                        )}
+                        <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">
+                          Start time
+                          <Input
+                            type="time"
+                            required
+                            step={60}
+                            value={planTime.startTime}
+                            onChange={(event) => updatePlanTime(index, { startTime: event.target.value, occurrence: '' })}
+                            disabled={disabled}
+                            className="h-10 rounded-lg border-blue-200/80 bg-background text-sm font-normal text-foreground focus-visible:border-blue-400 focus-visible:ring-blue-500/30 dark:border-blue-900/60"
+                          />
+                        </label>
+                      </div>
+                      <label className="block max-w-[12rem] space-y-1.5 text-xs font-medium text-muted-foreground">
+                        Duration
+                        <Select
+                          value={durationOptions.includes(planTime.duration) ? String(planTime.duration) : 'custom'}
+                          onValueChange={(value) => updatePlanTime(index, { duration: value === 'custom' ? planTime.duration : Number(value) })}
+                          disabled={disabled}
+                        >
+                          <SelectTrigger className="h-10 w-full border-blue-200/80 bg-background text-sm font-normal text-foreground dark:border-blue-900/60"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            {candidates.map((candidate, index) => <SelectItem key={candidate} value={String(candidate)}>{index === 0 ? 'First' : 'Second'} · {timeLabel(candidate)}</SelectItem>)}
+                            {durationOptions.map((duration) => (
+                              <SelectItem key={duration} value={String(duration)}>{duration < 60 ? `${duration} min` : `${duration / 60} hour${duration === 60 ? '' : 's'}`}</SelectItem>
+                            ))}
+                            <SelectItem value="custom">Custom</SelectItem>
                           </SelectContent>
                         </Select>
                       </label>
-                    )
-                  }
-                  return <p className="text-xs text-muted-foreground">{Intl.DateTimeFormat().resolvedOptions().timeZone} · elapsed time</p>
-                })()}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="px-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => {
-                    setPlanTime(null)
-                    setPlanOpen(false)
-                  }}
-                  disabled={disabled}
-                >
-                  Remove Plan time
+                      {!durationOptions.includes(planTime.duration) && (
+                        <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">
+                          Custom duration in minutes
+                          <Input
+                            type="number"
+                            min={15}
+                            step={15}
+                            value={planTime.duration}
+                            onChange={(event) => updatePlanTime(index, { duration: Number(event.target.value) })}
+                            disabled={disabled}
+                            className="h-10 rounded-lg border-blue-200/80 bg-background text-sm font-normal text-foreground focus-visible:border-blue-400 focus-visible:ring-blue-500/30 dark:border-blue-900/60"
+                          />
+                        </label>
+                      )}
+                      {candidates.length === 0 ? (
+                        <p role="alert" className="text-xs text-destructive">This local time does not exist. Choose another time.</p>
+                      ) : candidates.length > 1 ? (
+                        <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">
+                          This time occurs twice. Choose an occurrence.
+                          <Select value={planTime.occurrence} onValueChange={(value) => updatePlanTime(index, { occurrence: value })} disabled={disabled}>
+                            <SelectTrigger className="h-10 border-blue-200/80 bg-background text-sm font-normal text-foreground dark:border-blue-900/60"><SelectValue placeholder="Choose an occurrence" /></SelectTrigger>
+                            <SelectContent>
+                              {candidates.map((candidate, candidateIndex) => <SelectItem key={candidate} value={String(candidate)}>{candidateIndex === 0 ? 'First' : 'Second'} · {timeLabel(candidate, calendarPreferences.timeFormat)}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </label>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">{planTime.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone} · {planEndLabel(planTime, calendarPreferences.timeFormat) ? `${timeValueLabel(planTime.startTime, calendarPreferences.timeFormat)} – ${planEndLabel(planTime, calendarPreferences.timeFormat)}` : 'elapsed time'}</p>
+                      )}
+                    </div>
+                  )
+                })}
+                <Button type="button" variant="outline" size="sm" className="w-full border-dashed" onClick={addPlanTime} disabled={disabled}>
+                  Add another time
                 </Button>
               </div>
             )}
@@ -572,7 +805,19 @@ export function TaskForm({
       </div>
 
       {error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}
-      <div className="mt-6 flex shrink-0 flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
+      <div className="mt-6 flex shrink-0 flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-end">
+        {mode === 'create' && onCreateEvent ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onCreateEvent(currentValues())}
+            disabled={disabled || !title.trim()}
+            className="sm:mr-auto"
+          >
+            <CalendarDays />
+            Create event
+          </Button>
+        ) : null}
         <Button type="button" variant="outline" onClick={onCancel} disabled={disabled}>
           Cancel
         </Button>

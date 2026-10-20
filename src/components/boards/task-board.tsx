@@ -2,6 +2,7 @@
 
 import BoardColumn from '@/components/boards/board-column'
 import type { Category, TaskWithList } from '@/types'
+import type { ListColor } from '@/lib/list-colors'
 import { DragDropProvider } from '@dnd-kit/react'
 import { useEffect, useMemo, useState } from 'react'
 import type { DragDropEvents } from '@dnd-kit/react'
@@ -13,12 +14,13 @@ type DragEndEvent = Parameters<DragDropEvents['dragend']>[0]
 interface TaskBoardProps {
   tasks: TaskWithList[]
   categories: Category[]
+  listColor: ListColor
   onTaskCategoryChange: (
     taskId: string,
     categoryId: string | null,
   ) => Promise<void>
-  onCreateCategory: (title: string) => Promise<void>
-  onRenameCategory: (category: Category, title: string) => Promise<void>
+  onCreateCategory: (title: string, color: ListColor | null) => Promise<void>
+  onRenameCategory: (category: Category, title: string, color: ListColor | null) => Promise<void>
   onDeleteCategory: (category: Category) => Promise<void>
   onMoveCategory: (
     category: Category,
@@ -30,6 +32,7 @@ interface TaskBoardProps {
 export default function TaskBoard({
   tasks,
   categories,
+  listColor,
   onTaskCategoryChange,
   onCreateCategory,
   onRenameCategory,
@@ -105,6 +108,7 @@ export default function TaskBoard({
                 categoryCount={sortedCategories.length}
                 tasks={localTasks}
                 onRenameCategory={onRenameCategory}
+                listColor={listColor}
                 onDeleteCategory={onDeleteCategory}
                 onMoveCategory={onMoveCategory}
                 pageScroll={pageScroll}
@@ -117,13 +121,14 @@ export default function TaskBoard({
               <BoardColumn
                 category={null}
                 tasks={localTasks}
+                listColor={listColor}
                 pageScroll={pageScroll}
               />
             </div>
           )}
 
           <div className="flex h-fit w-80 shrink-0 items-start">
-            <AddCategoryButton onCreate={onCreateCategory} />
+            <AddCategoryButton onCreate={onCreateCategory} listColor={listColor} />
           </div>
         </div>
       </div>

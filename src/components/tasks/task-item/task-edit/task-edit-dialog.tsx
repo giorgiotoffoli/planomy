@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import type { Category, List, TaskWithList } from '@/types'
 import { TaskDialog } from '../../task-form/task-dialog'
+import type { TaskOccurrenceContext } from '../../task-form/task-occurrence-context'
 
 interface TaskEditDialogProps {
   task: TaskWithList
@@ -13,6 +14,7 @@ interface TaskEditDialogProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   focusPlanTime?: boolean
+  occurrence?: TaskOccurrenceContext
   // Optional compatibility props for callers that still perform their own
   // optimistic row updates. The unified dialog persists all fields itself.
   handleOnDueDateChange?: (taskId: string, newDueDate: string) => void
@@ -28,6 +30,7 @@ export function TaskEditDialog({
   open,
   onOpenChange,
   focusPlanTime = false,
+  occurrence,
 }: TaskEditDialogProps) {
   return (
     <TaskDialog
@@ -37,6 +40,7 @@ export function TaskEditDialog({
       categories={categories}
       listId={task.list_id}
       focusPlanTime={focusPlanTime}
+      occurrence={occurrence}
       open={open}
       onOpenChange={onOpenChange}
     >

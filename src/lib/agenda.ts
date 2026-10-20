@@ -1,4 +1,5 @@
 import { isDateKey, localDateKey } from './today.ts'
+import { formatTime, type TimeFormat } from './calendar-preferences.ts'
 
 export const MINUTE = 60_000
 export const SLOT_MINUTES = 15
@@ -35,8 +36,8 @@ export function timeInput(instant: number) {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
-export function timeLabel(instant: number) {
-  return new Date(instant).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+export function timeLabel(instant: number, timeFormat: TimeFormat = '12h') {
+  return formatTime(instant, timeFormat)
 }
 
 export function snapInstant(day: string, offsetMinutes: number) {
