@@ -68,6 +68,8 @@ export type AgendaDrag = {
   block?: TimeBlock
   scope?: string
   reorder?: (active: string, over: string) => void
+  changeCategory?: (taskId: string, categoryId: string | null) => Promise<void>
+  categoryId?: string | null
 }
 
 async function decryptTask(task: TaskWithList, masterKey: Uint8Array) {
@@ -786,8 +788,19 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
   function finishDrag(event: DragEndEvent) {
     const next = proposal(event)
     const source = event.active.data.current as AgendaDrag | undefined
-    if (next) void save(next.task, next.start, next.persistedEnd, next.sessionId)
-    else if (source && dragIntent(source, event.over?.data.current) === 'reorder' && event.over) source.reorder?.(source.task.id, String(event.over.id))
+    const target = event.over?.data.current as { kind?: string; categoryId?: string | null } | undefined
+
+    if (source?.kind === 'task' && source.changeCategory &&
+      (target?.kind === 'task-category' || target?.kind === 'task') &&
+      source.categoryId !== (target.categoryId ?? null)) {
+      void source.changeCategory(source.task.id, target.categoryId ?? null).catch(error => {
+        toast.error(error instanceof Error ? error.message : 'Category was not changed.')
+      })
+    } else if (next) {
+      void save(next.task, next.start, next.persistedEnd, next.sessionId)
+    } else if (source && dragIntent(source, target) === 'reorder' && event.over) {
+      source.reorder?.(source.task.id, String(event.over.id))
+    }
     setDrag(null); setPreview(null)
   }
 

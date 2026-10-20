@@ -109,10 +109,19 @@ export function layoutBlocks<T extends Interval>(blocks: T[], day: string) {
   return visible
 }
 
-/** A schedule target always wins; reordering is confined to its originating list. */
-export function dragIntent(source: { kind?: string; scope?: string }, target: { kind?: string; scope?: string } | undefined) {
+/** Scheduling wins over list gestures; reordering and categorizing stay in one list scope. */
+export function dragIntent(
+  source: { kind?: string; scope?: string; categoryId?: string | null },
+  target: { kind?: string; scope?: string; categoryId?: string | null } | undefined,
+) {
   if (!target) return 'none'
   if (target.kind === 'agenda-slot' && ['task', 'agenda-block', 'agenda-resize'].includes(source.kind ?? '')) return 'schedule'
-  if (source.kind === 'task' && target.kind === 'task' && source.scope && source.scope === target.scope) return 'reorder'
+  if (source.kind === 'task' && source.scope && source.scope === target.scope) {
+    if (target.kind === 'task-category' || target.kind === 'task') {
+      return target.kind === 'task-category' || source.categoryId !== target.categoryId
+        ? 'categorize'
+        : 'reorder'
+    }
+  }
   return 'none'
 }

@@ -2,7 +2,9 @@ import { TaskItem } from '../tasks/task-item/task-item'
 import { Category, List, TaskWithList } from '../../types'
 import type { ListColor } from '@/lib/list-colors'
 import { useSearchParams } from 'next/navigation'
-import { useId } from 'react'
+import { useId, type ReactNode } from 'react'
+import { useDroppable } from '@dnd-kit/core'
+import { cn } from '@/lib/utils'
 
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import {
@@ -36,6 +38,70 @@ interface TaskListProps {
     direction: 'up' | 'down',
   ) => Promise<void>
   pageScroll?: boolean
+}
+
+interface TaskCategorySectionProps {
+  category: Category | null
+  count: number
+  headingId: string
+  categoryIndex?: number
+  categoryCount?: number
+  listColor?: ListColor
+  onRename?: (category: Category, title: string, color: ListColor | null) => Promise<void>
+  onDelete?: (category: Category) => Promise<void>
+  onMove?: (category: Category, direction: 'up' | 'down') => Promise<void>
+  scope: string
+  canDrop: boolean
+  children: ReactNode
+}
+
+function TaskCategorySection({
+  category,
+  count,
+  headingId,
+  categoryIndex,
+  categoryCount,
+  listColor,
+  onRename,
+  onDelete,
+  onMove,
+  scope,
+  canDrop,
+  children,
+}: TaskCategorySectionProps) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: `task-category:${category?.id ?? 'uncategorized'}`,
+    disabled: !canDrop,
+    data: {
+      kind: 'task-category',
+      categoryId: category?.id ?? null,
+      scope,
+    },
+  })
+
+  return (
+    <section
+      ref={setNodeRef}
+      aria-labelledby={headingId}
+      className={cn(
+        'min-h-16 rounded-lg transition-colors',
+        isOver && 'bg-primary/5 ring-2 ring-primary/30',
+      )}
+    >
+      <CategoryHeader
+        category={category}
+        count={count}
+        headingId={headingId}
+        categoryIndex={categoryIndex}
+        categoryCount={categoryCount}
+        onRename={onRename}
+        listColor={listColor}
+        onDelete={onDelete}
+        onMove={onMove}
+      />
+      {children}
+    </section>
+  )
 }
 
 export default function TaskList({
@@ -115,31 +181,34 @@ export default function TaskList({
         )
 
         return (
-          <section key={category.id} aria-labelledby={`category-${category.id}`}>
-            <CategoryHeader
-              category={category}
-              count={categoryTasks.length}
-              headingId={`category-${category.id}`}
-              categoryIndex={categoryIndex}
-              categoryCount={sortedCategories.length}
-              onRename={handleOnRenameCategory}
-              listColor={listColor}
-              onDelete={handleOnDeleteCategory}
-              onMove={handleOnMoveCategory}
-            />
+          <TaskCategorySection
+            key={category.id}
+            category={category}
+            count={categoryTasks.length}
+            headingId={`category-${category.id}`}
+            categoryIndex={categoryIndex}
+            categoryCount={sortedCategories.length}
+            onRename={handleOnRenameCategory}
+            listColor={listColor}
+            onDelete={handleOnDeleteCategory}
+            onMove={handleOnMoveCategory}
+            scope={scope}
+            canDrop={canReorder && Boolean(handleOnChangeCategory)}
+          >
             {renderTasks(categoryTasks)}
-          </section>
+          </TaskCategorySection>
         )
       })}
 
-      <section aria-labelledby="category-uncategorized">
-        <CategoryHeader
-          category={null}
-          count={localTasks.filter((task) => task.category_id === null).length}
-          headingId="category-uncategorized"
-        />
+      <TaskCategorySection
+        category={null}
+        count={localTasks.filter((task) => task.category_id === null).length}
+        headingId="category-uncategorized"
+        scope={scope}
+        canDrop={canReorder && Boolean(handleOnChangeCategory)}
+      >
         {renderTasks(localTasks.filter((task) => task.category_id === null))}
-      </section>
+      </TaskCategorySection>
 
       <AddCategoryButton onCreate={handleOnCreateCategory!} listColor={listColor!} />
     </div>

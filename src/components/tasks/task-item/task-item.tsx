@@ -89,7 +89,14 @@ export function TaskItem({
   } = useSortable({
     id: task.id,
     disabled: { draggable: task.id.startsWith('temp-'), droppable: !canReorder },
-    data: { kind: 'task', task, scope: dragScope, reorder: handleOnReorder },
+    data: {
+      kind: 'task',
+      task,
+      categoryId: task.category_id ?? null,
+      scope: dragScope,
+      reorder: handleOnReorder,
+      changeCategory: handleOnChangeCategory,
+    },
   })
 
   const displayTask = isExiting ? { ...task, completed: true } : task
