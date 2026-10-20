@@ -377,7 +377,11 @@ export async function deleteTask(id: string) {
   revalidatePath('/')
 }
 
-export async function moveTask(taskId: string, newListId: string | null) {
+export async function moveTask(
+  taskId: string,
+  newListId: string | null,
+  newCategoryId: string | null = null,
+) {
   const supabase = await createClient()
 
   const {
@@ -386,21 +390,12 @@ export async function moveTask(taskId: string, newListId: string | null) {
 
   if (!user) throw new Error('Unauthorized')
 
-  if (newListId) {
-    const { data: list, error: listError } = await supabase
-      .from('lists')
-      .select('id')
-      .eq('id', newListId)
-      .eq('user_id', user.id)
-      .maybeSingle()
+  const categoryId = newListId ? newCategoryId : null
+  await validateTaskOrganization(supabase, user.id, newListId, categoryId)
 
-    if (listError) throw new Error(listError.message)
-    if (!list) throw new Error('List not found')
-  }
-
-  const { data: task, error: taskError } = await supabase
+  const { error: taskError } = await supabase
     .from('tasks')
-    .select('list_id')
+    .select('id')
     .eq('id', taskId)
     .eq('user_id', user.id)
     .single()
@@ -411,7 +406,7 @@ export async function moveTask(taskId: string, newListId: string | null) {
     .from('tasks')
     .update({
       list_id: newListId,
-      ...(task.list_id !== newListId ? { category_id: null } : {}),
+      category_id: categoryId,
     })
     .eq('id', taskId)
     .eq('user_id', user.id)

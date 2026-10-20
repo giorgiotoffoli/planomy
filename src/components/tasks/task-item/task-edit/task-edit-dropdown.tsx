@@ -87,6 +87,7 @@ export function TaskEditDropdown({
                   currentListId={currentListId}
                   taskListId={task.list_id}
                   taskCategoryId={task.category_id}
+                  categories={categories}
                 />
               </DropdownMenuSubContent>
           </DropdownMenuSub>
