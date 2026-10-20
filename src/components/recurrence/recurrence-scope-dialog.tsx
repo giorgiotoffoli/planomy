@@ -13,13 +13,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { RECURRENCE_SCOPES, type RecurrenceScope } from '@/lib/recurrence-scope'
+import { RECURRENCE_SCOPES, type RecurrenceScope, type RecurrenceScopeOption } from '@/lib/recurrence-scope'
 
 export function RecurrenceScopeDialog({
   open,
   action,
   itemLabel,
   availableScopes = RECURRENCE_SCOPES.map((scope) => scope.value),
+  scopeOptions = RECURRENCE_SCOPES,
   busy = false,
   onCancel,
   onConfirm,
@@ -28,11 +29,12 @@ export function RecurrenceScopeDialog({
   action: 'edit' | 'delete'
   itemLabel: string
   availableScopes?: RecurrenceScope[]
+  scopeOptions?: RecurrenceScopeOption[]
   busy?: boolean
   onCancel: () => void
   onConfirm: (scope: RecurrenceScope) => void
 }) {
-  const scopes = RECURRENCE_SCOPES.filter((scope) => availableScopes.includes(scope.value))
+  const scopes = scopeOptions.filter((scope) => availableScopes.includes(scope.value))
   const [scope, setScope] = useState<RecurrenceScope>(availableScopes[0] ?? 'this')
   const selectedScope = scopes.some((option) => option.value === scope)
     ? scope

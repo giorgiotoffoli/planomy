@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   generateOccurrenceDateKeys,
   isMissedSession,
+  normalizeRecurrenceRule,
   recurrenceLabel,
   recurrenceMatchesDate,
   recurringSessionTimes,
@@ -39,6 +40,30 @@ test('weekly recurrence honors weekdays and an inclusive end condition', () => {
   assert.deepEqual(generateOccurrenceDateKeys(rule, '2026-10-05', '2026-10-20'), [
     '2026-10-05', '2026-10-07', '2026-10-12', '2026-10-14',
   ])
+})
+
+test('weekday times normalize into stable weekday order and replace duplicate days', () => {
+  assert.deepEqual(normalizeRecurrenceRule({
+    frequency: 'weekly',
+    startDate: '2026-10-05',
+    weekdays: [5, 1],
+    weekdayTimes: [
+      { weekday: 5, startTime: '11:30', durationMinutes: 60 },
+      { weekday: 1, startTime: '12:00', durationMinutes: 60 },
+      { weekday: 5, startTime: '12:30', durationMinutes: null },
+    ],
+  }), {
+    frequency: 'weekly',
+    startDate: '2026-10-05',
+    interval: 1,
+    weekdays: [1, 5],
+    endDate: null,
+    count: null,
+    weekdayTimes: [
+      { weekday: 1, startTime: '12:00', durationMinutes: 60 },
+      { weekday: 5, startTime: '12:30', durationMinutes: null },
+    ],
+  })
 })
 
 test('custom recurrence can repeat on selected weekdays', () => {

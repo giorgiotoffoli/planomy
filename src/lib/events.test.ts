@@ -90,6 +90,65 @@ test('recurring timed events preserve wall-clock time across DST', () => {
   assert.equal(new Set(occurrences.map((item) => item.id)).size, 3)
 })
 
+test('weekly weekday schedules keep one series while using each day\'s wall-clock time', () => {
+  const event: CalendarEventWithList = {
+    id: 'lunch', user_id: 'user', list_id: null, title: 'Lunch', description: null,
+    location: null, all_day: false, starts_at: '2026-03-02T17:00:00.000Z',
+    ends_at: '2026-03-02T18:00:00.000Z', starts_on: null, ends_on: null,
+    time_zone: 'America/New_York', recurrence_rule: {
+      frequency: 'weekly', startDate: '2026-03-02', weekdays: [1, 3, 5],
+      weekdayTimes: [
+        { weekday: 1, startTime: '12:00', durationMinutes: 60 },
+        { weekday: 3, startTime: '13:30', durationMinutes: 60 },
+        { weekday: 5, startTime: '11:30', durationMinutes: 60 },
+      ],
+    },
+    created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', list: null,
+  }
+  const occurrences = expandCalendarEvents([event], [], {
+    startsAt: '2026-03-01T00:00:00Z', endsAt: '2026-03-10T00:00:00Z',
+    startsOn: '2026-03-01', endsOn: '2026-03-10',
+  })
+  assert.deepEqual(occurrences.map((item) => [item.occurrence_key, item.starts_at, item.ends_at]), [
+    ['2026-03-02|America/New_York', '2026-03-02T17:00:00.000Z', '2026-03-02T18:00:00.000Z'],
+    ['2026-03-04|America/New_York', '2026-03-04T18:30:00.000Z', '2026-03-04T19:30:00.000Z'],
+    ['2026-03-06|America/New_York', '2026-03-06T16:30:00.000Z', '2026-03-06T17:30:00.000Z'],
+    ['2026-03-09|America/New_York', '2026-03-09T16:00:00.000Z', '2026-03-09T17:00:00.000Z'],
+  ])
+  assert.equal(new Set(occurrences.map((item) => item.source_event_id)).size, 1)
+})
+
+test('weekday schedules support point events, midnight crossings, and exceptions', () => {
+  const event: CalendarEventWithList = {
+    id: 'support', user_id: 'user', list_id: null, title: 'Support', description: null,
+    location: null, all_day: false, starts_at: '2026-10-19T22:00:00.000Z',
+    ends_at: null, starts_on: null, ends_on: null, time_zone: 'UTC',
+    recurrence_rule: {
+      frequency: 'custom', startDate: '2026-10-19', interval: 1, weekdays: [1, 3],
+      weekdayTimes: [
+        { weekday: 1, startTime: '23:30', durationMinutes: 120 },
+        { weekday: 3, startTime: '09:00', durationMinutes: null },
+      ],
+    },
+    created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', list: null,
+  }
+  const occurrences = expandCalendarEvents([event], [{
+    id: 'moved', event_id: 'support', user_id: 'user', occurrence_key: '2026-10-21|UTC',
+    cancelled: false, title: 'Support', description: null, location: null, time_zone: 'UTC',
+    list_id: null, category_id: null, category: null, color: null, all_day: false,
+    starts_at: '2026-10-21T10:00:00.000Z', ends_at: null, starts_on: null, ends_on: null,
+    show_in_upcoming: true, created_at: '', updated_at: '',
+  }], {
+    startsAt: '2026-10-19T00:00:00Z', endsAt: '2026-10-27T00:00:00Z',
+    startsOn: '2026-10-19', endsOn: '2026-10-27',
+  })
+  assert.deepEqual(occurrences.map((item) => [item.occurrence_key, item.starts_at, item.ends_at]), [
+    ['2026-10-19|UTC', '2026-10-19T23:30:00.000Z', '2026-10-20T01:30:00.000Z'],
+    ['2026-10-21|UTC', '2026-10-21T10:00:00.000Z', null],
+    ['2026-10-26|UTC', '2026-10-26T23:30:00.000Z', '2026-10-27T01:30:00.000Z'],
+  ])
+})
+
 test('recurrence exceptions cancel and move one occurrence without duplicating it', () => {
   const event: CalendarEventWithList = {
     id: 'meeting', user_id: 'user', list_id: null, title: 'Meeting', description: null,

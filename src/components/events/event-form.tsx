@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { CalendarDays, Clock3, FolderOpen, Home, MapPin, NotebookPen, Palette, Repeat, Tag, Type } from 'lucide-react'
-import type { CalendarEventWithList, Category, List, RecurrenceRule } from '@/types'
+import type { CalendarEventWithList, Category, List, RecurrenceRule, RecurrenceWeekdayTime } from '@/types'
 import type { ListColor } from '@/lib/list-colors'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -56,14 +56,81 @@ export type EventFormInitialValues = {
 }
 
 const weekdays = [
-  { value: 1, label: 'Mon' },
-  { value: 2, label: 'Tue' },
-  { value: 3, label: 'Wed' },
-  { value: 4, label: 'Thu' },
-  { value: 5, label: 'Fri' },
-  { value: 6, label: 'Sat' },
-  { value: 7, label: 'Sun' },
+  { value: 1, label: 'Mon', name: 'Monday' },
+  { value: 2, label: 'Tue', name: 'Tuesday' },
+  { value: 3, label: 'Wed', name: 'Wednesday' },
+  { value: 4, label: 'Thu', name: 'Thursday' },
+  { value: 5, label: 'Fri', name: 'Friday' },
+  { value: 6, label: 'Sat', name: 'Saturday' },
+  { value: 7, label: 'Sun', name: 'Sunday' },
 ]
+
+type WeekdayScheduleDraft = {
+  startTime: string
+  endTime: string
+}
+
+function timeMinutes(value: string) {
+  const [hours, minutes] = value.split(':').map(Number)
+  return hours * 60 + minutes
+}
+
+function durationBetweenTimes(startTime: string, endTime: string) {
+  if (!endTime) return null
+  const duration = timeMinutes(endTime) - timeMinutes(startTime)
+  return duration <= 0 ? duration + 24 * 60 : duration
+}
+
+function endTimeAfterDuration(startTime: string, durationMinutes: number | null) {
+  if (durationMinutes === null || !startTime) return ''
+  const total = (timeMinutes(startTime) + durationMinutes) % (24 * 60)
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+
+function defaultWeekdaySchedule(
+  startsAt: string,
+  endsAt: string,
+  startsOn: string,
+  endsOn: string,
+): WeekdayScheduleDraft {
+  if (!startsAt) return { startTime: '', endTime: endsAt }
+  const [startYear, startMonth, startDay] = startsOn.split('-').map(Number)
+  const [endYear, endMonth, endDay] = (endsOn || startsOn).split('-').map(Number)
+  const dayDifference = Number.isFinite(startYear) && Number.isFinite(endYear)
+    ? (Date.UTC(endYear, endMonth - 1, endDay) - Date.UTC(startYear, startMonth - 1, startDay)) / 86_400_000
+    : 0
+  const duration = endsAt
+    ? Math.max(
+        1,
+        dayDifference * 24 * 60 + timeMinutes(endsAt) - timeMinutes(startsAt),
+      )
+    : null
+  return { startTime: startsAt, endTime: endTimeAfterDuration(startsAt, duration) }
+}
+
+function initialWeekdaySchedules(
+  recurrence: RecurrenceRule | null,
+  startsAt: string | null,
+  endsAt: string,
+  startsOn: string,
+  endsOn: string,
+) {
+  const fallback = defaultWeekdaySchedule(startsAt ?? '', endsAt, startsOn, endsOn)
+  return weekdays.reduce<Record<number, WeekdayScheduleDraft>>((result, day) => {
+    const configured = recurrence?.weekdayTimes?.find((schedule) => schedule.weekday === day.value)
+    result[day.value] = configured
+      ? {
+          startTime: configured.startTime,
+          endTime: endTimeAfterDuration(configured.startTime, configured.durationMinutes),
+        }
+      : { ...fallback }
+    return result
+  }, {})
+}
+
+function validTimeInput(value: string) {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value)
+}
 
 const commonTimeZones = [
   'UTC',
@@ -203,10 +270,22 @@ export default function EventForm({
   const [frequency, setFrequency] = useState<RecurrenceRule['frequency'] | 'never'>(initial.recurrence?.frequency ?? 'never')
   const [interval, setInterval] = useState(String(initial.recurrence?.interval ?? 1))
   const [selectedWeekdays, setSelectedWeekdays] = useState(initial.recurrence?.weekdays ?? [weekdayForDate(initial.startsOn)])
+  const [differentTimes, setDifferentTimes] = useState(Boolean(initial.recurrence?.weekdayTimes?.length))
+  const [weekdaySchedules, setWeekdaySchedules] = useState<Record<number, WeekdayScheduleDraft>>(
+    () => initialWeekdaySchedules(
+      initial.recurrence,
+      initial.startsAt,
+      initial.endsAt ?? '',
+      initial.startsOn,
+      initial.endsOn,
+    ),
+  )
   const [endDate, setEndDate] = useState(initial.recurrence?.endDate ?? '')
   const [monthlyPosition, setMonthlyPosition] = useState(String(initial.recurrence?.monthlyPosition ?? 'date'))
   const [monthlyWeekday, setMonthlyWeekday] = useState(String(initial.recurrence?.monthlyWeekday ?? weekdayForDate(initial.startsOn)))
   const [localError, setLocalError] = useState<string | null>(null)
+  const [scheduleNotice, setScheduleNotice] = useState<string | null>(null)
+  const individualTimesActive = !allDay && differentTimes && (frequency === 'weekly' || frequency === 'custom')
   const availableCategories = useMemo(
     () => (categories ?? [])
       .filter((category) => category.list_id === listId)
@@ -226,9 +305,36 @@ export default function EventForm({
   }
 
   function toggleWeekday(day: number) {
-    setSelectedWeekdays((current) => current.includes(day)
-      ? current.filter((value) => value !== day)
-      : [...current, day].sort())
+    if (selectedWeekdays.includes(day)) {
+      setSelectedWeekdays((current) => current.filter((value) => value !== day))
+      setWeekdaySchedules((schedules) => {
+        const next = { ...schedules }
+        delete next[day]
+        return next
+      })
+      return
+    }
+
+    setSelectedWeekdays((current) => [...current, day].sort())
+    setWeekdaySchedules((schedules) => ({
+      ...schedules,
+      [day]: schedules[day] ?? defaultWeekdaySchedule(startsAt, endsAt, startsOn, endsOn),
+    }))
+  }
+
+  function changeDifferentTimes(checked: boolean) {
+    if (checked) {
+      setWeekdaySchedules((schedules) => selectedWeekdays.reduce((next, day) => ({
+        ...next,
+        [day]: schedules[day] ?? defaultWeekdaySchedule(startsAt, endsAt, startsOn, endsOn),
+      }), schedules))
+      setDifferentTimes(true)
+      setScheduleNotice(null)
+      return
+    }
+
+    setDifferentTimes(false)
+    setScheduleNotice('Switching to one shared time will replace the separate weekday times when you save.')
   }
 
   function submit(formEvent: React.FormEvent<HTMLFormElement>) {
@@ -247,6 +353,32 @@ export default function EventForm({
     const recurrenceStartDate = event?.occurrence_key
       ? initial.recurrence?.startDate ?? startsOn
       : startsOn
+    if ((frequency === 'weekly' || frequency === 'custom') && selectedWeekdays.length === 0) {
+      setLocalError('Select at least one day to repeat on.')
+      return
+    }
+
+    let weekdayTimes: RecurrenceWeekdayTime[] | undefined
+    if (individualTimesActive) {
+      weekdayTimes = []
+      for (const day of selectedWeekdays) {
+        const schedule = weekdaySchedules[day] ?? defaultWeekdaySchedule(startsAt, endsAt, startsOn, endsOn)
+        if (!validTimeInput(schedule.startTime)) {
+          setLocalError(`Choose a start time for ${weekdays.find((candidate) => candidate.value === day)?.name ?? 'each selected day'}.`)
+          return
+        }
+        if (schedule.endTime && !validTimeInput(schedule.endTime)) {
+          setLocalError(`Choose a valid end time for ${weekdays.find((candidate) => candidate.value === day)?.name ?? 'each selected day'}.`)
+          return
+        }
+        weekdayTimes.push({
+          weekday: day,
+          startTime: schedule.startTime,
+          durationMinutes: durationBetweenTimes(schedule.startTime, schedule.endTime),
+        })
+      }
+    }
+
     const recurrenceRule = frequency === 'never'
       ? null
       : {
@@ -256,6 +388,7 @@ export default function EventForm({
           weekdays: frequency === 'weekly' || frequency === 'custom' ? selectedWeekdays : undefined,
           endDate: endDate || null,
           count: initial.recurrence?.count ?? null,
+          ...(weekdayTimes ? { weekdayTimes } : {}),
           ...(frequency === 'monthly' && monthlyPosition !== 'date'
             ? { monthlyPosition: Number(monthlyPosition) || 1, monthlyWeekday: Number(monthlyWeekday) || weekdayForDate(startsOn) }
             : {}),
@@ -329,11 +462,22 @@ export default function EventForm({
                 if (allDay && isDateKey(nextStartsOn) && (!isDateKey(endsOn) || endsOn <= nextStartsOn)) {
                   setEndsOn(addCalendarDays(nextStartsOn, 1))
                 }
-                if (!event?.occurrence_key && frequency !== 'never' && isDateKey(nextStartsOn)) setSelectedWeekdays([weekdayForDate(nextStartsOn)])
+                if (!event?.occurrence_key && frequency !== 'never' && isDateKey(nextStartsOn)) {
+                  const nextWeekday = weekdayForDate(nextStartsOn)
+                  setSelectedWeekdays([nextWeekday])
+                  setWeekdaySchedules((schedules) => ({
+                    ...schedules,
+                    [nextWeekday]: schedules[nextWeekday] ?? defaultWeekdaySchedule(startsAt, endsAt, nextStartsOn, endsOn),
+                  }))
+                }
               }} disabled={disabled} aria-label="Event start date" />
-              {allDay ? <Input type="date" value={endsOn} onChange={(e) => setEndsOn(e.target.value)} disabled={disabled} aria-label="Event end date" /> : <Input type="time" step={60} value={startsAt} onChange={(e) => setStartsAt(e.target.value)} disabled={disabled} aria-label="Event start time" />}
-              {!allDay ? <Input type="date" value={endsOn} onChange={(e) => setEndsOn(e.target.value)} disabled={disabled} aria-label="Event end date" /> : null}
-              {!allDay ? <Input type="time" step={60} value={endsAt} onChange={(e) => setEndsAt(e.target.value)} disabled={disabled} aria-label="Optional event end time" /> : null}
+              {allDay
+                ? <Input type="date" value={endsOn} onChange={(e) => setEndsOn(e.target.value)} disabled={disabled} aria-label="Event end date" />
+                : individualTimesActive
+                  ? <div className="flex h-9 items-center rounded-md border border-dashed border-border/70 bg-muted/20 px-3 text-sm text-muted-foreground">Times vary by day</div>
+                  : <Input type="time" step={60} value={startsAt} onChange={(e) => setStartsAt(e.target.value)} disabled={disabled} aria-label="Event start time" />}
+              {!allDay && !individualTimesActive ? <Input type="date" value={endsOn} onChange={(e) => setEndsOn(e.target.value)} disabled={disabled} aria-label="Event end date" /> : null}
+              {!allDay && !individualTimesActive ? <Input type="time" step={60} value={endsAt} onChange={(e) => setEndsAt(e.target.value)} disabled={disabled} aria-label="Optional event end time" /> : null}
             </div>
             <label className="mt-3 flex items-center gap-2 text-sm"><Checkbox checked={allDay} onCheckedChange={(checked) => {
               const nextAllDay = checked === true
@@ -378,6 +522,35 @@ export default function EventForm({
                       <div className="flex flex-wrap gap-1.5">
                         {weekdays.map((day) => <Button key={day.value} type="button" variant={selectedWeekdays.includes(day.value) ? 'default' : 'outline'} size="sm" className="h-8 px-2.5" onClick={() => toggleWeekday(day.value)} disabled={disabled}>{day.label}</Button>)}
                       </div>
+                      {!allDay ? (
+                        <>
+                          <label htmlFor="event-different-times" className="mt-3 flex min-h-11 items-center gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-sm">
+                            <Checkbox id="event-different-times" checked={differentTimes} onCheckedChange={(checked) => changeDifferentTimes(checked === true)} disabled={disabled} />
+                            <span className="min-w-0"><span className="block font-medium">Different times for each day</span><span className="block text-xs text-muted-foreground">Set a separate time range for every selected day.</span></span>
+                          </label>
+                          {scheduleNotice ? <p className="mt-2 text-xs text-muted-foreground" role="status">{scheduleNotice}</p> : null}
+                          <div className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none ${individualTimesActive ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                            <div className="min-h-0 overflow-hidden">
+                              <div className="mt-3 overflow-hidden rounded-lg border border-border/60 bg-muted/10">
+                                <div className="grid grid-cols-[5.5rem_minmax(0,1fr)_minmax(0,1fr)] gap-2 border-b border-border/60 px-2.5 py-2 text-[11px] font-medium text-muted-foreground sm:grid-cols-[7rem_minmax(0,1fr)_minmax(0,1fr)] sm:px-3">
+                                  <span>Day</span><span>Starts</span><span>Ends</span>
+                                </div>
+                                {selectedWeekdays.map((dayValue) => {
+                                  const day = weekdays.find((candidate) => candidate.value === dayValue) ?? weekdays[0]
+                                  const schedule = weekdaySchedules[dayValue] ?? defaultWeekdaySchedule(startsAt, endsAt, startsOn, endsOn)
+                                  return (
+                                    <div key={dayValue} className="grid grid-cols-[5.5rem_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 border-b border-border/40 px-2.5 py-2 last:border-b-0 sm:grid-cols-[7rem_minmax(0,1fr)_minmax(0,1fr)] sm:px-3">
+                                      <span className="truncate text-sm font-medium">{day.name}</span>
+                                      <Input type="time" step={60} value={schedule.startTime} onChange={(e) => setWeekdaySchedules((current) => ({ ...current, [dayValue]: { ...schedule, startTime: e.target.value } }))} disabled={disabled} aria-label={`${day.name} starts`} className="h-9 px-2 text-sm" />
+                                      <Input type="time" step={60} value={schedule.endTime} onChange={(e) => setWeekdaySchedules((current) => ({ ...current, [dayValue]: { ...schedule, endTime: e.target.value } }))} disabled={disabled} aria-label={`${day.name} ends, optional`} className="h-9 px-2 text-sm" />
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      ) : null}
                     </fieldset>
                   ) : null}
                   {frequency === 'monthly' ? (

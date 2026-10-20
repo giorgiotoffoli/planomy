@@ -103,6 +103,17 @@ export interface RecurrenceRule {
   monthlyWeekday?: number | null
   /** Optional wall-clock sessions repeated for every generated occurrence. */
   scheduledSessions?: RecurrenceSession[]
+  /** Optional wall-clock schedule for each selected weekly weekday. */
+  weekdayTimes?: RecurrenceWeekdayTime[]
+}
+
+export interface RecurrenceWeekdayTime {
+  /** ISO weekday number, where 1 is Monday and 7 is Sunday. */
+  weekday: number
+  /** Local wall-clock start in the event's configured time zone. */
+  startTime: string
+  /** Elapsed duration in minutes, or null for a point-in-time occurrence. */
+  durationMinutes: number | null
 }
 
 export interface RecurrenceSession {
