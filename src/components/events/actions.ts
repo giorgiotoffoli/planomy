@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { expandCalendarEvents, normalizeEventFields, validateCalendarRange, type CalendarRangeInput } from '@/lib/events'
+import { expandCalendarEvents, localDateAndTime, normalizeEventFields, validateCalendarRange, type CalendarRangeInput } from '@/lib/events'
 import { addCalendarDays } from '@/lib/today'
 import { type RecurrenceScope } from '@/lib/recurrence-scope'
 import { generateOccurrenceDateKeys, normalizeRecurrenceRule } from '@/lib/recurrence'
@@ -188,6 +188,42 @@ function occurrenceDateFromKey(occurrenceKey: string) {
   const date = occurrenceKey.slice(0, 10)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('Choose a valid event occurrence.')
   return date
+}
+
+function weekdayForDateKey(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+  return ((new Date(year, month - 1, day, 12).getDay() + 6) % 7) + 1
+}
+
+function weekdayRuleWithTiming(
+  rule: RecurrenceRule,
+  occurrenceKey: string,
+  timing: Extract<EventTiming, { allDay: false }>,
+  timeZone: string,
+) {
+  if (!rule.weekdayTimes?.length) return null
+  const occurrenceDate = occurrenceDateFromKey(occurrenceKey)
+  const weekday = weekdayForDateKey(occurrenceDate)
+  const start = Date.parse(timing.startsAt)
+  const end = timing.endsAt ? Date.parse(timing.endsAt) : null
+  const durationMinutes = end === null ? null : Math.round((end - start) / 60_000)
+  if (!Number.isFinite(start) || (end !== null && (!Number.isFinite(end) || durationMinutes! < 1))) {
+    throw new Error('Choose a valid event time range.')
+  }
+  const local = localDateAndTime(timing.startsAt, timeZone)
+  if (local.date !== occurrenceDate) return null
+  const nextSchedule = {
+    weekday,
+    startTime: local.time,
+    durationMinutes,
+  }
+  return {
+    ...rule,
+    weekdayTimes: [
+      ...rule.weekdayTimes.filter((schedule) => schedule.weekday !== weekday),
+      nextSchedule,
+    ].sort((left, right) => left.weekday - right.weekday),
+  }
 }
 
 function seriesEndBefore(rule: RecurrenceRule | null, occurrenceDate: string) {
@@ -518,6 +554,32 @@ export async function updateEventTiming(
       recurrenceRule: current.recurrence_rule,
       ...timing,
     } as CreateEventInput)
+    const currentRule = normalizeRecurrenceRule(current.recurrence_rule as RecurrenceRule | null)
+    if (!timing.allDay && currentRule?.weekdayTimes?.length) {
+      const updatedRule = weekdayRuleWithTiming(currentRule, occurrenceKey, timing, current.time_zone)
+      if (updatedRule && scope === 'all') {
+        const { error: updateError } = await supabase
+          .from('events')
+          .update({ recurrence_rule: JSON.parse(JSON.stringify(updatedRule)) })
+          .eq('id', eventId)
+          .eq('user_id', user.id)
+        if (updateError) throw new Error(updateError.message)
+        // Timing edits to one weekday change the rule itself. Existing
+        // exceptions remain authoritative for their historical occurrences.
+        revalidatePath('/calendar')
+        return
+      }
+
+      if (updatedRule && scope === 'following') {
+        const seriesFields = eventFieldsFromStoredSeries(current, updatedRule)
+        await updateEventOccurrenceWithScope({
+          ...fieldsToInput(seriesFields),
+          eventId,
+          occurrenceKey,
+        }, scope)
+        return
+      }
+    }
     const occurrenceInput = {
       ...fieldsToInput(fields),
       eventId,

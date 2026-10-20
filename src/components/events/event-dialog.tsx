@@ -8,7 +8,9 @@ import { encryptString } from '@/lib/crypto/e2ee'
 import type { CalendarEventWithList, Category, List } from '@/types'
 import { RecurrenceScopeDialog } from '@/components/recurrence/recurrence-scope-dialog'
 import type { RecurrenceScope } from '@/lib/recurrence-scope'
-import { normalizeRecurrenceRule } from '@/lib/recurrence'
+import { recurrenceScopeOptionsForWeekday } from '@/lib/recurrence-scope'
+import { normalizeRecurrenceRule, recurrenceWeekdayName } from '@/lib/recurrence'
+import { localDateAndTime } from '@/lib/events'
 import type { EventVisualMutation } from '@/lib/live-mutations'
 import { createEvent, deleteEvent, deleteEventOccurrenceWithScope, updateEvent, updateEventOccurrenceWithScope } from './actions'
 import { notifyEventsChanged } from './mutations'
@@ -41,6 +43,32 @@ function recurrenceRulesEqual(
   right: EventFormValues['recurrenceRule'],
 ) {
   return JSON.stringify(normalizeRecurrenceRule(left)) === JSON.stringify(normalizeRecurrenceRule(right))
+}
+
+function weekdayScopeOptions(event: CalendarEventWithList | undefined) {
+  const occurrenceDate = event?.occurrence_key?.slice(0, 10)
+  if (!event?.recurrence_rule?.weekdayTimes?.length || !occurrenceDate) return undefined
+  const [year, month, day] = occurrenceDate.split('-').map(Number)
+  const weekday = ((new Date(year, month - 1, day, 12).getDay() + 6) % 7) + 1
+  return recurrenceScopeOptionsForWeekday(recurrenceWeekdayName(weekday))
+}
+
+function weekdayTimingChanged(
+  event: CalendarEventWithList | undefined,
+  values: EventFormValues | null,
+) {
+  if (!event || !values || !event.occurrence_key) return false
+  if (values.timeZone !== event.time_zone || values.allDay !== event.all_day) return false
+  if (event.starts_at && values.startsAt) {
+    const currentDate = localDateAndTime(event.starts_at, event.time_zone).date
+    const nextDate = localDateAndTime(values.startsAt, event.time_zone).date
+    if (currentDate !== nextDate) return false
+  }
+  const currentRule = normalizeRecurrenceRule(event.recurrence_rule)
+  const nextRule = normalizeRecurrenceRule(values.recurrenceRule)
+  return values.startsAt !== event.starts_at ||
+    values.endsAt !== event.ends_at ||
+    JSON.stringify(currentRule?.weekdayTimes ?? null) !== JSON.stringify(nextRule?.weekdayTimes ?? null)
 }
 
 export default function EventDialog({
@@ -214,6 +242,7 @@ export default function EventDialog({
       action={scopeAction ?? 'edit'}
       itemLabel="event"
       availableScopes={scopeAction === 'edit' ? availableEditScopes : undefined}
+      scopeOptions={scopeAction === 'edit' && weekdayTimingChanged(event, pendingValues) ? weekdayScopeOptions(event) : undefined}
       busy={saving}
       onCancel={() => {
         if (saving) return

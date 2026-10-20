@@ -22,7 +22,7 @@ import {
   scheduledTaskState,
   type CalendarItem,
 } from '@/lib/calendar-items'
-import type { CalendarRangeInput } from '@/lib/events'
+import { localDateAndTime, type CalendarRangeInput } from '@/lib/events'
 import {
   isSingleDayTimedRange,
   moveTimedRange,
@@ -51,7 +51,8 @@ import { TaskDialog } from '@/components/tasks/task-form/task-dialog'
 import type { TaskFormInitialValues } from '@/components/tasks/task-form/task-form'
 import type { TaskOccurrenceContext } from '@/components/tasks/task-form/task-occurrence-context'
 import { RecurrenceScopeDialog } from '@/components/recurrence/recurrence-scope-dialog'
-import type { RecurrenceScope } from '@/lib/recurrence-scope'
+import { recurrenceScopeOptionsForWeekday, type RecurrenceScope } from '@/lib/recurrence-scope'
+import { recurrenceWeekdayName } from '@/lib/recurrence'
 import CalendarItemContent from './calendar-item-content'
 import CalendarItemMenu from './calendar-item-menu'
 import CalendarQuickCreate, {
@@ -121,6 +122,16 @@ function eventLocalStart(event: CalendarEventWithList) {
     date: `${values.year}-${values.month}-${values.day}`,
     time: `${values.hour}:${values.minute}`,
   }
+}
+
+function eventTimingScopeOptions(event: CalendarEventWithList | undefined, proposedStart?: Date) {
+  const occurrenceDate = event?.occurrence_key?.slice(0, 10)
+  if (!event?.recurrence_rule?.weekdayTimes?.length || !occurrenceDate) return undefined
+  if (proposedStart && event.starts_at && localDateAndTime(proposedStart.toISOString(), event.time_zone).date !== occurrenceDate) return undefined
+  const [year, month, day] = occurrenceDate.split('-').map(Number)
+  const weekday = ((new Date(year, month - 1, day, 12).getDay() + 6) % 7) + 1
+  const weekdayName = recurrenceWeekdayName(weekday)
+  return recurrenceScopeOptionsForWeekday(weekdayName)
 }
 
 function eventToTaskValues(event: CalendarEventWithList): TaskFormInitialValues {
@@ -1155,6 +1166,7 @@ export default function CalendarView({
         open={eventTimingScopeOpen}
         action="edit"
         itemLabel="event"
+        scopeOptions={eventTimingScopeOptions(pendingEventTiming?.item.event, pendingEventTiming?.start)}
         busy={eventTimingSaving}
         onCancel={() => {
           if (eventTimingSaving) return

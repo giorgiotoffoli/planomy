@@ -5,7 +5,7 @@ import type {
   EventOccurrenceException,
   RecurrenceRule,
 } from '@/types'
-import { generateOccurrenceDateKeys, normalizeRecurrenceRule, recurrenceMatchesDate, zonedDateTimeToInstant } from './recurrence.ts'
+import { generateOccurrenceDateKeys, normalizeRecurrenceRule, recurrenceMatchesDate, recurrenceWeekdayTime, zonedDateTimeToInstant } from './recurrence.ts'
 import { addCalendarDays, isDateKey } from './today.ts'
 import { normalizeItemColor } from './list-colors.ts'
 
@@ -121,7 +121,7 @@ export function validateCalendarRange(input: CalendarRangeInput) {
   return input
 }
 
-function localDateAndTime(instant: string, timeZone: string) {
+export function localDateAndTime(instant: string, timeZone: string) {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
     year: 'numeric',
@@ -211,11 +211,18 @@ function occurrenceFromDate(
 
   if (!event.starts_at) return null
   const local = localDateAndTime(event.starts_at, event.time_zone)
-  const startsAt = zonedDateTimeToInstant(dateKey, local.time, event.time_zone)
+  const weekdayTime = recurrenceWeekdayTime(rule, dateKey)
+  const startsAt = zonedDateTimeToInstant(
+    dateKey,
+    weekdayTime?.startTime ?? local.time,
+    event.time_zone,
+  )
   if (!startsAt) return null
   const baseStart = Date.parse(event.starts_at)
   const baseEnd = event.ends_at ? Date.parse(event.ends_at) : null
-  const duration = baseEnd === null ? null : Math.max(0, baseEnd - baseStart)
+  const duration = weekdayTime
+    ? weekdayTime.durationMinutes === null ? null : weekdayTime.durationMinutes * 60_000
+    : baseEnd === null ? null : Math.max(0, baseEnd - baseStart)
   const occurrence: CalendarEvent = {
     ...event,
     id: `${event.id}:${key}`,

@@ -2,6 +2,7 @@ import type {
   RecurrenceFrequency,
   RecurrenceRule,
   RecurrenceSession,
+  RecurrenceWeekdayTime,
   TaskOccurrence,
   TimeBlock,
 } from '@/types'
@@ -87,6 +88,33 @@ function normalizeScheduledSessions(value: unknown): RecurrenceSession[] | undef
   return sessions.length ? sessions : undefined
 }
 
+function normalizeWeekdayTimes(value: unknown): RecurrenceWeekdayTime[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  const schedules = value.flatMap((schedule) => {
+    if (!schedule || typeof schedule !== 'object' || Array.isArray(schedule)) return []
+    const candidate = schedule as Partial<RecurrenceWeekdayTime>
+    const weekday = candidate.weekday
+    if (typeof weekday !== 'number' || !Number.isInteger(weekday) || weekday < 1 || weekday > 7) return []
+    if (!validTime(candidate.startTime)) return []
+    const duration = candidate.durationMinutes === null
+      ? null
+      : Number.isFinite(candidate.durationMinutes) &&
+          Number(candidate.durationMinutes) >= 1 &&
+          Number(candidate.durationMinutes) <= 24 * 60
+        ? Math.round(Number(candidate.durationMinutes))
+        : null
+    return [{
+      weekday,
+      startTime: candidate.startTime,
+      durationMinutes: duration,
+    }]
+  })
+  if (!schedules.length) return undefined
+  return Array.from(
+    new Map(schedules.map((schedule) => [schedule.weekday, schedule])).values(),
+  ).sort((left, right) => left.weekday - right.weekday)
+}
+
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 export function normalizeRecurrenceRule(
@@ -111,6 +139,9 @@ export function normalizeRecurrenceRule(
     ? value.monthlyWeekday
     : null
   const scheduledSessions = normalizeScheduledSessions(value.scheduledSessions)
+  const weekdayTimes = value.frequency === 'weekly' || value.frequency === 'custom'
+    ? normalizeWeekdayTimes(value.weekdayTimes)
+    : undefined
 
   return {
     frequency: value.frequency,
@@ -121,7 +152,24 @@ export function normalizeRecurrenceRule(
     count,
     ...(monthlyPosition && monthlyWeekday ? { monthlyPosition, monthlyWeekday } : {}),
     ...(scheduledSessions ? { scheduledSessions } : {}),
+    ...(weekdayTimes ? { weekdayTimes } : {}),
   }
+}
+
+export function recurrenceWeekdayTime(
+  rule: RecurrenceRule,
+  occurrenceDate: string,
+) {
+  const normalized = normalizeRecurrenceRule(rule)
+  if (!normalized?.weekdayTimes || !isDateKey(occurrenceDate)) return null
+  const date = dateFromKey(occurrenceDate)
+  if (!date) return null
+  const weekday = ((date.getDay() + 6) % 7) + 1
+  return normalized.weekdayTimes.find((schedule) => schedule.weekday === weekday) ?? null
+}
+
+export function recurrenceWeekdayName(weekday: number) {
+  return WEEKDAY_NAMES[weekday - 1] ?? 'weekday'
 }
 
 function timeZoneParts(instant: number, timeZone: string) {
