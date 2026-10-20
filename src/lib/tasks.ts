@@ -1,4 +1,4 @@
-import type { ListSummary, TaskWithList } from '@/types'
+import type { CategorySummary, ListSummary, TaskWithList } from '@/types'
 
 export function matchesTaskSearch(task: TaskWithList, searchQuery: string) {
   const query = searchQuery.trim().toLocaleLowerCase()
@@ -11,6 +11,7 @@ export type TaskOrganizationChange = {
   taskId: string
   listId: string | null
   categoryId: string | null
+  category?: CategorySummary | null
 }
 
 export function applyTaskOrganizationChange(
@@ -24,6 +25,7 @@ export function applyTaskOrganizationChange(
     ...task,
     list_id: change.listId,
     category_id: change.categoryId,
+    category: change.categoryId === null ? null : change.category ?? task.category ?? null,
     list: change.listId
       ? lists.find((list) => list.id === change.listId) ?? null
       : null,

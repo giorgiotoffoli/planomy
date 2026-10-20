@@ -11,7 +11,7 @@ export default async function CompletedPage() {
       lists={lists}
       currentView="list"
       listId={null}
-      headerTitle="Completed"
+      headerTitle="Archive"
     />
   )
 }

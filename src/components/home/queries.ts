@@ -12,9 +12,11 @@ import { addCalendarDays, isDateKey, localDateKey } from '@/lib/today'
 import { toAgendaBlock } from '@/lib/supabase/domain-mappers'
 import { materializeRecurringSessions } from '@/lib/recurring-sessions'
 import type { NeedsAttentionItem, TaskOccurrence, TaskWithList } from '@/types'
+import type { CalendarEventWithList } from '@/types'
+import { getEventsInRange } from '@/components/events/actions'
 
 const scheduledSelection =
-  '*, occurrence:task_occurrences!task_time_blocks_owned_occurrence(*), task:tasks!task_time_blocks_owned_task(*, list:lists(id, title, emoji, default_view, color))' as const
+  '*, occurrence:task_occurrences!task_time_blocks_owned_occurrence(*), task:tasks!task_time_blocks_owned_task(*, list:lists(id, title, emoji, default_view, color), category:categories(id, list_id, color))' as const
 
 type HomeDataInput = {
   today?: string
@@ -55,6 +57,7 @@ async function loadRecurrenceState(
         .from('task_occurrences')
         .select('*')
         .eq('user_id', userId)
+        .eq('cancelled', false)
         .gte('occurrence_date', lookback)
         .lt('occurrence_date', tomorrow)
         .order('occurrence_date'),
@@ -70,7 +73,9 @@ async function loadRecurrenceState(
   if (blocksError) throw new Error(blocksError.message)
 
   const mappedOccurrences = occurrences as TaskOccurrence[]
-  const mappedBlocks = blocks.map(toAgendaBlock)
+  const mappedBlocks = blocks
+    .filter((block) => !block.occurrence?.cancelled)
+    .map(toAgendaBlock)
   const scheduledOccurrenceIds = new Set(
     mappedBlocks
       .map((block) => block.occurrence_id)
@@ -142,15 +147,29 @@ export async function getHomeData(input: HomeDataInput = {}) {
 
   if (!user) redirect('/auth')
 
+  const today = queryDate(input.today)
+  // Query one UTC day on either side so events near midnight in their own
+  // configured time zone are available to the client-side Home projection.
+  const upcomingStart = addCalendarDays(today, -1)
+  const upcomingEnd = addCalendarDays(today, 8)
+  const upcomingQueryEnd = addCalendarDays(upcomingEnd, 1)
+  const upcomingEventsPromise = getEventsInRange({
+    startsAt: new Date(`${upcomingStart}T00:00:00Z`).toISOString(),
+    endsAt: new Date(`${upcomingQueryEnd}T00:00:00Z`).toISOString(),
+    startsOn: upcomingStart,
+    endsOn: upcomingQueryEnd,
+  })
+
   const [
     { data: tasks, error: tasksError },
     { data: lists, error: listsError },
     categories,
     { data: homePreferences, error: homePreferencesError },
+    upcomingEvents,
   ] = await Promise.all([
       supabase
         .from('tasks')
-        .select('*, list:lists (title, id, emoji, default_view, color)')
+        .select('*, list:lists (title, id, emoji, default_view, color), category:categories(id, list_id, color)')
         .eq('user_id', user.id)
         .is('completed', false)
         .order('position', { ascending: true })
@@ -168,6 +187,7 @@ export async function getHomeData(input: HomeDataInput = {}) {
         )
         .eq('user_id', user.id)
         .maybeSingle(),
+      upcomingEventsPromise,
   ])
 
   if (tasksError) throw new Error(tasksError.message)
@@ -180,7 +200,7 @@ export async function getHomeData(input: HomeDataInput = {}) {
     supabase,
     user.id,
     mappedTasks,
-    queryDate(input.today),
+    today,
     queryNow(input.now),
   )
 
@@ -189,6 +209,7 @@ export async function getHomeData(input: HomeDataInput = {}) {
     lists: mappedLists,
     categories,
     ...recurrenceState,
+    upcomingEvents: upcomingEvents as CalendarEventWithList[],
     homePreferences: normalizeHomeSourcePreferences(
       homePreferences,
       mappedLists.map((list) => list.id),

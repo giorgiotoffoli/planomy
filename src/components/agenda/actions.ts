@@ -40,7 +40,7 @@ export async function getAgendaData(startsAt: string, endsAt: string) {
     endsAt.slice(0, 10),
   )
   const [blocks, lists, categories] = await Promise.all([
-    supabase.from('task_time_blocks').select('*, occurrence:task_occurrences!task_time_blocks_owned_occurrence(*), task:tasks!task_time_blocks_owned_task(*, list:lists(id, title, emoji, default_view, color))')
+    supabase.from('task_time_blocks').select('*, occurrence:task_occurrences!task_time_blocks_owned_occurrence(*), task:tasks!task_time_blocks_owned_task(*, list:lists(id, title, emoji, default_view, color), category:categories(id, list_id, color))')
       .eq('user_id', user.id)
       .lt('starts_at', endsAt)
       .or(`ends_at.gt.${startsAt},and(ends_at.is.null,starts_at.gte.${startsAt})`)
@@ -50,7 +50,11 @@ export async function getAgendaData(startsAt: string, endsAt: string) {
   ])
   if (blocks.error) throw databaseError(blocks.error)
   if (lists.error) throw databaseError(lists.error)
-  return { blocks: blocks.data.map(toAgendaBlock), lists: lists.data.map(toList), categories }
+  return {
+    blocks: blocks.data.filter((row) => !row.occurrence?.cancelled).map(toAgendaBlock),
+    lists: lists.data.map(toList),
+    categories,
+  }
 }
 
 export async function getTaskTimeBlocks(taskId: string) {

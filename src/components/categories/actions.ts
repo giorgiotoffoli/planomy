@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { Tables } from '@/lib/supabase/database-types'
+import { isListColor, type ListColor } from '@/lib/list-colors'
 
 type CategoryRow = Tables<'categories'>
 
@@ -30,8 +31,10 @@ async function requireOwnedList(listId: string) {
 export async function createCategory(
   listId: string,
   encryptedTitle: string,
+  color: ListColor | null = null,
 ): Promise<CategoryRow> {
   if (!encryptedTitle.trim()) throw new Error('Category name cannot be empty.')
+  if (color !== null && !isListColor(color)) throw new Error('Invalid category color.')
 
   const { supabase } = await requireOwnedList(listId)
   const { data: lastCategory, error: positionError } = await supabase
@@ -49,6 +52,7 @@ export async function createCategory(
     .insert({
       list_id: listId,
       title: encryptedTitle,
+      color,
       position: (lastCategory?.position ?? -1) + 1,
     })
     .select('*')
@@ -64,8 +68,10 @@ export async function renameCategory(
   listId: string,
   categoryId: string,
   encryptedTitle: string,
+  color: ListColor | null = null,
 ): Promise<void> {
   if (!encryptedTitle.trim()) throw new Error('Category name cannot be empty.')
+  if (color !== null && !isListColor(color)) throw new Error('Invalid category color.')
 
   const { supabase } = await requireOwnedList(listId)
   const { data: category, error: categoryError } = await supabase
@@ -80,7 +86,7 @@ export async function renameCategory(
 
   const { error } = await supabase
     .from('categories')
-    .update({ title: encryptedTitle })
+    .update({ title: encryptedTitle, color })
     .eq('id', categoryId)
     .eq('list_id', listId)
 

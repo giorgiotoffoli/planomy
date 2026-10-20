@@ -6,6 +6,7 @@ import type {
   TaskWithList,
 } from '../types.ts'
 import {
+  isCalendarEventPast,
   isTaskDeadlineOverdue,
   projectCalendarItems,
   scheduledTaskProgress,
@@ -99,11 +100,15 @@ test('native events remain distinct and retain their List relationship', () => {
     user_id: 'user',
     list_id: 'school',
     title: 'Data Structures',
+    description: null,
+    location: null,
     all_day: false,
     starts_at: '2026-10-13T09:30:00-05:00',
     ends_at: '2026-10-13T10:50:00-05:00',
     starts_on: null,
     ends_on: null,
+    time_zone: 'UTC',
+    recurrence_rule: null,
     created_at: '2026-10-01T00:00:00Z',
     updated_at: '2026-10-01T00:00:00Z',
     list: task().list,
@@ -147,4 +152,16 @@ test('scheduled plans distinguish upcoming, in-progress, and past time', () => {
   assert.equal(scheduledTaskPhase(item, new Date('2026-10-19T09:30:00-05:00')), 'in-progress')
   assert.equal(scheduledTaskPhase(item, new Date('2026-10-19T10:00:00-05:00')), 'past')
   assert.equal(scheduledTaskProgress(item, new Date('2026-10-19T09:30:00-05:00')), 50)
+})
+
+test('events become past after their end, or at their start when untimed', () => {
+  const timed = {
+    all_day: false,
+    starts_at: '2026-10-19T09:00:00-05:00',
+    ends_at: '2026-10-19T10:00:00-05:00',
+    ends_on: null,
+  } as const
+  assert.equal(isCalendarEventPast(timed, new Date('2026-10-19T09:30:00-05:00')), false)
+  assert.equal(isCalendarEventPast(timed, new Date('2026-10-19T10:00:00-05:00')), true)
+  assert.equal(isCalendarEventPast({ ...timed, ends_at: null }, new Date('2026-10-19T09:00:00-05:00')), true)
 })

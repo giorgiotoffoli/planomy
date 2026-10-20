@@ -36,6 +36,16 @@ function monthsSince(start: Date, value: Date) {
     value.getMonth() - start.getMonth()
 }
 
+function weekdayOccurrenceInMonth(value: Date) {
+  return Math.floor((value.getDate() - 1) / 7) + 1
+}
+
+function isLastWeekdayOfMonth(value: Date) {
+  const next = new Date(value)
+  next.setDate(value.getDate() + 7)
+  return next.getMonth() !== value.getMonth()
+}
+
 function validFrequency(value: unknown): value is RecurrenceFrequency {
   return ['daily', 'weekday', 'weekly', 'monthly', 'yearly', 'custom'].includes(value as string)
 }
@@ -92,6 +102,14 @@ export function normalizeRecurrenceRule(
   const count = value.count && Number.isInteger(value.count) && value.count > 0
     ? value.count
     : null
+  const monthlyPosition = value.monthlyPosition && Number.isInteger(value.monthlyPosition) &&
+    (value.monthlyPosition === -1 || (value.monthlyPosition >= 1 && value.monthlyPosition <= 5))
+    ? value.monthlyPosition
+    : null
+  const monthlyWeekday = value.monthlyWeekday && Number.isInteger(value.monthlyWeekday) &&
+    value.monthlyWeekday >= 1 && value.monthlyWeekday <= 7
+    ? value.monthlyWeekday
+    : null
   const scheduledSessions = normalizeScheduledSessions(value.scheduledSessions)
 
   return {
@@ -101,6 +119,7 @@ export function normalizeRecurrenceRule(
     ...(weekdays?.length ? { weekdays: [...new Set(weekdays)].sort() } : {}),
     endDate,
     count,
+    ...(monthlyPosition && monthlyWeekday ? { monthlyPosition, monthlyWeekday } : {}),
     ...(scheduledSessions ? { scheduledSessions } : {}),
   }
 }
@@ -222,8 +241,17 @@ export function recurrenceMatchesDate(rule: RecurrenceRule, value: string) {
           weeksSince(start, date) % interval === 0
       }
       return daysBetween(start, date) % interval === 0
-    case 'monthly':
+    case 'monthly': {
+      if (normalized.monthlyPosition && normalized.monthlyWeekday) {
+        const weekday = ((date.getDay() + 6) % 7) + 1
+        const positionMatches = normalized.monthlyPosition === -1
+          ? isLastWeekdayOfMonth(date)
+          : weekdayOccurrenceInMonth(date) === normalized.monthlyPosition
+        return weekday === normalized.monthlyWeekday && positionMatches &&
+          monthsSince(start, date) % interval === 0
+      }
       return date.getDate() === start.getDate() && monthsSince(start, date) % interval === 0
+    }
     case 'yearly':
       return date.getMonth() === start.getMonth() && date.getDate() === start.getDate() &&
         (date.getFullYear() - start.getFullYear()) % interval === 0
@@ -245,7 +273,11 @@ export function generateOccurrenceDateKeys(
   const result: string[] = []
   const seriesStart = dateFromKey(normalized.startDate)
   if (!seriesStart) return []
-  let cursor = new Date(seriesStart < start ? seriesStart : start)
+  // A finite count needs the full history so the count remains stable when a
+  // later window is requested. Open-ended rules can jump straight to the
+  // visible window, which keeps old daily series cheap to render.
+  const cursorStart = normalized.count || seriesStart >= start ? seriesStart : start
+  let cursor = new Date(cursorStart)
   let occurrenceCount = 0
   // A bounded local-date loop is deliberate: it handles DST changes without
   // converting date-only recurrence rules through UTC.
@@ -275,7 +307,17 @@ export function recurrenceLabel(rule: RecurrenceRule | null | undefined) {
       const cadence = normalized.interval === 1 ? 'Every week' : `Every ${normalized.interval} weeks`
       return days ? `${cadence} on ${days}` : cadence
     }
-    case 'monthly': return normalized.interval === 1 ? 'Every month' : `Every ${normalized.interval} months`
+    case 'monthly': {
+      if (normalized.monthlyPosition && normalized.monthlyWeekday) {
+        const ordinal = normalized.monthlyPosition === -1
+          ? 'last'
+          : ['first', 'second', 'third', 'fourth', 'fifth'][normalized.monthlyPosition - 1]
+        return normalized.interval === 1
+          ? `Every month on the ${ordinal} ${WEEKDAY_NAMES[normalized.monthlyWeekday - 1]}`
+          : `Every ${normalized.interval} months on the ${ordinal} ${WEEKDAY_NAMES[normalized.monthlyWeekday - 1]}`
+      }
+      return normalized.interval === 1 ? 'Every month' : `Every ${normalized.interval} months`
+    }
     case 'yearly': return normalized.interval === 1 ? 'Every year' : `Every ${normalized.interval} years`
     case 'custom': {
       const days = normalized.weekdays?.map((day) => WEEKDAY_NAMES[day - 1]).join(', ')

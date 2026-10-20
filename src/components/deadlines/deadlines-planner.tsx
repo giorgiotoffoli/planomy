@@ -35,6 +35,9 @@ import {
   updateTaskNotes,
   taskOrganizationChangeFromEvent,
 } from '@/components/tasks/mutations'
+import { taskVisualMutationFromEvent } from '@/components/tasks/mutations'
+import { LISTS_CHANGED, listMutationFromEvent } from '@/components/lists/mutations'
+import { applyListMutationToList, applyListMutationToTask, applyTaskVisualMutation } from '@/lib/live-mutations'
 import {
   updateTaskCompleted,
 } from '@/components/tasks/actions'
@@ -304,14 +307,41 @@ export default function DeadlinesPlanner({
     }
 
     const interval = window.setInterval(refreshCalendar, 60_000)
-    window.addEventListener(TASKS_CHANGED, refreshForDateOrChange)
+    const handleTasksChanged = (event: Event) => {
+      const change = taskVisualMutationFromEvent(event)
+      if (change) {
+        if (!change.occurrenceId) {
+          setTasks((current) =>
+            current?.map((task) => applyTaskVisualMutation(task, change, lists)) ?? null,
+          )
+        }
+        if (!change.phase) refreshForDateOrChange()
+        return
+      }
+      refreshForDateOrChange()
+    }
+    const handleListsChanged = (event: Event) => {
+      const change = listMutationFromEvent(event)
+      if (!change) {
+        refreshForDateOrChange()
+        return
+      }
+      setLists((current) => current.map((list) => applyListMutationToList(list, change)))
+      setTasks((current) =>
+        current?.map((task) => applyListMutationToTask(task, change)) ?? null,
+      )
+      if (!change.phase) refreshForDateOrChange()
+    }
+    window.addEventListener(TASKS_CHANGED, handleTasksChanged)
+    window.addEventListener(LISTS_CHANGED, handleListsChanged)
     window.addEventListener(TASK_ORGANIZATION_CHANGED, organizationChanged)
     window.addEventListener('focus', refreshForDateOrChange)
     document.addEventListener('visibilitychange', onVisibility)
 
     return () => {
       window.clearInterval(interval)
-      window.removeEventListener(TASKS_CHANGED, refreshForDateOrChange)
+      window.removeEventListener(TASKS_CHANGED, handleTasksChanged)
+      window.removeEventListener(LISTS_CHANGED, handleListsChanged)
       window.removeEventListener(
         TASK_ORGANIZATION_CHANGED,
         organizationChanged,

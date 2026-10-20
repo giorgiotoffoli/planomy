@@ -47,7 +47,7 @@ export async function getTodayData(date: string) {
   const { supabase, user } = await authenticatedClient()
   const yesterday = previousDateKey(date)
   const [{ data: tasks, error: tasksError }, { data: selections, error: selectionsError }] = await Promise.all([
-    supabase.from('tasks').select('*, list:lists (title, id, emoji, default_view, color)').eq('user_id', user.id).order('position').order('created_at', { ascending: false }),
+    supabase.from('tasks').select('*, list:lists (title, id, emoji, default_view, color), category:categories(id, list_id, color)').eq('user_id', user.id).order('position').order('created_at', { ascending: false }),
     supabase.from('daily_task_selections').select('task_id, selected_date, focused').eq('user_id', user.id).in('selected_date', [date, yesterday]),
   ])
   if (tasksError) throw new Error(tasksError.message)

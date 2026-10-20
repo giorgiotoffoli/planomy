@@ -5,6 +5,7 @@ import {
   durationEnd,
   isSingleDayTimedRange,
   moveTimedRange,
+  snapCreationStart,
   taskDisplayEnd,
 } from './calendar-interactions.ts'
 
@@ -16,6 +17,23 @@ test('duration-less tasks receive display height without inventing an end', () =
     displayEnd.getTime() - start.getTime(),
     DEFAULT_TASK_DISPLAY_MINUTES * 60_000,
   )
+})
+
+test('new calendar selections start on a 15-minute boundary', () => {
+  const start = new Date(2026, 9, 14, 9, 5)
+  const snapped = snapCreationStart(start)
+
+  assert.equal(snapped.getHours(), 9)
+  assert.equal(snapped.getMinutes(), 0)
+  assert.equal(snapped.getSeconds(), 0)
+})
+
+test('creation snapping does not change the original Date', () => {
+  const start = new Date(2026, 9, 14, 9, 17)
+  const snapped = snapCreationStart(start)
+
+  assert.equal(start.getMinutes(), 17)
+  assert.equal(snapped.getMinutes(), 15)
 })
 
 test('a range ending exactly at midnight remains a single-day range', () => {

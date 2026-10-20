@@ -17,7 +17,7 @@ import {
 import { localDateKey } from '@/lib/today'
 import { applyTaskOrganizationChange } from '@/lib/tasks'
 import type { AgendaBlock, CalendarEventWithList, Category, List, NeedsAttentionItem, TaskWithList, TimeBlock } from '@/types'
-import { getCalendarRangeData } from '@/components/calendar/actions'
+import { getCalendarBaseData, getRecurringCalendarData } from '@/components/calendar/actions'
 import { getNeedsAttention } from '@/components/home/queries'
 import type { QuickCreateInput } from '@/components/calendar/calendar-quick-create'
 import {
@@ -31,12 +31,32 @@ import {
   TASK_ORGANIZATION_CHANGED,
   TASKS_CHANGED,
   notifyTasksChanged,
+  taskVisualMutationFromEvent,
   taskOrganizationChangeFromEvent,
 } from '@/components/tasks/mutations'
 import { PLAN_TIME_CHANGED, notifyPlanTimeChanged, planTimeChangeOrigin } from './mutations'
 import AgendaPanel from './agenda-panel'
 import { isCreatedScheduleVisible } from '@/lib/task-creation'
 import { showTaskCreatedToast } from '@/components/tasks/create-task/task-created-toast'
+import {
+  EVENTS_CHANGED,
+  eventVisualMutationFromEvent,
+} from '@/components/events/mutations'
+import { LISTS_CHANGED, listMutationFromEvent } from '@/components/lists/mutations'
+import { CATEGORIES_CHANGED, categoryVisualMutationFromEvent } from '@/components/categories/mutations'
+import {
+  applyCategoryMutationToEvent,
+  applyCategoryMutationToTask,
+  applyCategoryMutationToCategory,
+  applyEventVisualMutation,
+  applyListMutationToEvent,
+  applyListMutationToList,
+  applyListMutationToTask,
+  applyTaskVisualMutation,
+  eventMutationAppliesToScheduledTask,
+} from '@/lib/live-mutations'
+import { useCalendarPreferences } from '@/components/settings/calendar-preferences-provider'
+import { applyTaskOccurrenceOverride } from '@/lib/task-occurrence-overrides'
 
 function blockKey(block: Pick<AgendaBlock, 'id' | 'task_id' | 'starts_at'>) {
   return block.id ?? `${block.task_id}:${block.starts_at}`
@@ -67,13 +87,19 @@ async function decryptTask(task: TaskWithList, masterKey: Uint8Array) {
   }
 }
 
-async function decryptBlocks(blocks: AgendaBlock[], masterKey: Uint8Array) {
+async function decryptBlocks(blocks: AgendaBlock[], masterKey: Uint8Array, lists: List[], categories: Category[]) {
   return Promise.all(
     blocks
       .filter((block) => block.task)
       .map(async (block) => ({
         ...block,
-        task: await decryptTask(block.task, masterKey),
+        task: await applyTaskOccurrenceOverride(
+          await decryptTask(block.task, masterKey),
+          block.occurrence,
+          masterKey,
+          lists,
+          categories,
+        ),
       })),
   )
 }
@@ -96,6 +122,12 @@ async function decryptEvents(
     events.map(async (event) => ({
       ...event,
       title: await decryptString(event.title, masterKey),
+      description: event.description
+        ? await decryptString(event.description, masterKey)
+        : event.description,
+      location: event.location
+        ? await decryptString(event.location, masterKey)
+        : event.location,
       list: event.list
         ? {
             ...event.list,
@@ -141,12 +173,14 @@ export function useAgenda() {
 
 export default function AgendaProvider({ children }: { children: ReactNode }) {
   const { masterKey } = useE2EE()
+  const { preferences: calendarPreferences } = useCalendarPreferences()
   const router = useRouter()
   const pathname = usePathname()
   const plannerAvailable =
     pathname !== '/calendar' && !pathname.startsWith('/calendar/')
   const [open, setOpenState] = useState(false)
   const [day, setDay] = useState(() => localDateKey())
+  const systemDayRef = useRef(localDateKey())
   const [loaded, setLoaded] = useState<{
     day: string
     blocks: AgendaBlock[]
@@ -179,14 +213,20 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
 
   const setOpen = useCallback((value: boolean) => {
     setOpenState(value)
-    if (value) setDay(localDateKey())
+    if (value) {
+      const today = localDateKey()
+      systemDayRef.current = today
+      setDay(today)
+    }
     try { localStorage.setItem('planomy:agenda:open', String(value)) } catch { /* Private browsing may disable storage. */ }
   }, [])
 
   useEffect(() => {
     const syncToday = () => setDay((current) => {
       const today = localDateKey()
-      return current === today ? current : today
+      const previousSystemDay = systemDayRef.current
+      systemDayRef.current = today
+      return current === previousSystemDay ? today : current
     })
     syncToday()
     const interval = window.setInterval(syncToday, 60_000)
@@ -204,39 +244,81 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
     const request = ++generation.current
     const { start, end } = dayBounds(day)
     setLoading(true)
+
+    const range = {
+      startsAt: new Date(start).toISOString(),
+      endsAt: new Date(end).toISOString(),
+      startsOn: day,
+      endsOn: shiftDay(day, 1),
+    }
+
     try {
-      const result = await getCalendarRangeData({
-        startsAt: new Date(start).toISOString(),
-        endsAt: new Date(end).toISOString(),
-        startsOn: day,
-        endsOn: shiftDay(day, 1),
-      })
-      const [blocks, dueTasks, events, lists, categories, attention] = await Promise.all([
-        decryptBlocks(result.scheduledTasks, masterKey),
+      const result = await getCalendarBaseData(range)
+      const decryptedLists = await Promise.all(result.lists.map(async (list) => ({
+        ...list,
+        title: await decryptString(list.title, masterKey),
+        emoji: list.emoji
+          ? await decryptString(list.emoji, masterKey)
+          : list.emoji,
+      })))
+      const [blocks, dueTasks, events, categories] = await Promise.all([
+        decryptBlocks(result.scheduledTasks, masterKey, decryptedLists, result.categories),
         Promise.all(result.dueTasks.map((task) => decryptTask(task, masterKey))),
         decryptEvents(result.events, masterKey),
-        Promise.all(result.lists.map(async (list) => ({
-          ...list,
-          title: await decryptString(list.title, masterKey),
-          emoji: list.emoji
-            ? await decryptString(list.emoji, masterKey)
-            : list.emoji,
-        }))),
         Promise.all(result.categories.map(async category => ({
           ...category,
           title: await decryptString(category.title, masterKey),
         }))),
-        getNeedsAttention({ today: day, now: new Date().toISOString() }).then((items) => decryptAttention(items, masterKey)),
       ])
       if (request === generation.current) {
-        setLoaded(current => ({ day, lists, blocks: current.day === day
+        setLoaded(current => ({ day, lists: decryptedLists, blocks: current.day === day
           ? [...blocks.filter(block => !pending.current.has(block.task_id)), ...current.blocks.filter(block => pending.current.has(block.task_id))]
-          : blocks, dueTasks, events, categories, attention }))
+          : blocks, dueTasks, events, categories, attention: current.day === day ? current.attention : [] }))
         setError(null)
+        setLoading(false)
       }
+
+      void getNeedsAttention({ today: day, now: new Date().toISOString() })
+        .then((items) => decryptAttention(items, masterKey))
+        .then((attention) => {
+          if (request === generation.current) {
+            setLoaded((current) => ({ ...current, attention }))
+          }
+        })
+        .catch((cause) => {
+          if (request === generation.current) {
+            setError(cause instanceof Error ? cause.message : 'Agenda attention items could not be loaded.')
+          }
+        })
+
+      // Recurrence expansion can involve several database writes. Keep it off
+      // the critical paint path and replace the schedule once it is ready.
+      void getRecurringCalendarData(range)
+        .then(async (recurring) => {
+          const recurringBlocks = await decryptBlocks(recurring.scheduledTasks, masterKey, decryptedLists, categories)
+          if (request === generation.current) {
+            setLoaded((current) => ({
+              ...current,
+              blocks: current.day === day
+                ? [
+                    ...recurringBlocks.filter(block => !pending.current.has(block.task_id)),
+                    ...current.blocks.filter(block => pending.current.has(block.task_id)),
+                  ]
+                : recurringBlocks,
+            }))
+          }
+        })
+        .catch((cause) => {
+          if (request === generation.current) {
+            setError(cause instanceof Error ? cause.message : 'Recurring agenda tasks could not be loaded.')
+          }
+        })
     } catch (cause) {
-      if (request === generation.current) setError(cause instanceof Error ? cause.message : 'Agenda could not be loaded.')
-    } finally { if (request === generation.current) setLoading(false) }
+      if (request === generation.current) {
+        setError(cause instanceof Error ? cause.message : 'Agenda could not be loaded.')
+        setLoading(false)
+      }
+    }
   }, [day, masterKey])
   const latestReload = useRef(reload)
   useEffect(() => { latestReload.current = reload }, [reload])
@@ -247,6 +329,83 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
   }, [open, plannerAvailable, reload, invalidate])
   useEffect(() => {
     const changed = () => { router.refresh(); if (open && plannerAvailable) void reload() }
+    const tasksChanged = (event: Event) => {
+      const change = taskVisualMutationFromEvent(event)
+      if (!change) {
+        changed()
+        return
+      }
+      setLoaded((current) => ({
+        ...current,
+        dueTasks: current.dueTasks.map((task) =>
+          change.occurrenceId ? task : applyTaskVisualMutation(task, change, current.lists),
+        ),
+        blocks: current.blocks.map((block) =>
+          eventMutationAppliesToScheduledTask(block.occurrence_id, change)
+            ? { ...block, task: applyTaskVisualMutation(block.task, change, current.lists) }
+            : block,
+        ),
+        attention: current.attention.map((item) => ({
+          ...item,
+          task: change.occurrenceId
+            ? item.task
+            : applyTaskVisualMutation(item.task, change, current.lists),
+        })),
+      }))
+      if (!change.phase) changed()
+    }
+    const eventsChanged = (event: Event) => {
+      const change = eventVisualMutationFromEvent(event)
+      if (!change) {
+        changed()
+        return
+      }
+      setLoaded((current) => ({
+        ...current,
+        events: current.events.map((item) =>
+          applyEventVisualMutation(item, change, current.lists),
+        ),
+      }))
+      if (!change.phase) changed()
+    }
+    const listsChanged = (event: Event) => {
+      const change = listMutationFromEvent(event)
+      if (!change) {
+        changed()
+        return
+      }
+      setLoaded((current) => ({
+        ...current,
+        lists: current.lists.map((list) => applyListMutationToList(list, change)),
+        dueTasks: current.dueTasks.map((task) => applyListMutationToTask(task, change)),
+        blocks: current.blocks.map((block) => ({
+          ...block,
+          task: applyListMutationToTask(block.task, change),
+        })),
+        events: current.events.map((item) => applyListMutationToEvent(item, change)),
+        attention: current.attention.map((item) => ({
+          ...item,
+          task: applyListMutationToTask(item.task, change),
+        })),
+      }))
+      if (!change.phase) changed()
+    }
+    const categoriesChanged = (event: Event) => {
+      const change = categoryVisualMutationFromEvent(event)
+      if (!change) {
+        changed()
+        return
+      }
+      setLoaded((current) => ({
+        ...current,
+        categories: current.categories.map((category) => applyCategoryMutationToCategory(category, change)),
+        dueTasks: current.dueTasks.map((task) => applyCategoryMutationToTask(task, change)),
+        blocks: current.blocks.map((block) => ({ ...block, task: applyCategoryMutationToTask(block.task, change) })),
+        events: current.events.map((item) => applyCategoryMutationToEvent(item, change)),
+        attention: current.attention.map((item) => ({ ...item, task: applyCategoryMutationToTask(item.task, change) })),
+      }))
+      if (!change.phase) changed()
+    }
     const organizationChanged = (event: Event) => {
       const change = taskOrganizationChangeFromEvent(event)
       if (!change) return
@@ -271,11 +430,17 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
     const planTimeChanged = (event: Event) => {
       if (open && plannerAvailable && planTimeChangeOrigin(event) !== 'agenda') void reload()
     }
-    window.addEventListener(TASKS_CHANGED, changed)
+    window.addEventListener(TASKS_CHANGED, tasksChanged)
+    window.addEventListener(EVENTS_CHANGED, eventsChanged)
+    window.addEventListener(LISTS_CHANGED, listsChanged)
+    window.addEventListener(CATEGORIES_CHANGED, categoriesChanged)
     window.addEventListener(TASK_ORGANIZATION_CHANGED, organizationChanged)
     window.addEventListener(PLAN_TIME_CHANGED, planTimeChanged)
     return () => {
-      window.removeEventListener(TASKS_CHANGED, changed)
+      window.removeEventListener(TASKS_CHANGED, tasksChanged)
+      window.removeEventListener(EVENTS_CHANGED, eventsChanged)
+      window.removeEventListener(LISTS_CHANGED, listsChanged)
+      window.removeEventListener(CATEGORIES_CHANGED, categoriesChanged)
       window.removeEventListener(
         TASK_ORGANIZATION_CHANGED,
         organizationChanged,
@@ -636,7 +801,7 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
         <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background selection:bg-primary selection:text-primary-foreground">{children}</main>
         {plannerAvailable ? <AgendaPanel /> : null}
       </div>
-      <DragOverlay dropAnimation={null}>{drag && <div className="max-w-60 rounded-lg border bg-background p-3 text-sm shadow-lg"><p className="truncate font-medium">{drag.task.title}</p>{preview && <p className="text-xs text-muted-foreground">{timeLabel(preview.start)} – {timeLabel(preview.end)}</p>}</div>}</DragOverlay>
+      <DragOverlay dropAnimation={null}>{drag && <div className="max-w-60 rounded-lg border bg-background p-3 text-sm shadow-lg"><p className="truncate font-medium">{drag.task.title}</p>{preview && <p className="text-xs text-muted-foreground">{timeLabel(preview.start, calendarPreferences.timeFormat)} – {timeLabel(preview.end, calendarPreferences.timeFormat)}</p>}</div>}</DragOverlay>
     </DndContext>
   </AgendaContext.Provider>
 }

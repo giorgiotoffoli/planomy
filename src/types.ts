@@ -25,8 +25,15 @@ export interface Task {
   recurrence_rule?: RecurrenceRule | null
 }
 
+export interface CategorySummary {
+  id: string
+  list_id: string
+  color: ListColor | null
+}
+
 export interface TaskWithList extends Task {
   list: ListSummary | null
+  category?: CategorySummary | null
 }
 
 export interface List extends ListSummary {
@@ -38,6 +45,7 @@ export interface Category {
   list_id: string
   title: string
   position: number
+  color?: ListColor | null
   created_at?: string | null
 }
 
@@ -89,6 +97,10 @@ export interface RecurrenceRule {
   endDate?: string | null
   /** Optional maximum number of generated occurrences. */
   count?: number | null
+  /** Optional ordinal weekday for monthly rules, e.g. first Monday. */
+  monthlyPosition?: number | null
+  /** ISO weekday used with monthlyPosition. */
+  monthlyWeekday?: number | null
   /** Optional wall-clock sessions repeated for every generated occurrence. */
   scheduledSessions?: RecurrenceSession[]
 }
@@ -111,8 +123,19 @@ export interface TaskOccurrence {
   occurrence_date: string
   completed: boolean
   skipped: boolean
+  cancelled: boolean
+  override_data?: TaskOccurrenceOverride | null
   created_at?: string | null
   updated_at?: string | null
+}
+
+export interface TaskOccurrenceOverride {
+  title?: string
+  notes?: string
+  listId?: string | null
+  categoryId?: string | null
+  dueDate?: string | null
+  dueTime?: string | null
 }
 
 export type NeedsAttentionKind = 'missed-session' | 'missed-occurrence'
@@ -130,30 +153,50 @@ export interface CalendarEvent {
   id: string
   user_id: string
   list_id: string | null
+  category_id?: string | null
+  category?: CategorySummary | null
+  color?: ListColor | null
   title: string
+  description: string | null
+  location: string | null
   all_day: boolean
   starts_at: string | null
   ends_at: string | null
   starts_on: string | null
   ends_on: string | null
+  time_zone: string
+  recurrence_rule: RecurrenceRule | null
+  show_in_upcoming?: boolean
   created_at: string
   updated_at: string
+  /** The persisted series id for a generated occurrence. */
+  source_event_id?: string
+  /** Stable original occurrence key, or null for a non-recurring event. */
+  occurrence_key?: string | null
 }
 
 export interface CalendarEventWithList extends CalendarEvent {
   list: ListSummary | null
+  category?: CategorySummary | null
 }
 
 type EventOrganizationInput = {
   title: string
   listId: string | null
+  categoryId?: string | null
+  color?: ListColor | null
+  showInUpcoming?: boolean
+  description?: string
+  location?: string
+  timeZone?: string
+  recurrenceRule?: RecurrenceRule | null
 }
 
 export type CreateEventInput = EventOrganizationInput & (
   | {
       allDay: false
       startsAt: string
-      endsAt: string
+      endsAt: string | null
     }
   | {
       allDay: true
@@ -163,6 +206,35 @@ export type CreateEventInput = EventOrganizationInput & (
 )
 
 export type UpdateEventInput = CreateEventInput & { eventId: string }
+
+export type UpdateEventOccurrenceInput = CreateEventInput & {
+  eventId: string
+  occurrenceKey: string
+}
+
+export interface EventOccurrenceException {
+  id: string
+  event_id: string
+  user_id: string
+  occurrence_key: string
+  cancelled: boolean
+  title: string | null
+  description: string | null
+  location: string | null
+  time_zone: string | null
+  list_id: string | null
+  category_id?: string | null
+  category?: CategorySummary | null
+  color?: ListColor | null
+  all_day: boolean | null
+  starts_at: string | null
+  ends_at: string | null
+  starts_on: string | null
+  ends_on: string | null
+  show_in_upcoming?: boolean | null
+  created_at: string
+  updated_at: string
+}
 
 export interface CreateTaskInput {
   title: string

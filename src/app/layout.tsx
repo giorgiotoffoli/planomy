@@ -3,6 +3,7 @@ import { Inter, Geist_Mono, DM_Sans } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/theme-provider'
+import { CalendarPreferencesProvider } from '@/components/settings/calendar-preferences-provider'
 
 const interSans = Inter({
   variable: '--font-inter-sans',
@@ -42,7 +43,9 @@ export default function RootLayout({
           storageKey="planomy-theme"
           disableTransitionOnChange
         >
-          <main>{children}</main>
+          <CalendarPreferencesProvider>
+            <main>{children}</main>
+          </CalendarPreferencesProvider>
           <Toaster />
         </ThemeProvider>
       </body>

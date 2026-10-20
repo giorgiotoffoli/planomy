@@ -26,16 +26,15 @@ export async function materializeRecurringSessions(
   rangeStart: string,
   rangeEnd: string,
 ) {
-  const materialized: TaskOccurrence[] = []
-  for (const task of tasks) {
+  const materialized = await Promise.all(tasks.map(async (task) => {
     const rule = normalizeRecurrenceRule(task.recurrence_rule as RecurrenceRule)
-    if (!rule) continue
+    if (!rule) return []
 
     // Keep date iteration in the recurrence module's local-date model. A
     // bounded range is used here because the task rule itself does the exact
     // matching and count/end-date checks.
     const occurrenceDates = generateOccurrenceDateKeys(rule, rangeStart, rangeEnd)
-    if (!occurrenceDates.length) continue
+    if (!occurrenceDates.length) return []
 
     const { error: occurrenceUpsertError } = await supabase
       .from('task_occurrences')
@@ -46,7 +45,7 @@ export async function materializeRecurringSessions(
           occurrence_date,
         })),
         { onConflict: 'task_id,occurrence_date', ignoreDuplicates: true },
-      )
+    )
     if (occurrenceUpsertError) throw new Error(occurrenceUpsertError.message)
 
     const { data: occurrences, error: occurrenceReadError } = await supabase
@@ -57,9 +56,9 @@ export async function materializeRecurringSessions(
       .gte('occurrence_date', rangeStart)
       .lt('occurrence_date', rangeEnd)
     if (occurrenceReadError) throw new Error(occurrenceReadError.message)
-    materialized.push(...(occurrences as TaskOccurrence[]))
+    const activeOccurrences = occurrences.filter((occurrence) => !occurrence.cancelled)
 
-    const sessions = occurrences.flatMap((occurrence) =>
+    const sessions = activeOccurrences.flatMap((occurrence) =>
       recurringSessionTimes(rule, occurrence.occurrence_date).map((session) => ({
         user_id: userId,
         task_id: task.id,
@@ -71,17 +70,18 @@ export async function materializeRecurringSessions(
         status: 'scheduled' as const,
       })),
     )
-    if (!sessions.length) continue
+    if (!sessions.length) return activeOccurrences as TaskOccurrence[]
 
     const { error: sessionUpsertError } = await supabase
       .from('task_time_blocks')
       .upsert(sessions, {
         onConflict: 'occurrence_id,session_index',
         ignoreDuplicates: true,
-      })
+    })
     if (sessionUpsertError) throw new Error(sessionUpsertError.message)
-  }
-  return materialized
+    return activeOccurrences as TaskOccurrence[]
+  }))
+  return materialized.flat()
 }
 
 export async function populateNextScheduledOccurrence(

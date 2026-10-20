@@ -103,7 +103,7 @@ export async function createTask(input: CreateTaskInput) {
   const { data, error } = await supabase
     .from('tasks')
     .insert([task])
-    .select('*, list:lists(id, title, emoji, default_view, color)')
+    .select('*, list:lists(id, title, emoji, default_view, color), category:categories(id, list_id, color)')
     .single()
 
   if (error) {
@@ -127,7 +127,7 @@ export async function createTask(input: CreateTaskInput) {
 
   const { data: savedTask, error: savedTaskError } = await supabase
     .from('tasks')
-    .select('*, list:lists(id, title, emoji, default_view, color)')
+    .select('*, list:lists(id, title, emoji, default_view, color), category:categories(id, list_id, color)')
     .eq('id', data.id)
     .eq('user_id', user.id)
     .single()
@@ -185,7 +185,7 @@ export async function updateTask(input: UpdateTaskInput) {
 
   const { data: savedTask, error: savedTaskError } = await supabase
     .from('tasks')
-    .select('*, list:lists(id, title, emoji, default_view, color)')
+    .select('*, list:lists(id, title, emoji, default_view, color), category:categories(id, list_id, color)')
     .eq('id', input.taskId)
     .eq('user_id', user.id)
     .single()

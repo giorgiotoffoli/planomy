@@ -10,6 +10,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { ReactNode } from 'react'
 import { GripVertical } from 'lucide-react'
+import { inheritedColorStyle } from '@/lib/list-colors'
 
 export const TASK_EXIT_ANIMATION_MS = 300
 
@@ -43,6 +44,7 @@ interface TaskItemProps {
   compact?: boolean
   isExiting?: boolean
   categories?: Category[]
+  showCategory?: boolean
   handleOnChangeCategory?: (
     taskId: string,
     categoryId: string | null,
@@ -73,6 +75,7 @@ export function TaskItem({
   compact = false,
   isExiting = false,
   categories,
+  showCategory = false,
   handleOnChangeCategory,
 }: TaskItemProps) {
   const {
@@ -92,8 +95,12 @@ export function TaskItem({
   const displayTask = isExiting ? { ...task, completed: true } : task
   const shouldAnimateExit =
     isExiting || (task.completed && shouldHideCompleted)
+  const currentListColor = task.list_id
+    ? lists.find((list) => list.id === task.list_id)?.color ?? task.list?.color
+    : null
 
   const style = {
+    ...inheritedColorStyle(task.category?.color, currentListColor),
     transform: CSS.Transform.toString(transform),
     transition: transition
       ? `${transition}, opacity 300ms ease, background-color 200ms ease`
@@ -155,6 +162,8 @@ export function TaskItem({
                 isInbox={isInbox}
                 showDueDate={showDueDate}
                 showAddToList={showAddToList}
+                categories={categories}
+                showCategory={showCategory}
               />
             </div>
             {/* Right side content */}

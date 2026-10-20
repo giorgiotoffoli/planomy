@@ -2,6 +2,7 @@ import { useDraggable } from '@dnd-kit/react'
 import { Card, CardContent, CardDescription } from '../ui/card'
 import { TaskWithList } from '../../types'
 import { format, isBefore } from 'date-fns'
+import { inheritedColorStyle } from '@/lib/list-colors'
 
 export default function BoardTaskCard({ task }: { task: TaskWithList }) {
   const { ref } = useDraggable({
@@ -14,7 +15,8 @@ export default function BoardTaskCard({ task }: { task: TaskWithList }) {
     <li className="py-1">
       <Card
         ref={ref}
-        className="hover:cursor-grab aria-grabbed:rotate-3 transition-all duration-75"
+        className="border-l-2 hover:cursor-grab aria-grabbed:rotate-3 transition-all duration-75"
+        style={{ ...inheritedColorStyle(task.category?.color, task.list?.color), borderLeftColor: 'var(--list-color)' }}
       >
         <CardContent>
           <div className="flex justify-between">{task.title}</div>

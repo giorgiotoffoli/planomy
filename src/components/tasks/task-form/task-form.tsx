@@ -9,7 +9,7 @@ import {
   FolderOpen,
   ListX,
   NotebookPen,
-  Repeat2,
+  Repeat,
   Star,
   Tag,
   Trash2,
@@ -30,6 +30,8 @@ import { ListEmoji } from '@/components/lists/list-emoji'
 import { localDateKey } from '@/lib/today'
 import { cn } from '@/lib/utils'
 import { localTimeCandidates, MINUTE, SLOT_MINUTES, timeInput, timeLabel } from '@/lib/agenda'
+import { formatTime, type TimeFormat } from '@/lib/calendar-preferences'
+import { useCalendarPreferences } from '@/components/settings/calendar-preferences-provider'
 import { recurrenceLabel } from '@/lib/recurrence'
 
 export type PlanTimeDraft = {
@@ -54,6 +56,8 @@ export type TaskFormValues = {
   repeatRule: RecurrenceRule | null
 }
 
+export type TaskFormInitialValues = Partial<TaskFormValues>
+
 type TaskFormProps = {
   mode: 'create' | 'edit'
   task?: TaskWithList
@@ -61,12 +65,14 @@ type TaskFormProps = {
   categories: Category[]
   initialListId?: string | null
   initialCategoryId?: string | null
+  initialValues?: TaskFormInitialValues
   initialTimeBlock?: TimeBlock | null
   initialTimeBlocks?: TimeBlock[]
   focusPlanTime?: boolean
   disabled?: boolean
   error?: string | null
   onCancel?: () => void
+  onCreateEvent?: (values: TaskFormValues) => void
   onSubmit: (values: TaskFormValues) => void | Promise<void>
 }
 
@@ -91,11 +97,11 @@ function dateLabel(value: string | null) {
   }).format(new Date(year, month - 1, day, 12))
 }
 
-function timeValueLabel(value: string | null) {
+function timeValueLabel(value: string | null, timeFormat: TimeFormat) {
   if (!value) return ''
   const [hours, minutes] = value.split(':').map(Number)
   const date = new Date(2000, 0, 1, hours, minutes)
-  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  return formatTime(date, timeFormat)
 }
 
 function weekdayForDate(value: string) {
@@ -139,14 +145,14 @@ function initialPlanTimes(
   return source.map(initialPlanTime).filter((plan): plan is PlanTimeDraft => Boolean(plan))
 }
 
-function planEndLabel(plan: PlanTimeDraft) {
+function planEndLabel(plan: PlanTimeDraft, timeFormat: TimeFormat) {
   const duration = Math.max(SLOT_MINUTES, plan.duration)
   const candidates = localTimeCandidates(plan.date, plan.startTime)
   const chosen = candidates.length === 1
     ? candidates[0]
     : candidates.find((candidate) => String(candidate) === plan.occurrence)
   if (chosen === undefined) return null
-  return timeLabel(chosen + duration * MINUTE)
+  return timeLabel(chosen + duration * MINUTE, timeFormat)
 }
 
 function MetadataRow({
@@ -229,32 +235,35 @@ export function TaskForm({
   categories,
   initialListId = null,
   initialCategoryId = null,
+  initialValues,
   initialTimeBlock,
   initialTimeBlocks = [],
   focusPlanTime = false,
   disabled = false,
   error,
   onCancel = () => {},
+  onCreateEvent,
   onSubmit,
 }: TaskFormProps) {
-  const initialPlanList = initialPlanTimes(
+  const { preferences: calendarPreferences } = useCalendarPreferences()
+  const initialPlanList = initialValues?.planTimes ?? initialPlanTimes(
     initialTimeBlocks ?? [],
     initialTimeBlock,
-    task?.recurrence_rule,
+    initialValues?.repeatRule ?? task?.recurrence_rule,
   )
-  const [title, setTitle] = useState(task?.title ?? '')
-  const [notes, setNotes] = useState(task?.notes ?? '')
-  const [listId, setListId] = useState(task?.list_id ?? initialListId ?? null)
+  const [title, setTitle] = useState(initialValues?.title ?? task?.title ?? '')
+  const [notes, setNotes] = useState(initialValues?.notes ?? task?.notes ?? '')
+  const [listId, setListId] = useState(initialValues?.listId ?? task?.list_id ?? initialListId ?? null)
   const [categoryId, setCategoryId] = useState(
-    task?.category_id ?? initialCategoryId ?? null,
+    initialValues?.categoryId ?? task?.category_id ?? initialCategoryId ?? null,
   )
-  const [dueDate, setDueDate] = useState(task?.due_date ?? null)
-  const [dueTime, setDueTime] = useState(task?.due_time ?? null)
+  const [dueDate, setDueDate] = useState(initialValues?.dueDate ?? task?.due_date ?? null)
+  const [dueTime, setDueTime] = useState(initialValues?.dueTime ?? task?.due_time ?? null)
   const [planTimes, setPlanTimes] = useState<PlanTimeDraft[]>(initialPlanList)
-  const [deadlineOpen, setDeadlineOpen] = useState(Boolean(task?.due_date))
+  const [deadlineOpen, setDeadlineOpen] = useState(Boolean(initialValues?.dueDate ?? task?.due_date))
   const [planOpen, setPlanOpen] = useState(initialPlanList.length > 0 || focusPlanTime)
-  const [focused, setFocused] = useState(task?.focused ?? false)
-  const [repeatRule, setRepeatRule] = useState<RecurrenceRule | null>(task?.recurrence_rule ?? null)
+  const [focused, setFocused] = useState(initialValues?.focused ?? task?.focused ?? false)
+  const [repeatRule, setRepeatRule] = useState<RecurrenceRule | null>(initialValues?.repeatRule ?? task?.recurrence_rule ?? null)
 
   const availableCategories = useMemo(
     () => categories
@@ -323,7 +332,11 @@ export function TaskForm({
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (disabled || !title.trim()) return
-    void onSubmit({
+    void onSubmit(currentValues())
+  }
+
+  function currentValues(): TaskFormValues {
+    return {
       title: title.trim(),
       notes,
       listId,
@@ -333,7 +346,7 @@ export function TaskForm({
       planTimes,
       focused,
       repeatRule,
-    })
+    }
   }
 
   return (
@@ -398,7 +411,7 @@ export function TaskForm({
           />
 
           <MetadataRow
-            icon={<Repeat2 className="size-4" />}
+            icon={<Repeat className="size-4" />}
             label="Repeat"
             summary={
               <Select
@@ -574,7 +587,7 @@ export function TaskForm({
                 open={deadlineOpen}
                 disabled={disabled}
                 label="finish by"
-                summary={dueDate ? `${dateLabel(dueDate)}${dueTime ? ` · ${timeValueLabel(dueTime)}` : ''}` : ''}
+                summary={dueDate ? `${dateLabel(dueDate)}${dueTime ? ` · ${timeValueLabel(dueTime, calendarPreferences.timeFormat)}` : ''}` : ''}
                 onClick={openDeadline}
               />
             }
@@ -657,7 +670,7 @@ export function TaskForm({
                 disabled={disabled}
                 label="schedule"
                 summary={planTimes.length
-                  ? `${planTimes.length} session${planTimes.length === 1 ? '' : 's'} · ${planTimes.map((plan) => timeValueLabel(plan.startTime)).join(', ')}`
+                  ? `${planTimes.length} session${planTimes.length === 1 ? '' : 's'} · ${planTimes.map((plan) => timeValueLabel(plan.startTime, calendarPreferences.timeFormat)).join(', ')}`
                   : ''}
                 onClick={openPlanTime}
               />
@@ -748,12 +761,12 @@ export function TaskForm({
                           <Select value={planTime.occurrence} onValueChange={(value) => updatePlanTime(index, { occurrence: value })} disabled={disabled}>
                             <SelectTrigger className="h-10 border-blue-200/80 bg-background text-sm font-normal text-foreground dark:border-blue-900/60"><SelectValue placeholder="Choose an occurrence" /></SelectTrigger>
                             <SelectContent>
-                              {candidates.map((candidate, candidateIndex) => <SelectItem key={candidate} value={String(candidate)}>{candidateIndex === 0 ? 'First' : 'Second'} · {timeLabel(candidate)}</SelectItem>)}
+                              {candidates.map((candidate, candidateIndex) => <SelectItem key={candidate} value={String(candidate)}>{candidateIndex === 0 ? 'First' : 'Second'} · {timeLabel(candidate, calendarPreferences.timeFormat)}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </label>
                       ) : (
-                        <p className="text-xs text-muted-foreground">{planTime.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone} · {planEndLabel(planTime) ? `${timeValueLabel(planTime.startTime)} – ${planEndLabel(planTime)}` : 'elapsed time'}</p>
+                        <p className="text-xs text-muted-foreground">{planTime.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone} · {planEndLabel(planTime, calendarPreferences.timeFormat) ? `${timeValueLabel(planTime.startTime, calendarPreferences.timeFormat)} – ${planEndLabel(planTime, calendarPreferences.timeFormat)}` : 'elapsed time'}</p>
                       )}
                     </div>
                   )
@@ -792,7 +805,19 @@ export function TaskForm({
       </div>
 
       {error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}
-      <div className="mt-6 flex shrink-0 flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
+      <div className="mt-6 flex shrink-0 flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-end">
+        {mode === 'create' && onCreateEvent ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onCreateEvent(currentValues())}
+            disabled={disabled || !title.trim()}
+            className="sm:mr-auto"
+          >
+            <CalendarDays />
+            Create event
+          </Button>
+        ) : null}
         <Button type="button" variant="outline" onClick={onCancel} disabled={disabled}>
           Cancel
         </Button>

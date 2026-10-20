@@ -3,6 +3,7 @@ import test from 'node:test'
 import { sortTasks } from '../components/lists/task-sorting.ts'
 import {
   defaultHomeSourcePreferences,
+  filterHomeEvents,
   filterHomeTasks,
   getDeadlineLabel,
   getHomeBuckets,
@@ -14,7 +15,7 @@ import {
   setHomeListEnabled,
   setHomeSourceEnabled,
 } from './home.ts'
-import type { TaskWithList } from '../types'
+import type { CalendarEventWithList, TaskWithList } from '../types'
 
 function task(overrides: Partial<TaskWithList>): TaskWithList {
   return {
@@ -31,6 +32,28 @@ function task(overrides: Partial<TaskWithList>): TaskWithList {
     created_at: null,
     focused: false,
     stashed: false,
+    list: null,
+    ...overrides,
+  }
+}
+
+function event(overrides: Partial<CalendarEventWithList>): CalendarEventWithList {
+  return {
+    id: overrides.id ?? crypto.randomUUID(),
+    user_id: 'user',
+    list_id: null,
+    title: 'Event',
+    description: null,
+    location: null,
+    all_day: false,
+    starts_at: '2026-10-20T14:00:00.000Z',
+    ends_at: '2026-10-20T15:00:00.000Z',
+    starts_on: null,
+    ends_on: null,
+    time_zone: 'UTC',
+    recurrence_rule: null,
+    created_at: '',
+    updated_at: '',
     list: null,
     ...overrides,
   }
@@ -165,6 +188,39 @@ test('focused tasks stay visible when their source is hidden', () => {
     'focused-school',
     'personal',
   ])
+})
+
+test('Home event filtering respects visibility, list, category, and Unsorted settings', () => {
+  const categories = [
+    { id: 'classes', list_id: 'school' },
+    { id: 'exams', list_id: 'school' },
+  ]
+  const preferences = setHomeCategoryEnabled(
+    defaultHomeSourcePreferences(),
+    'classes',
+    false,
+    categories,
+  )
+  const visible = filterHomeEvents(
+    [
+      event({ id: 'hidden-series', show_in_upcoming: false }),
+      event({ id: 'hidden-category', list_id: 'school', category_id: 'classes' }),
+      event({ id: 'exam', list_id: 'school', category_id: 'exams' }),
+      event({ id: 'hidden-list', list_id: 'personal' }),
+      event({ id: 'unsorted', list_id: null }),
+    ],
+    { ...preferences, excludedHomeListIds: ['personal'] },
+    categories,
+  )
+
+  assert.deepEqual(visible.map(({ id }) => id), ['exam', 'unsorted'])
+  assert.deepEqual(
+    filterHomeEvents(
+      [event({ id: 'unsorted' })],
+      { ...defaultHomeSourcePreferences(), showUnsortedOnHome: false },
+    ).map(({ id }) => id),
+    [],
+  )
 })
 
 test('category visibility inherits from lists and filters stashed tasks', () => {

@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import type { Category } from '@/types'
+import { isListColor } from '@/lib/list-colors'
 
 export default async function getCategories(listId: string) {
   const supabase = await createClient()
@@ -30,5 +32,8 @@ export default async function getCategories(listId: string) {
     throw new Error(error.message)
   }
 
-  return categories
+  return categories.map((category): Category => ({
+    ...category,
+    color: isListColor(category.color) ? category.color : null,
+  }))
 }

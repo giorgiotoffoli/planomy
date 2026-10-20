@@ -1,10 +1,12 @@
 import type {
   AgendaBlock,
+  CalendarEvent,
   CalendarEventWithList,
   TaskWithList,
 } from '@/types'
 import { formatTaskDueTime, projectCalendarTasks } from './calendar-tasks.ts'
-import { addCalendarDays, isDateKey } from './today.ts'
+import type { TimeFormat } from './calendar-preferences.ts'
+import { addCalendarDays, isDateKey, localDateKey } from './today.ts'
 import { sessionPhase, type SessionPhase } from './recurrence.ts'
 
 export type DueTaskCalendarItem = {
@@ -23,6 +25,7 @@ export type ScheduledTaskCalendarItem = {
   startsAt: string
   endsAt: string | null
   occurrenceId: string | null
+  sessionIndex: number | null
   status: 'scheduled' | 'skipped'
   sessionState: SessionPhase
 }
@@ -39,6 +42,21 @@ export type CalendarItem =
   | EventCalendarItem
 
 export type ScheduledTaskPhase = 'upcoming' | 'in-progress' | 'past'
+
+export function isCalendarEventPast(
+  event: Pick<CalendarEvent, 'all_day' | 'starts_at' | 'ends_at' | 'ends_on'>,
+  now = new Date(),
+) {
+  if (event.all_day) {
+    return Boolean(event.ends_on && event.ends_on <= localDateKey(now))
+  }
+
+  if (!event.starts_at) return false
+  const start = Date.parse(event.starts_at)
+  if (!Number.isFinite(start)) return false
+  const end = event.ends_at ? Date.parse(event.ends_at) : start
+  return Number.isFinite(end) && end <= now.getTime()
+}
 
 export function isTaskDeadlineOverdue(
   task: Pick<TaskWithList, 'completed' | 'due_date' | 'due_time'>,
@@ -99,14 +117,15 @@ export function projectCalendarItems(
   dueTasks: TaskWithList[],
   scheduledTasks: AgendaBlock[],
   events: CalendarEventWithList[],
+  timeFormat: TimeFormat = '12h',
 ): CalendarItem[] {
-  const due: DueTaskCalendarItem[] = projectCalendarTasks(dueTasks).map(
+  const due: DueTaskCalendarItem[] = projectCalendarTasks(dueTasks, timeFormat).map(
     ({ task, dateKey }) => ({
       id: `due:${task.id}`,
       kind: 'due-task',
       task,
       dateKey,
-      dueTimeLabel: formatTaskDueTime(task.due_time),
+      dueTimeLabel: formatTaskDueTime(task.due_time, undefined, timeFormat),
     }),
   )
 
@@ -126,6 +145,7 @@ export function projectCalendarItems(
         startsAt: block.starts_at,
         endsAt: block.ends_at,
         occurrenceId: block.occurrence?.id ?? block.occurrence_id ?? null,
+        sessionIndex: block.session_index ?? null,
         status: block.status === 'skipped' ? 'skipped' as const : 'scheduled' as const,
         sessionState: scheduledTaskState({
           startsAt: block.starts_at,

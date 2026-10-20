@@ -1,6 +1,7 @@
 'use client'
 
-import { Category, List, TaskWithList } from '@/types'
+import { CalendarEventWithList, Category, List, TaskWithList } from '@/types'
+import type { ListColor } from '@/lib/list-colors'
 import {
   Suspense,
   useCallback,
@@ -21,11 +22,13 @@ import {
   updateTaskDueDate,
   updateTaskNotes,
   changeTaskCategory,
+  notifyTaskOrganizationChanged,
+  taskVisualMutationFromEvent,
   taskOrganizationChangeFromEvent,
 } from '../tasks/mutations'
 import { updateTaskCompleted as updateTaskCompletedAction } from '../tasks/actions'
 import { getTasks } from '../tasks/queries'
-import { getListTasks } from '../lists/queries'
+import { getListEvents, getListTasks } from '../lists/queries'
 import { Skeleton } from '../ui/skeleton'
 import { usePathname } from 'next/navigation'
 import { toast } from 'sonner'
@@ -56,6 +59,30 @@ import Header from './header/app-header'
 import { applyTaskOrganizationChange } from '@/lib/tasks'
 import type { TaskCreationView } from '@/lib/task-creation'
 import { localDateKey } from '@/lib/today'
+import EventList from '@/components/lists/event-list'
+import {
+  EVENTS_CHANGED,
+  eventVisualMutationFromEvent,
+} from '@/components/events/mutations'
+import {
+  LISTS_CHANGED,
+  listMutationFromEvent,
+} from '@/components/lists/mutations'
+import {
+  applyEventVisualMutation,
+  applyCategoryMutationToEvent,
+  applyCategoryMutationToTask,
+  applyCategoryMutationToCategory,
+  applyListMutationToEvent,
+  applyListMutationToList,
+  applyListMutationToTask,
+  applyTaskVisualMutation,
+} from '@/lib/live-mutations'
+import {
+  CATEGORIES_CHANGED,
+  categoryVisualMutationFromEvent,
+  notifyCategoriesChanged,
+} from '@/components/categories/mutations'
 
 interface TaskWorkspaceProps {
   tasks: TaskWithList[]
@@ -65,6 +92,7 @@ interface TaskWorkspaceProps {
   currentView: 'list' | 'board'
   headerTitle: string
   headerEmoji?: string | null
+  events?: CalendarEventWithList[]
 }
 
 async function decryptTasks(tasks: TaskWithList[], masterKey: Uint8Array) {
@@ -112,6 +140,20 @@ async function decryptCategories(
   )
 }
 
+async function decryptEvents(events: CalendarEventWithList[], masterKey: Uint8Array) {
+  return Promise.all(events.map(async (event) => ({
+    ...event,
+    title: await decryptString(event.title, masterKey),
+    description: event.description ? await decryptString(event.description, masterKey) : event.description,
+    location: event.location ? await decryptString(event.location, masterKey) : event.location,
+    list: event.list ? {
+      ...event.list,
+      title: await decryptString(event.list.title, masterKey),
+      emoji: event.list.emoji ? await decryptString(event.list.emoji, masterKey) : event.list.emoji,
+    } : null,
+  })))
+}
+
 export default function TaskWorkspace({
   tasks,
   lists,
@@ -120,11 +162,13 @@ export default function TaskWorkspace({
   currentView,
   headerTitle,
   headerEmoji,
+  events = [],
 }: TaskWorkspaceProps) {
   const [localView, setLocalView] = useState(currentView)
   const [localTasks, setLocalTasks] = useState(tasks)
   const [localLists, setLocalLists] = useState(lists)
   const [localCategories, setLocalCategories] = useState<Category[]>([])
+  const [localEvents, setLocalEvents] = useState<CalendarEventWithList[]>(events)
   const [localHeaderTitle, setLocalHeaderTitle] = useState(headerTitle)
   // Keep encrypted emoji ciphertext out of the first render until the vault
   // has decrypted the list data on the client.
@@ -150,10 +194,14 @@ export default function TaskWorkspace({
       const nextTasks = listId
         ? await getListTasks(listId)
         : await getTasks(taskView)
-      const decryptedTasks = await decryptTasks(nextTasks, masterKey)
+      const [decryptedTasks, decryptedEvents] = await Promise.all([
+        decryptTasks(nextTasks, masterKey),
+        listId ? getListEvents(listId).then((value) => decryptEvents(value, masterKey)) : Promise.resolve([]),
+      ])
 
       if (request === taskLoadVersion.current) {
         setLocalTasks(decryptedTasks)
+        setLocalEvents(decryptedEvents)
       }
     } catch (error) {
       if (request === taskLoadVersion.current) {
@@ -163,8 +211,56 @@ export default function TaskWorkspace({
   }, [listId, masterKey, taskView])
 
   useEffect(() => {
-    const handleTasksChanged = () => {
+    const handleTasksChanged = (event: Event) => {
+      const change = taskVisualMutationFromEvent(event)
+      if (change) {
+        setLocalTasks((current) =>
+          change.occurrenceId
+            ? current
+            : current.map((task) => applyTaskVisualMutation(task, change, localLists)),
+        )
+        if (!change.phase) void refreshTasks()
+        return
+      }
       void refreshTasks()
+    }
+    const handleEventsChanged = (event: Event) => {
+      const change = eventVisualMutationFromEvent(event)
+      if (change) {
+        setLocalEvents((current) =>
+          current.map((item) => applyEventVisualMutation(item, change, localLists)),
+        )
+        if (!change.phase) void refreshTasks()
+        return
+      }
+      void refreshTasks()
+    }
+    const handleListsChanged = (event: Event) => {
+      const change = listMutationFromEvent(event)
+      if (!change) {
+        void refreshTasks()
+        return
+      }
+
+      setLocalLists((current) => current.map((list) => applyListMutationToList(list, change)))
+      setLocalTasks((current) => current.map((task) => applyListMutationToTask(task, change)))
+      setLocalEvents((current) => current.map((item) => applyListMutationToEvent(item, change)))
+      if (listId === change.listId) {
+        if (change.title !== undefined) setLocalHeaderTitle(change.title)
+        if (change.emoji !== undefined) setLocalHeaderEmoji(change.emoji)
+      }
+      if (!change.phase) void refreshTasks()
+    }
+    const handleCategoriesChanged = (event: Event) => {
+      const change = categoryVisualMutationFromEvent(event)
+      if (!change) {
+        void refreshTasks()
+        return
+      }
+      setLocalCategories((current) => current.map((category) => applyCategoryMutationToCategory(category, change)))
+      setLocalTasks((current) => current.map((task) => applyCategoryMutationToTask(task, change)))
+      setLocalEvents((current) => current.map((item) => applyCategoryMutationToEvent(item, change)))
+      if (!change.phase) void refreshTasks()
     }
     const handleTaskOrganizationChanged = (event: Event) => {
       const change = taskOrganizationChangeFromEvent(event)
@@ -179,18 +275,24 @@ export default function TaskWorkspace({
     }
 
     window.addEventListener(TASKS_CHANGED, handleTasksChanged)
+    window.addEventListener(EVENTS_CHANGED, handleEventsChanged)
+    window.addEventListener(LISTS_CHANGED, handleListsChanged)
+    window.addEventListener(CATEGORIES_CHANGED, handleCategoriesChanged)
     window.addEventListener(
       TASK_ORGANIZATION_CHANGED,
       handleTaskOrganizationChanged,
     )
     return () => {
       window.removeEventListener(TASKS_CHANGED, handleTasksChanged)
+      window.removeEventListener(EVENTS_CHANGED, handleEventsChanged)
+      window.removeEventListener(LISTS_CHANGED, handleListsChanged)
+      window.removeEventListener(CATEGORIES_CHANGED, handleCategoriesChanged)
       window.removeEventListener(
         TASK_ORGANIZATION_CHANGED,
         handleTaskOrganizationChanged,
       )
     }
-  }, [localLists, refreshTasks])
+  }, [listId, localLists, refreshTasks])
 
   useEffect(() => {
     if (!sortStorageKey) return
@@ -237,11 +339,12 @@ export default function TaskWorkspace({
     const request = ++taskLoadVersion.current
 
     async function decryptLoadedData() {
-      const [decryptedTasks, decryptedLists, decryptedCategories] =
+      const [decryptedTasks, decryptedLists, decryptedCategories, decryptedEvents] =
         await Promise.all([
           decryptTasks(tasks, unlockedMasterKey),
           decryptLists(lists, unlockedMasterKey),
           decryptCategories(categories ?? [], unlockedMasterKey),
+          decryptEvents(events, unlockedMasterKey),
         ])
 
       const decryptedHeaderTitle = await decryptString(headerTitle, unlockedMasterKey)
@@ -253,6 +356,7 @@ export default function TaskWorkspace({
         setLocalTasks(decryptedTasks)
         setLocalLists(decryptedLists)
         setLocalCategories(decryptedCategories)
+        setLocalEvents(decryptedEvents)
         setLocalHeaderTitle(decryptedHeaderTitle)
         setLocalHeaderEmoji(decryptedHeaderEmoji)
       }
@@ -265,7 +369,7 @@ export default function TaskWorkspace({
     return () => {
       isCancelled = true
     }
-  }, [masterKey, tasks, lists, categories, headerTitle, headerEmoji])
+  }, [events, masterKey, tasks, lists, categories, headerTitle, headerEmoji])
 
   async function handleOnComplete(taskId: string, isCompleted: boolean) {
     const previousTasks = localTasks
@@ -380,39 +484,38 @@ export default function TaskWorkspace({
     })
   }
 
-  async function handleOnCreateCategory(title: string) {
+  async function handleOnCreateCategory(title: string, color: ListColor | null) {
     if (!listId) throw new Error('Categories belong to a specific list.')
     if (!masterKey) throw new Error('Encryption key is locked.')
 
     const encryptedTitle = await encryptString(title.trim(), masterKey)
-    const savedCategory = await createCategory(listId, encryptedTitle)
+    const savedCategory = await createCategory(listId, encryptedTitle, color)
     const decryptedTitle = await decryptString(savedCategory.title, masterKey)
 
     setLocalCategories((previousCategories) =>
-      [...previousCategories, { ...savedCategory, title: decryptedTitle }].sort(
+      [...previousCategories, { ...savedCategory, color, title: decryptedTitle }].sort(
         (a, b) => a.position - b.position,
       ),
     )
   }
 
-  async function handleOnRenameCategory(category: Category, title: string) {
+  async function handleOnRenameCategory(category: Category, title: string, color: ListColor | null) {
     if (!listId) throw new Error('Categories belong to a specific list.')
     if (!masterKey) throw new Error('Encryption key is locked.')
 
     const previousCategories = localCategories
-    setLocalCategories((currentCategories) =>
-      currentCategories.map((currentCategory) =>
-        currentCategory.id === category.id
-          ? { ...currentCategory, title }
-          : currentCategory,
-      ),
-    )
+    setLocalCategories((currentCategories) => currentCategories.map((currentCategory) =>
+      currentCategory.id === category.id ? { ...currentCategory, title, color } : currentCategory,
+    ))
+    notifyCategoriesChanged({ categoryId: category.id, listId: category.list_id, color, phase: 'optimistic' })
 
     try {
       const encryptedTitle = await encryptString(title.trim(), masterKey)
-      await renameCategory(listId, category.id, encryptedTitle)
+      await renameCategory(listId, category.id, encryptedTitle, color)
+      notifyCategoriesChanged({ categoryId: category.id, listId: category.list_id, color })
     } catch (error) {
       setLocalCategories(previousCategories)
+      notifyCategoriesChanged({ categoryId: category.id, listId: category.list_id, color: category.color ?? null, phase: 'rollback' })
       throw error
     }
   }
@@ -422,6 +525,7 @@ export default function TaskWorkspace({
 
     const previousCategories = localCategories
     const previousTasks = localTasks
+    const previousEvents = localEvents
     setLocalCategories((currentCategories) =>
       currentCategories.filter(
         (currentCategory) => currentCategory.id !== category.id,
@@ -430,16 +534,20 @@ export default function TaskWorkspace({
     setLocalTasks((currentTasks) =>
       currentTasks.map((task) =>
         task.category_id === category.id
-          ? { ...task, category_id: null }
+          ? { ...task, category_id: null, category: null }
           : task,
       ),
     )
+    setLocalEvents((currentEvents) => currentEvents.map((event) =>
+      event.category_id === category.id ? { ...event, category_id: null, category: null } : event,
+    ))
 
     try {
       await deleteCategory(listId, category.id)
     } catch (error) {
       setLocalCategories(previousCategories)
       setLocalTasks(previousTasks)
+      setLocalEvents(previousEvents)
       throw error
     }
   }
@@ -494,11 +602,22 @@ export default function TaskWorkspace({
     categoryId: string | null,
   ) {
     const previousTasks = localTasks
-    setLocalTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === taskId ? { ...task, category_id: categoryId } : task,
-      ),
-    )
+    const nextCategory = categoryId ? localCategories.find((category) => category.id === categoryId) : null
+    setLocalTasks((currentTasks) => currentTasks.map((task) =>
+      task.id === taskId
+        ? {
+            ...task,
+            category_id: categoryId,
+            category: nextCategory ? { id: nextCategory.id, list_id: nextCategory.list_id, color: nextCategory.color ?? null } : null,
+          }
+        : task,
+    ))
+    notifyTaskOrganizationChanged({
+      taskId,
+      listId: localTasks.find((task) => task.id === taskId)?.list_id ?? listId,
+      categoryId,
+      category: nextCategory ? { id: nextCategory.id, list_id: nextCategory.list_id, color: nextCategory.color ?? null } : null,
+    })
 
     try {
       await changeTaskCategory(taskId, categoryId)
@@ -544,6 +663,8 @@ export default function TaskWorkspace({
           : 'flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4'
       }
     >
+      {listId ? <EventList events={localEvents} lists={localLists} categories={localCategories} listId={listId} /> : null}
+
       {workspaceTasks.length === 0 && pathName === '/inbox' && (
         <p>Nothing in Unsorted. Capture a task or enjoy the silence.</p>
       )}
@@ -592,6 +713,7 @@ export default function TaskWorkspace({
               handleOnDelete={handleOnDelete}
               pathName={pathName}
               categories={listId ? localCategories : undefined}
+              listColor={listId ? localLists.find((list) => list.id === listId)?.color : undefined}
               handleOnChangeCategory={listId ? handleOnChangeCategory : undefined}
               handleOnCreateCategory={
                 listId ? handleOnCreateCategory : undefined
@@ -611,6 +733,7 @@ export default function TaskWorkspace({
             <TaskBoard
               tasks={workspaceTasks}
               categories={localCategories}
+              listColor={localLists.find((list) => list.id === listId)?.color ?? 'blue'}
               onTaskCategoryChange={handleOnChangeCategory}
               onCreateCategory={handleOnCreateCategory}
               onRenameCategory={handleOnRenameCategory}

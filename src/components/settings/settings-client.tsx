@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { KeyRound, LockKeyhole, ShieldAlert, Trash2 } from 'lucide-react'
+import { Clock3, KeyRound, LockKeyhole, ShieldAlert, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -25,13 +25,22 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   replaceUserKeychain,
   type StoredKeychain,
 } from '@/components/e2ee/actions'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { unwrapMasterKey, wrapMasterKey } from '@/lib/crypto/e2ee'
 import { changeAccountPassword, deleteAccount } from './actions'
+import { useCalendarPreferences } from './calendar-preferences-provider'
 import { ThemeSelector } from './theme-selector'
+import type { CalendarFirstDay, TimeFormat } from '@/lib/calendar-preferences'
 
 type PasswordFieldProps = {
   id: string
@@ -382,6 +391,75 @@ function DeleteAccountCard() {
   )
 }
 
+function CalendarPreferencesCard() {
+  const { preferences, isLoading, updatePreferences } = useCalendarPreferences()
+  const [isBusy, setIsBusy] = useState(false)
+
+  async function change(patch: Partial<{ firstDay: CalendarFirstDay; timeFormat: TimeFormat }>) {
+    setIsBusy(true)
+    try {
+      await updatePreferences(patch)
+      toast.success('Calendar preferences saved.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Calendar preferences could not be saved.')
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Calendar</CardTitle>
+        <CardDescription>
+          Choose how weeks and times are displayed across your calendar and planner.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <Label htmlFor="calendar-first-day">Week starts on</Label>
+            <p className="mt-1 text-sm text-muted-foreground">Set the first day shown in weekly calendar views.</p>
+          </div>
+          <Select
+            value={String(preferences.firstDay)}
+            onValueChange={(value) => void change({ firstDay: Number(value) as CalendarFirstDay })}
+            disabled={isLoading || isBusy}
+          >
+            <SelectTrigger id="calendar-first-day" className="w-full sm:w-48" aria-label="Week starts on">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day, index) => (
+                <SelectItem key={day} value={String(index)}>{day}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <Label htmlFor="calendar-time-format">Time format</Label>
+            <p className="mt-1 text-sm text-muted-foreground">Use AM/PM or 24-hour time for calendar labels.</p>
+          </div>
+          <Select
+            value={preferences.timeFormat}
+            onValueChange={(value) => void change({ timeFormat: value as TimeFormat })}
+            disabled={isLoading || isBusy}
+          >
+            <SelectTrigger id="calendar-time-format" className="w-full sm:w-56" aria-label="Time format">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="12h"><span className="flex items-center gap-2"><Clock3 className="size-4" /> 12-hour (AM/PM)</span></SelectItem>
+              <SelectItem value="24h"><span className="flex items-center gap-2"><Clock3 className="size-4" /> 24-hour</span></SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function SettingsClient({
   initialKeychain,
 }: {
@@ -400,6 +478,7 @@ export default function SettingsClient({
           <ThemeSelector />
         </CardContent>
       </Card>
+      <CalendarPreferencesCard />
       <AccountPasswordCard />
       <MasterPasswordCard initialKeychain={initialKeychain} />
       <DeleteAccountCard />

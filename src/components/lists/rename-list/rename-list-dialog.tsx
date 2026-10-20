@@ -24,6 +24,7 @@ import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { encryptString } from '@/lib/crypto/e2ee'
 import { toast } from 'sonner'
 import { ListEmojiPicker } from '../list-emoji-picker'
+import { notifyListsChanged } from '../mutations'
 
 export function RenameListDialog({
   children,
@@ -34,6 +35,7 @@ export function RenameListDialog({
 }) {
   const [open, setOpen] = useState(false)
   const [emoji, setEmoji] = useState<string | null>(list.emoji)
+  const [saving, setSaving] = useState(false)
   const { masterKey } = useE2EE()
 
   return (
@@ -68,8 +70,30 @@ export function RenameListDialog({
               emoji ? encryptString(emoji, masterKey) : Promise.resolve(null),
             ])
 
-            await renameList(list.id, encryptedTitle, encryptedEmoji)
-            setOpen(false)
+            setSaving(true)
+            notifyListsChanged({
+              listId: list.id,
+              title: newListTitle.trim(),
+              emoji,
+              phase: 'optimistic',
+            })
+            try {
+              await renameList(list.id, encryptedTitle, encryptedEmoji)
+              notifyListsChanged()
+              setOpen(false)
+            } catch (cause) {
+              notifyListsChanged({
+                listId: list.id,
+                title: list.title,
+                emoji: list.emoji,
+                phase: 'rollback',
+              })
+              toast.error(
+                cause instanceof Error ? cause.message : 'List could not be renamed.',
+              )
+            } finally {
+              setSaving(false)
+            }
           }}
         >
           <FieldGroup>
@@ -83,6 +107,7 @@ export function RenameListDialog({
                 name="new_title"
                 id="new_title"
                 defaultValue={list.title}
+                disabled={saving}
               />
             </Field>
             <Field>
@@ -93,8 +118,8 @@ export function RenameListDialog({
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button type="submit" className="bg-primary hover:bg-primary/90">
-              Rename
+            <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/90">
+              {saving ? 'Saving…' : 'Rename'}
             </Button>
           </DialogFooter>
         </form>
