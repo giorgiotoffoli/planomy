@@ -178,6 +178,7 @@ export interface CalendarEvent {
   time_zone: string
   recurrence_rule: RecurrenceRule | null
   show_in_upcoming?: boolean
+  show_in_list?: boolean
   created_at: string
   updated_at: string
   /** The persisted series id for a generated occurrence. */

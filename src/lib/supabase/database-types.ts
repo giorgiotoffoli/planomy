@@ -86,6 +86,7 @@ export type Database = {
           color: string | null
           location: string | null
           recurrence_rule: Json | null
+          show_in_list: boolean
           show_in_upcoming: boolean
           starts_at: string | null
           starts_on: string | null
@@ -106,6 +107,7 @@ export type Database = {
           color?: string | null
           location?: string | null
           recurrence_rule?: Json | null
+          show_in_list?: boolean
           show_in_upcoming?: boolean
           starts_at?: string | null
           starts_on?: string | null
@@ -126,6 +128,7 @@ export type Database = {
           color?: string | null
           location?: string | null
           recurrence_rule?: Json | null
+          show_in_list?: boolean
           show_in_upcoming?: boolean
           starts_at?: string | null
           starts_on?: string | null

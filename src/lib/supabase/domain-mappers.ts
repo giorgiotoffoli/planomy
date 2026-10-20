@@ -171,6 +171,7 @@ export function toCalendarEvent(
     ends_on: row.ends_on,
     recurrence_rule: recurrenceRule(row.recurrence_rule),
     show_in_upcoming: row.show_in_upcoming ?? true,
+    show_in_list: row.show_in_list ?? true,
     created_at: row.created_at,
     updated_at: row.updated_at,
     list: row.list ? toListSummary(row.list) : null,

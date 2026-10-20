@@ -13,10 +13,11 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Category } from '@/types'
-import { type ListColor } from '@/lib/list-colors'
+import { listColorStyle, type ListColor } from '@/lib/list-colors'
 import CategoryColorPicker from './category-color-picker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -294,18 +295,34 @@ export function CategoryHeader({
     onRename &&
     onDelete &&
     onMove
+  const hasCustomColor = Boolean(category?.color)
 
   return (
     <div className="group flex min-h-10 items-center gap-3 border-b border-border/70 px-2 py-2">
-      <h2
-        id={headingId}
-        className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight"
-      >
-        {category?.title ?? 'Uncategorized'}
-      </h2>
-      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-        {count}
-      </span>
+      <div className="flex min-w-0 flex-1">
+        <div
+          className={cn(
+            'flex w-fit min-w-0 max-w-full items-center gap-2 rounded-lg px-2 py-1',
+            hasCustomColor
+              ? 'bg-(--list-color)/10 dark:bg-(--list-color)/15'
+              : 'bg-muted/70',
+          )}
+          style={hasCustomColor ? listColorStyle(category?.color) : undefined}
+        >
+          <h2
+            id={headingId}
+            className="min-w-0 truncate text-sm font-semibold tracking-tight"
+          >
+            {category?.title ?? 'Uncategorized'}
+          </h2>
+          <span
+            className="shrink-0 text-xs tabular-nums text-muted-foreground"
+            aria-label={`${count} ${count === 1 ? 'task' : 'tasks'}`}
+          >
+            {count}
+          </span>
+        </div>
+      </div>
       {children}
       {canManage && (
         <CategoryHeaderMenu

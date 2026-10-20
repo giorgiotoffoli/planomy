@@ -4,6 +4,7 @@ import type { CalendarEventWithList, TaskWithList } from '@/types'
 import {
   applyCategoryMutationToEvent,
   applyCategoryMutationToTask,
+  applyEventVisualMutation,
 } from './live-mutations.ts'
 
 const list = {
@@ -54,4 +55,34 @@ test('category color changes propagate to task and event summaries', () => {
 
   assert.equal(applyCategoryMutationToTask(task, change).category?.color, 'pink')
   assert.equal(applyCategoryMutationToEvent(event, change).category?.color, 'pink')
+})
+
+test('event visibility changes propagate without affecting other event fields', () => {
+  const event: CalendarEventWithList = {
+    id: 'event',
+    user_id: 'user',
+    list_id: list.id,
+    title: 'Recurring review',
+    description: null,
+    location: null,
+    all_day: false,
+    starts_at: '2026-10-20T14:00:00Z',
+    ends_at: '2026-10-20T15:00:00Z',
+    starts_on: null,
+    ends_on: null,
+    time_zone: 'UTC',
+    recurrence_rule: { frequency: 'weekly', startDate: '2026-10-20', weekdays: [2] },
+    created_at: '2026-10-20T00:00:00Z',
+    updated_at: '2026-10-20T00:00:00Z',
+    list,
+  }
+
+  const hidden = applyEventVisualMutation(event, {
+    eventId: event.id,
+    showInList: false,
+  }, [list])
+
+  assert.equal(hidden.show_in_list, false)
+  assert.equal(hidden.title, event.title)
+  assert.deepEqual(hidden.recurrence_rule, event.recurrence_rule)
 })

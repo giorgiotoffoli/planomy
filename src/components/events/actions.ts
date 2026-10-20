@@ -155,6 +155,22 @@ export async function updateEvent(input: UpdateEventInput) {
   return toCalendarEvent(data)
 }
 
+export async function setEventListVisibility(eventId: string, visible: boolean) {
+  const { supabase, user } = await authenticatedClient()
+  const { data, error } = await supabase
+    .from('events')
+    .update({ show_in_list: visible })
+    .eq('id', eventId)
+    .eq('user_id', user.id)
+    .select(eventSelection)
+    .single()
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/calendar')
+  revalidatePath('/lists/[list-id]', 'page')
+  return toCalendarEvent(data)
+}
+
 export async function updateEventOccurrence(input: UpdateEventOccurrenceInput) {
   if (!input.occurrenceKey || input.occurrenceKey.length > 160) {
     throw new Error('Choose a valid event occurrence.')
@@ -422,7 +438,11 @@ export async function updateEventOccurrenceWithScope(
   const oldRule = eventRulesForSplit(originalRule, fields.recurrence_rule!, occurrenceDate).oldRule
   const { data: nextEvent, error: insertError } = await supabase
     .from('events')
-    .insert({ ...dbEventFields({ ...fields, recurrence_rule: nextRule }), user_id: user.id })
+    .insert({
+      ...dbEventFields({ ...fields, recurrence_rule: nextRule }),
+      show_in_list: current.show_in_list,
+      user_id: user.id,
+    })
     .select('id')
     .single()
   if (insertError) throw new Error(insertError.message)

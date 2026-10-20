@@ -30,6 +30,7 @@ export type EventVisualMutation = {
   category?: CategorySummary | null
   color?: ListColor | null
   showInUpcoming?: boolean
+  showInList?: boolean
   scope?: 'this' | 'following' | 'all'
   phase?: LiveMutationPhase
 }
@@ -144,6 +145,9 @@ export function applyEventVisualMutation(
     ...(change.color !== undefined ? { color: change.color } : {}),
     ...(change.showInUpcoming !== undefined
       ? { show_in_upcoming: change.showInUpcoming }
+      : {}),
+    ...(change.showInList !== undefined
+      ? { show_in_list: change.showInList }
       : {}),
   }
 }
