@@ -12,16 +12,19 @@ import { format } from 'date-fns'
 import {
   Archive,
   ArchiveRestore,
+  AlertTriangle,
   ChevronDown,
   Clock3,
   ListTodo,
+  Repeat2,
   Search,
   Star,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
-import { localDateKey } from '@/lib/today'
+import { calendarDaysBetween, localDateKey } from '@/lib/today'
+import { nextOccurrenceDate } from '@/lib/recurrence'
 import { applyTaskOrganizationChange, matchesTaskSearch } from '@/lib/tasks'
 import type { TaskCreationView } from '@/lib/task-creation'
 import TaskSortSelect from '@/components/lists/task-sort-select'
@@ -39,6 +42,7 @@ import {
   getHomeBuckets,
   getHomeSources,
   getHomeSourceState,
+  isDueSoon,
   MAX_FOCUS_TASKS,
   setHomeCategoryEnabled,
   setHomeListEnabled,
@@ -46,7 +50,13 @@ import {
   type HomeSource,
   type HomeSourcePreferences,
 } from '@/lib/home'
-import type { Category, List, TaskWithList } from '@/types'
+import type {
+  Category,
+  List,
+  NeedsAttentionItem,
+  TaskOccurrence,
+  TaskWithList,
+} from '@/types'
 import { getHomeData } from './queries'
 import {
   setHomeCategoryVisibility,
@@ -57,6 +67,8 @@ import {
 } from './actions'
 import HomeSourcesPicker from './home-sources-picker'
 import { updateTaskCompleted as updateTaskCompletedAction } from '@/components/tasks/actions'
+import { updateTaskOccurrenceSkipped } from '@/components/tasks/recurrence-actions'
+import { skipTimeBlock } from '@/components/agenda/actions'
 import {
   TASK_ORGANIZATION_CHANGED,
   TASKS_CHANGED,
@@ -78,6 +90,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SidebarTrigger } from '@/components/ui/sidebar'
+import { TaskEditDialog } from '@/components/tasks/task-item/task-edit/task-edit-dialog'
 import {
   Collapsible,
   CollapsibleContent,
@@ -97,6 +110,23 @@ const OPENING_MESSAGES = [
 ]
 
 function decryptHomeData(data: HomeData, masterKey: Uint8Array) {
+  const decryptTask = async (task: TaskWithList) => ({
+    ...task,
+    title: await decryptString(task.title, masterKey),
+    notes: task.notes
+      ? await decryptString(task.notes, masterKey)
+      : task.notes,
+    list: task.list
+      ? {
+          ...task.list,
+          title: await decryptString(task.list.title, masterKey),
+          emoji: task.list.emoji
+            ? await decryptString(task.list.emoji, masterKey)
+            : task.list.emoji,
+        }
+      : task.list,
+  })
+
   return Promise.all([
     Promise.all(
       data.lists.map(async (list) => ({
@@ -108,22 +138,7 @@ function decryptHomeData(data: HomeData, masterKey: Uint8Array) {
       })),
     ),
     Promise.all(
-      data.tasks.map(async (task) => ({
-        ...task,
-        title: await decryptString(task.title, masterKey),
-        notes: task.notes
-          ? await decryptString(task.notes, masterKey)
-          : task.notes,
-        list: task.list
-          ? {
-              ...task.list,
-              title: await decryptString(task.list.title, masterKey),
-              emoji: task.list.emoji
-                ? await decryptString(task.list.emoji, masterKey)
-                : task.list.emoji,
-            }
-          : task.list,
-      })),
+      data.tasks.map(decryptTask),
     ),
     Promise.all(
       data.categories.map(async (category) => ({
@@ -132,11 +147,19 @@ function decryptHomeData(data: HomeData, masterKey: Uint8Array) {
       })),
     ),
     Promise.resolve(data.homePreferences),
-  ]).then(([lists, tasks, categories, homePreferences]) => ({
+    Promise.all(
+      data.attention.map(async (item) => ({
+        ...item,
+        task: await decryptTask(item.task),
+      })),
+    ),
+  ]).then(([lists, tasks, categories, homePreferences, attention]) => ({
     lists,
     tasks,
     categories,
     homePreferences,
+    currentOccurrences: data.currentOccurrences,
+    attention,
   }))
 }
 
@@ -248,6 +271,7 @@ type SectionShellProps = {
   icon: ReactNode
   tone: 'focus' | 'due' | 'tasks'
   children: ReactNode
+  leadingContent?: ReactNode
   empty: ReactNode
   compactWhenEmpty?: boolean
   compactEmptyLabel?: string
@@ -259,6 +283,7 @@ function SectionShell({
   icon,
   tone,
   children,
+  leadingContent,
   empty,
   compactWhenEmpty = false,
   compactEmptyLabel,
@@ -327,6 +352,7 @@ function SectionShell({
         </CollapsibleTrigger>
       </h2>
       <CollapsibleContent>
+        {leadingContent}
         {count > 0 ? (
           <ul className="divide-y divide-slate-200/70 dark:divide-border/70">
             {children}
@@ -345,6 +371,125 @@ function SectionShell({
   )
 }
 
+function attentionDateLabel(item: NeedsAttentionItem) {
+  if (item.kind === 'missed-session' && item.session) {
+    return format(new Date(item.session.starts_at), 'EEE, MMM d · h:mm a')
+  }
+
+  return item.occurrences.length === 1
+    ? format(new Date(`${item.occurrences[0].occurrence_date}T12:00:00`), 'EEE, MMM d')
+    : `${item.occurrences.length} missed occurrences`
+}
+
+function NeedsAttentionSection({
+  items,
+  lists,
+  categories,
+  onSkipSession,
+  onSkipOccurrence,
+}: {
+  items: NeedsAttentionItem[]
+  lists: List[]
+  categories: Category[]
+  onSkipSession: (item: NeedsAttentionItem) => Promise<void>
+  onSkipOccurrence: (occurrence: TaskOccurrence) => Promise<void>
+}) {
+  const [open, setOpen] = useState(true)
+  const [showAll, setShowAll] = useState(false)
+  const unresolvedCount = items.reduce(
+    (count, item) => count + (item.kind === 'missed-session' ? 1 : item.occurrences.length),
+    0,
+  )
+  const visibleItems = showAll ? items : items.slice(0, 4)
+
+  if (!items.length) return null
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="mb-3 rounded-xl border border-amber-200/80 border-l-2 border-l-amber-400/80 bg-amber-50/55 px-2.5 py-2.5 dark:border-amber-400/20 dark:border-l-amber-300/70 dark:bg-amber-500/8"
+    >
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="flex w-full items-center gap-2.5 px-1 py-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          aria-label={`${open ? 'Collapse' : 'Expand'} Needs Attention`}
+        >
+          <AlertTriangle className="size-5 text-amber-600 dark:text-amber-300" />
+          <span className="font-heading text-base font-semibold tracking-[-0.02em]">
+            Needs Attention
+          </span>
+          <span className="flex size-6 items-center justify-center rounded-full bg-amber-200/70 text-[11px] font-semibold text-amber-900 dark:bg-amber-300/15 dark:text-amber-100">
+            {unresolvedCount}
+          </span>
+          <ChevronDown className={`ml-auto size-4 text-amber-700/70 transition-transform dark:text-amber-200/70 ${open ? 'rotate-180' : ''}`} />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="mt-2 divide-y divide-amber-200/70 rounded-xl border border-amber-200/70 bg-white/55 dark:divide-amber-300/10 dark:border-amber-300/10 dark:bg-surface/50">
+          {visibleItems.map((item) => (
+            <div key={item.id} className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  {item.kind === 'missed-occurrence' ? <Repeat2 className="size-3.5 shrink-0 text-amber-700/70 dark:text-amber-200/70" /> : <Clock3 className="size-3.5 shrink-0 text-amber-700/70 dark:text-amber-200/70" />}
+                  <p className="truncate text-sm font-medium text-foreground">{item.task.title}</p>
+                </div>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {attentionDateLabel(item)}{item.task.list?.title ? ` · ${item.task.list.title}` : ''}
+                </p>
+                {item.kind === 'missed-occurrence' && item.occurrences.length > 1 ? (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {item.occurrences.map((occurrence) => (
+                      <Button
+                        key={occurrence.id}
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 rounded-full px-2 text-[11px] text-muted-foreground"
+                        onClick={() => void onSkipOccurrence(occurrence)}
+                      >
+                        Skip {format(new Date(`${occurrence.occurrence_date}T12:00:00`), 'MMM d')}
+                      </Button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <TaskEditDialog
+                  task={item.task}
+                  lists={lists}
+                  categories={categories}
+                  currentListId={item.task.list_id}
+                  focusPlanTime={item.kind === 'missed-session'}
+                >
+                  <Button type="button" size="sm" variant="outline" className="rounded-lg">
+                    {item.kind === 'missed-session' ? 'Reschedule' : 'Review'}
+                  </Button>
+                </TaskEditDialog>
+                {item.kind === 'missed-session' && item.session ? (
+                  <Button type="button" size="sm" variant="ghost" className="rounded-lg" onClick={() => void onSkipSession(item)}>
+                    Skip
+                  </Button>
+                ) : item.occurrences.length === 1 ? (
+                  <Button type="button" size="sm" variant="ghost" className="rounded-lg" onClick={() => void onSkipOccurrence(item.occurrences[0])}>
+                    Skip
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+        {items.length > 4 ? (
+          <Button type="button" variant="ghost" size="sm" className="mt-1.5 h-7 px-1.5 text-xs text-muted-foreground" onClick={() => setShowAll((value) => !value)}>
+            {showAll ? 'Show less' : `Show ${items.length - 4} more`}
+          </Button>
+        ) : null}
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}
+
 export default function HomePlanner({
   initialData,
 }: {
@@ -354,6 +499,8 @@ export default function HomePlanner({
   const [day, setDay] = useState(() => localDateKey())
   const dayRef = useRef(day)
   const [tasks, setTasks] = useState<TaskWithList[] | null>(null)
+  const [currentOccurrences, setCurrentOccurrences] = useState<TaskOccurrence[]>(initialData.currentOccurrences)
+  const [attention, setAttention] = useState<NeedsAttentionItem[]>(initialData.attention)
   const [lists, setLists] = useState<List[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [homePreferences, setHomePreferences] = useState<HomeSourcePreferences>(
@@ -384,6 +531,8 @@ export default function HomePlanner({
       setLists(decryptedData.lists)
       setTasks(decryptedData.tasks)
       setCategories(decryptedData.categories)
+      setCurrentOccurrences(decryptedData.currentOccurrences)
+      setAttention(decryptedData.attention)
       if (preferenceVersion === homePreferenceChangeVersion.current) {
         setHomePreferences(decryptedData.homePreferences)
       }
@@ -400,7 +549,7 @@ export default function HomePlanner({
     try {
       await homePreferenceSaveQueue.current.catch(() => {})
       const preferenceVersion = homePreferenceChangeVersion.current
-      const nextData = await getHomeData()
+      const nextData = await getHomeData({ today: localDateKey(), now: new Date().toISOString() })
       if (version === loadVersion.current) {
         await applyData(
           nextData,
@@ -535,8 +684,16 @@ export default function HomePlanner({
   ).length
 
   const homeTasks = useMemo(
-    () => filterHomeTasks(tasks ?? [], homePreferences, categories),
-    [categories, homePreferences, tasks],
+    () => filterHomeTasks(tasks ?? [], homePreferences, categories).filter((task) => {
+      if (!task.recurrence_rule) return true
+      return currentOccurrences.some((occurrence) => occurrence.task_id === task.id && !occurrence.completed && !occurrence.skipped)
+    }),
+    [categories, currentOccurrences, homePreferences, tasks],
+  )
+
+  const filteredDefinitions = useMemo(
+    () => filterHomeTasks(tasks ?? [], homePreferences, categories).filter((task) => matchesTaskSearch(task, searchQuery)),
+    [categories, homePreferences, searchQuery, tasks],
   )
 
   const filteredTasks = useMemo(
@@ -558,9 +715,31 @@ export default function HomePlanner({
     }
   }, [day, filteredTasks, sortOption])
 
-  const hasVisibleHomeTasks = Object.values(buckets).some(
-    (bucket) => bucket.length > 0,
-  )
+  const upcoming = useMemo(() => {
+    const entries = new Map<string, { task: TaskWithList; label: string | null; time: string | null }>()
+    const deadlineTasks = filteredDefinitions.filter((task) => !task.stashed && isDueSoon(task, day))
+    for (const task of deadlineTasks) {
+      entries.set(task.id, {
+        task,
+        label: getDeadlineLabel(task.due_date, day),
+        time: getDueTimeLabel(task.due_time),
+      })
+    }
+    for (const task of filteredDefinitions) {
+      if (!task.recurrence_rule || task.stashed) continue
+      const current = currentOccurrences.find((occurrence) => occurrence.task_id === task.id)
+      const nextDate = current && !current.completed && !current.skipped
+        ? day
+        : nextOccurrenceDate(task.recurrence_rule, day)
+      if (!nextDate || calendarDaysBetween(day, nextDate) > DUE_SOON_DAYS) continue
+      if (!entries.has(task.id)) {
+        entries.set(task.id, { task, label: getDeadlineLabel(nextDate, day), time: null })
+      }
+    }
+    return sortTasks(Array.from(entries.values()).map((entry) => entry.task), sortOption).map((task) => entries.get(task.id)!)
+  }, [currentOccurrences, day, filteredDefinitions, sortOption])
+
+  const hasVisibleHomeTasks = Object.values(buckets).some((bucket) => bucket.length > 0) || upcoming.length > 0 || attention.length > 0
 
   const activeCount = homeTasks.filter(
     (task) => !task.completed && !task.stashed && !exitingTaskIds.has(task.id),
@@ -679,8 +858,11 @@ export default function HomePlanner({
 
   async function handleComplete(taskId: string, completed: boolean) {
     const previous = tasks
+    const previousOccurrences = currentOccurrences
+    const task = tasks?.find((candidate) => candidate.id === taskId)
+    const recurringCompletion = completed && Boolean(task?.recurrence_rule)
 
-    if (completed) {
+    if (completed && !recurringCompletion) {
       if (exitingTaskIds.has(taskId)) return
 
       setExitingTaskIds((current) => {
@@ -689,13 +871,22 @@ export default function HomePlanner({
         return next
       })
     } else {
-      updateTask(taskId, { completed })
+      updateTask(taskId, { completed: recurringCompletion ? false : completed })
+    }
+    if (recurringCompletion) {
+      setCurrentOccurrences((current) => current.map((occurrence) =>
+        occurrence.task_id === taskId && occurrence.occurrence_date === localDateKey()
+          ? { ...occurrence, completed: true }
+          : occurrence,
+      ))
     }
 
     try {
-      await updateTaskCompletedAction(taskId, completed)
+      const result = await updateTaskCompletedAction(taskId, completed, localDateKey())
 
-      if (completed) {
+      if (result.recurring && !result.taskCompleted) {
+        updateTask(taskId, { completed: false })
+      } else if (completed) {
         await waitForTaskExit()
         setTasks(
           (current) => current?.filter((task) => task.id !== taskId) ?? null,
@@ -710,6 +901,7 @@ export default function HomePlanner({
       notifyTasksChanged()
     } catch (cause) {
       setTasks(previous)
+      setCurrentOccurrences(previousOccurrences)
       setExitingTaskIds((current) => {
         const next = new Set(current)
         next.delete(taskId)
@@ -821,15 +1013,36 @@ export default function HomePlanner({
     }
   }
 
-  function renderTask(task: TaskWithList) {
+  async function handleSkipAttentionSession(item: NeedsAttentionItem) {
+    if (!item.session?.id) return
+    try {
+      await skipTimeBlock(item.session.id)
+      notifyTasksChanged()
+      await load()
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : 'Session could not be skipped.')
+    }
+  }
+
+  async function handleSkipAttentionOccurrence(occurrence: TaskOccurrence) {
+    try {
+      await updateTaskOccurrenceSkipped(occurrence.id, true)
+      notifyTasksChanged()
+      await load()
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : 'Occurrence could not be skipped.')
+    }
+  }
+
+  function renderTask(task: TaskWithList, deadlineLabel?: string | null, deadlineTime?: string | null) {
     return (
       <HomeTaskRow
         key={task.id}
         task={task}
         lists={lists}
         categories={categories}
-        deadlineLabel={getDeadlineLabel(task.due_date, day)}
-        deadlineTime={getDueTimeLabel(task.due_time)}
+        deadlineLabel={deadlineLabel === undefined ? getDeadlineLabel(task.due_date, day) : deadlineLabel}
+        deadlineTime={deadlineTime === undefined ? getDueTimeLabel(task.due_time) : deadlineTime}
         onComplete={handleComplete}
         onRename={handleRename}
         onDueDateChange={handleDueDateChange}
@@ -984,15 +1197,15 @@ export default function HomePlanner({
 
                     <div>
                       <SectionShell
-                        title="Due Soon"
-                        count={buckets.dueSoon.length}
+                        title="Upcoming"
+                        count={upcoming.length}
                         icon={<Clock3 className="size-5" />}
                         tone="due"
                         empty={`Nothing due in the next ${DUE_SOON_DAYS} days.`}
                         compactWhenEmpty
                         compactEmptyLabel="All clear"
                       >
-                        {buckets.dueSoon.map((task) => renderTask(task))}
+                        {upcoming.map(({ task, label, time }) => renderTask(task, label, time))}
                       </SectionShell>
                     </div>
                   </aside>
@@ -1003,6 +1216,15 @@ export default function HomePlanner({
                       count={buckets.tasks.length}
                       icon={<ListTodo className="size-5" />}
                       tone="tasks"
+                      leadingContent={
+                        <NeedsAttentionSection
+                          items={attention}
+                          lists={lists}
+                          categories={categories}
+                          onSkipSession={handleSkipAttentionSession}
+                          onSkipOccurrence={handleSkipAttentionOccurrence}
+                        />
+                      }
                       empty={
                         searchQuery
                           ? 'No tasks match that search.'

@@ -19,7 +19,7 @@ import {
   notifyTasksChanged,
   updateTask,
 } from '@/components/tasks/mutations'
-import { getTaskTimeBlock, removeTimeBlock, saveTimeBlock } from '@/components/agenda/actions'
+import { getTaskTimeBlocks, removeGeneratedRecurringSessions, removeTaskTimeBlocks, removeTimeBlock, saveTimeBlock } from '@/components/agenda/actions'
 import { resolveLocalPlanTime } from '@/lib/task-form'
 import { isCreatedTaskVisible, type TaskCreationView } from '@/lib/task-creation'
 import { showTaskCreatedToast } from '../create-task/task-created-toast'
@@ -39,12 +39,6 @@ type TaskDialogProps = {
   creationView?: TaskCreationView
 }
 
-function resolvePlanTime(values: TaskFormValues) {
-  if (!values.planTime) return null
-  const { date, startTime, occurrence, duration } = values.planTime
-  return resolveLocalPlanTime(date, startTime, duration, occurrence)
-}
-
 export function TaskDialog({
   mode,
   task,
@@ -60,7 +54,7 @@ export function TaskDialog({
 }: TaskDialogProps) {
   const { masterKey } = useE2EE()
   const [internalOpen, setInternalOpen] = useState(false)
-  const [timeBlock, setTimeBlock] = useState<TimeBlock | null>(null)
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([])
   const [loadingTimeBlock, setLoadingTimeBlock] = useState(mode === 'edit')
   const [saving, setSaving] = useState(false)
   const submitting = useRef(false)
@@ -75,7 +69,7 @@ export function TaskDialog({
     createdTaskId.current = null
     if (nextOpen && mode === 'edit') {
       setLoadingTimeBlock(true)
-      setTimeBlock(null)
+      setTimeBlocks([])
     }
     if (!isControlled) setInternalOpen(nextOpen)
     controlledOnOpenChange?.(nextOpen)
@@ -83,13 +77,14 @@ export function TaskDialog({
 
   useEffect(() => {
     if (!open || mode !== 'edit' || !task) return
+    if (task.recurrence_rule) return
     let cancelled = false
-    getTaskTimeBlock(task.id)
-      .then((block) => {
-        if (!cancelled) setTimeBlock(block)
+    getTaskTimeBlocks(task.id)
+      .then((blocks) => {
+        if (!cancelled) setTimeBlocks(blocks)
       })
       .catch((cause) => {
-        if (!cancelled) toast.error(cause instanceof Error ? cause.message : 'Plan time could not be loaded.')
+        if (!cancelled) toast.error(cause instanceof Error ? cause.message : 'Schedule could not be loaded.')
       })
       .finally(() => {
         if (!cancelled) setLoadingTimeBlock(false)
@@ -105,11 +100,34 @@ export function TaskDialog({
       return
     }
 
-    let planTime: ReturnType<typeof resolvePlanTime>
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    const repeatRule = values.repeatRule
+      ? {
+          ...values.repeatRule,
+          scheduledSessions: values.planTimes.length
+            ? values.planTimes.map((planTime, index) => ({
+                id: planTime.templateId ?? `session-${index + 1}`,
+                startTime: planTime.startTime,
+                durationMinutes: planTime.duration,
+                timeZone: planTime.timeZone ?? timeZone,
+              }))
+            : undefined,
+        }
+      : null
+
+    let planTimes: Array<{ id?: string; startsAt: string; endsAt: string | null }>
     try {
-      planTime = resolvePlanTime(values)
+      planTimes = values.planTimes.map((planTime) => {
+        const resolved = resolveLocalPlanTime(
+          planTime.date,
+          planTime.startTime,
+          planTime.duration,
+          planTime.occurrence,
+        )
+        return { id: planTime.id, ...resolved }
+      })
     } catch (cause) {
-      setSaveError(cause instanceof Error ? cause.message : 'Plan time is invalid.')
+      setSaveError(cause instanceof Error ? cause.message : 'Schedule is invalid.')
       return
     }
 
@@ -141,8 +159,9 @@ export function TaskDialog({
         dueDate: values.dueDate,
         dueTime: values.dueTime,
         focused: values.focused,
+        repeatRule,
       }
-      // A failed Plan time save must retry the existing task, not insert another.
+      // A failed Schedule save must retry the existing task, not insert another.
       const savedTask = mode === 'create' && !createdTaskId.current
         ? await createTask(input)
         : await updateTask({ ...input, taskId: createdTaskId.current ?? task!.id })
@@ -151,20 +170,31 @@ export function TaskDialog({
       taskSaved = true
       if (mode === 'create') createdTaskId.current = savedTask.id
 
-      if (planTime) {
-        try {
-          await saveTimeBlock(savedTask.id, planTime.startsAt, planTime.endsAt)
-        } catch (cause) {
-          const detail = cause instanceof Error ? ` ${cause.message}` : ''
-          throw new Error(`Task saved, but Plan time couldn't be saved. Try again to finish saving this task.${detail}`)
+      try {
+        if (!repeatRule) {
+          const retainedIds = new Set(planTimes.map((planTime) => planTime.id).filter(Boolean))
+          await Promise.all([
+            ...planTimes.map((planTime) => saveTimeBlock(
+              savedTask.id,
+              planTime.startsAt,
+              planTime.endsAt,
+              planTime.id,
+            )),
+            ...(mode === 'edit'
+              ? timeBlocks
+                .filter((block) => block.id && !retainedIds.has(block.id))
+                .map((block) => removeTimeBlock(block.id!))
+              : []),
+          ])
+          if (mode === 'edit' && !planTimes.length && timeBlocks.some((block) => !block.id)) {
+            await removeTaskTimeBlocks(savedTask.id)
+          }
+        } else {
+          await removeGeneratedRecurringSessions(savedTask.id)
         }
-      } else if (mode === 'edit') {
-        try {
-          await removeTimeBlock(savedTask.id)
-        } catch (cause) {
-          const detail = cause instanceof Error ? ` ${cause.message}` : ''
-          throw new Error(`Task saved, but Plan time couldn't be removed.${detail}`)
-        }
+      } catch (cause) {
+        const detail = cause instanceof Error ? ` ${cause.message}` : ''
+        throw new Error(`Task saved, but Schedule couldn't be saved. Try again to finish saving this task.${detail}`)
       }
 
       notifyTasksChanged()
@@ -206,18 +236,18 @@ export function TaskDialog({
           {mode === 'create' ? 'Capture it now. Add the rest only if it helps.' : 'Keep the task, its home, and its plan together.'}
         </DialogDescription>
       </DialogHeader>
-      {loadingTimeBlock ? (
-          <p role="status" className="py-8 text-sm text-muted-foreground">Loading Plan time…</p>
+      {loadingTimeBlock && !task?.recurrence_rule ? (
+          <p role="status" className="py-8 text-sm text-muted-foreground">Loading Schedule…</p>
       ) : (
         <TaskForm
-          key={`${open}-${task?.id ?? 'new'}-${timeBlock?.starts_at ?? 'none'}`}
+          key={`${open}-${task?.id ?? 'new'}-${timeBlocks.map((block) => block.id ?? block.starts_at).join('|')}`}
           mode={mode}
           task={task}
           lists={lists}
           categories={categories}
           initialListId={listId}
           initialCategoryId={categoryId}
-          initialTimeBlock={timeBlock}
+          initialTimeBlocks={timeBlocks}
           focusPlanTime={focusPlanTime}
           disabled={saving}
           error={saveError}

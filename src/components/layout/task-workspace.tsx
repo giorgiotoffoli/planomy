@@ -50,10 +50,12 @@ import {
 } from '../categories/actions'
 import CreateTaskButton from '../tasks/create-task/create-task-button'
 import CreateTaskAction from '../tasks/create-task/create-task-action'
+import AgendaToggle from '@/components/agenda/agenda-toggle'
 import { ListEmoji } from '../lists/list-emoji'
 import Header from './header/app-header'
 import { applyTaskOrganizationChange } from '@/lib/tasks'
 import type { TaskCreationView } from '@/lib/task-creation'
+import { localDateKey } from '@/lib/today'
 
 interface TaskWorkspaceProps {
   tasks: TaskWithList[]
@@ -267,20 +269,25 @@ export default function TaskWorkspace({
 
   async function handleOnComplete(taskId: string, isCompleted: boolean) {
     const previousTasks = localTasks
+    const task = localTasks.find((candidate) => candidate.id === taskId)
+    const recurringCompletion = isCompleted && Boolean(task?.recurrence_rule)
 
     // update the local tasks
     setLocalTasks((prevTasks) =>
       prevTasks.map((task) =>
-        task.id === taskId ? { ...task, completed: isCompleted } : task,
+        task.id === taskId
+          ? { ...task, completed: recurringCompletion ? false : isCompleted }
+          : task,
       ),
     )
 
     // Remove only after persistence; an old fade timer must not erase a rollback.
     try {
-      await updateTaskCompletedAction(taskId, isCompleted)
+      const result = await updateTaskCompletedAction(taskId, isCompleted, localDateKey())
+      const finalCompleted = result.recurring ? result.taskCompleted : isCompleted
 
-      const shouldRemove = isCompleted !== (pathName === '/completed')
-      if (shouldRemove && isCompleted) {
+      const shouldRemove = finalCompleted !== (pathName === '/completed')
+      if (shouldRemove && finalCompleted) {
         await waitForTaskExit()
       }
 
@@ -679,6 +686,7 @@ export default function TaskWorkspace({
                     listId={listId}
                     className="sm:ml-auto"
                   />
+                  <AgendaToggle />
                 </div>
               </div>
             </div>

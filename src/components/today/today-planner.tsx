@@ -112,14 +112,24 @@ export default function TodayPlanner({ encryptedLists }: { encryptedLists: List[
   async function completeTask(taskId: string, completed: boolean) {
     loadVersion.current++
     const previous = data
+    const task = data?.tasks.find((candidate) => candidate.id === taskId)
+    const recurringCompletion = completed && Boolean(task?.recurrence_rule)
     setData(current => current && ({
       ...current,
-      tasks: current.tasks.map(task => task.id === taskId ? { ...task, completed } : task),
+      tasks: current.tasks.map(task => task.id === taskId
+        ? { ...task, completed: recurringCompletion ? false : completed }
+        : task),
       selections: clearTaskFocusOnCompletion(current.selections, taskId, completed),
     }))
 
     try {
-      await updateTaskCompleted(taskId, completed)
+      const result = await updateTaskCompleted(taskId, completed, localDateKey())
+      if (result.recurring && !result.taskCompleted) {
+        setData(current => current && ({
+          ...current,
+          tasks: current.tasks.map(task => task.id === taskId ? { ...task, completed: false } : task),
+        }))
+      }
     } catch (cause) {
       setData(previous)
       toast.error(cause instanceof Error ? cause.message : 'Change was not saved')

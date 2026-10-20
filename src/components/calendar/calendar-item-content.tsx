@@ -1,4 +1,6 @@
-import { CalendarX, Check, CheckCircle2, Clock3, ExternalLink, MoreHorizontal } from 'lucide-react'
+import { CalendarX, Check, CheckCircle2, Clock3, ExternalLink, MoreHorizontal, RotateCcw, SkipForward } from 'lucide-react'
+import type { CSSProperties } from 'react'
+import { TaskDeleteButton } from '@/components/tasks/task-item/task-edit/task-delete-button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,8 +16,9 @@ import { taskDisplayEnd } from '@/lib/calendar-interactions'
 
 function timeLabel(value: string) {
   return new Date(value).toLocaleTimeString([], {
-    hour: 'numeric',
+    hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
   })
 }
 
@@ -24,6 +27,7 @@ export default function CalendarItemContent({
   compact,
   displayStartsAt,
   displayEndsAt,
+  planProgress,
   interactionPreview = false,
   selected = false,
   menuOpen,
@@ -31,12 +35,15 @@ export default function CalendarItemContent({
   onOpenTask,
   onUnschedule,
   onSetDuration,
+  onSkipSession,
   onToggleComplete,
+  onDeleteTask,
 }: {
   item: CalendarItem
   compact: boolean
   displayStartsAt?: string
   displayEndsAt?: string | null
+  planProgress?: number
   interactionPreview?: boolean
   selected?: boolean
   menuOpen?: boolean
@@ -44,7 +51,9 @@ export default function CalendarItemContent({
   onOpenTask?: () => void
   onUnschedule?: () => void
   onSetDuration?: (minutes: number) => void
+  onSkipSession?: () => void
   onToggleComplete?: () => void
+  onDeleteTask?: () => void
 }) {
   if (item.kind === 'due-task') {
     return (
@@ -63,7 +72,12 @@ export default function CalendarItemContent({
     const endsAt = displayEndsAt === undefined ? item.endsAt : displayEndsAt
     const displayedEnd = taskDisplayEnd(new Date(startsAt), endsAt ? new Date(endsAt) : null)
     return (
-      <div className="planomy-calendar-block-content">
+      <div
+        className="planomy-calendar-block-content"
+        style={planProgress === undefined
+          ? undefined
+          : { '--plan-progress': `${planProgress}%` } as CSSProperties}
+      >
         <div className="planomy-calendar-block-title">
           {onToggleComplete ? (
             <button
@@ -96,7 +110,11 @@ export default function CalendarItemContent({
           </span>
         ) : null}
 
-        {selected && !compact && onOpenTask && onUnschedule && onSetDuration ? (
+        {item.sessionState === 'missed' && !compact ? (
+          <span className="planomy-calendar-block-status">Missed · choose what’s next</span>
+        ) : null}
+
+        {selected && onOpenTask && onUnschedule && onSetDuration ? (
           <DropdownMenu open={menuOpen} onOpenChange={onMenuOpenChange}>
             <DropdownMenuTrigger asChild>
               <button
@@ -116,6 +134,11 @@ export default function CalendarItemContent({
               <DropdownMenuItem onSelect={onOpenTask}>
                 <ExternalLink /> Open task
               </DropdownMenuItem>
+              {item.sessionState === 'missed' ? (
+                <DropdownMenuItem onSelect={onOpenTask}>
+                  <Clock3 /> Reschedule
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <Clock3 /> Set duration
@@ -136,6 +159,12 @@ export default function CalendarItemContent({
                   {item.task.completed ? 'Mark incomplete' : 'Complete'}
                 </DropdownMenuItem>
               ) : null}
+              {onSkipSession ? (
+                <DropdownMenuItem onSelect={onSkipSession}>
+                  {item.status === 'skipped' ? <RotateCcw /> : <SkipForward />}
+                  {item.status === 'skipped' ? 'Undo skip' : 'Skip session'}
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={() => {
@@ -146,6 +175,19 @@ export default function CalendarItemContent({
               >
                 <CalendarX /> Unschedule
               </DropdownMenuItem>
+              {onDeleteTask ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <TaskDeleteButton
+                    taskId={item.task.id}
+                    handleOnDelete={() => {
+                      // Let Radix finish closing the menu before removing the
+                      // event that owns its trigger.
+                      window.setTimeout(onDeleteTask, 0)
+                    }}
+                  />
+                </>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}

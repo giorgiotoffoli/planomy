@@ -3,9 +3,11 @@ import type {
   AgendaBlock,
   CalendarEventWithList,
   List,
+  RecurrenceRule,
   TaskWithList,
 } from '@/types'
 import type { Tables } from './database-types'
+import { normalizeRecurrenceRule } from '@/lib/recurrence'
 
 type ListRow = Tables<'lists'>
 type TaskRow = Tables<'tasks'>
@@ -23,7 +25,10 @@ export type TaskWithListRow = TaskRow & {
 
 type AgendaBlockRow = TimeBlockRow & {
   task: TaskWithListRow
+  occurrence: TaskOccurrenceRow | null
 }
+
+type TaskOccurrenceRow = Tables<'task_occurrences'>
 
 export type EventWithListRow = EventRow & {
   list: ListSummaryRow | null
@@ -51,6 +56,11 @@ function listColor(value: string): List['color'] {
   }
 
   return value
+}
+
+function recurrenceRule(value: unknown): RecurrenceRule | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  return normalizeRecurrenceRule(value as RecurrenceRule)
 }
 
 function toListSummary(row: ListSummaryRow): NonNullable<TaskWithList['list']> {
@@ -85,17 +95,28 @@ export function toTaskWithList(row: TaskWithListRow): TaskWithList {
     created_at: row.created_at,
     focused: row.focused,
     stashed: row.stashed,
+    recurrence_rule: recurrenceRule(row.recurrence_rule),
     list: row.list ? toListSummary(row.list) : null,
   }
 }
 
 export function toAgendaBlock(row: AgendaBlockRow): AgendaBlock {
+  const task = toTaskWithList(row.task)
+  const occurrence = row.occurrence
   return {
+    id: row.id,
     task_id: row.task_id,
     user_id: row.user_id,
     starts_at: row.starts_at,
     ends_at: row.ends_at,
-    task: toTaskWithList(row.task),
+    occurrence_id: row.occurrence_id,
+    session_index: row.session_index,
+    is_override: row.is_override,
+    status: row.status === 'skipped' || occurrence?.skipped ? 'skipped' : 'scheduled',
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    occurrence,
+    task: occurrence ? { ...task, completed: occurrence.completed } : task,
   }
 }
 

@@ -22,6 +22,7 @@ export interface Task {
   created_at?: string | null
   focused: boolean
   stashed: boolean
+  recurrence_rule?: RecurrenceRule | null
 }
 
 export interface TaskWithList extends Task {
@@ -47,14 +48,82 @@ export interface DailySelection {
 }
 
 export interface TimeBlock {
+  /** Stable session identity. Legacy fixtures may omit this during migration. */
+  id?: string
   task_id: string
   user_id: string
   starts_at: string
   ends_at: string | null
+  occurrence_id?: string | null
+  session_index?: number | null
+  is_override?: boolean
+  status?: ScheduledSessionStatus
+  created_at?: string | null
+  updated_at?: string | null
 }
 
 export interface AgendaBlock extends TimeBlock {
   task: TaskWithList
+  occurrence?: TaskOccurrence | null
+}
+
+export type ScheduledSessionStatus = 'scheduled' | 'skipped'
+
+export type RecurrenceFrequency =
+  | 'daily'
+  | 'weekday'
+  | 'weekly'
+  | 'monthly'
+  | 'yearly'
+  | 'custom'
+
+export interface RecurrenceRule {
+  frequency: RecurrenceFrequency
+  /** First local calendar date on which the series occurs. */
+  startDate: string
+  /** Every N units for custom/daily/weekly/monthly/yearly rules. */
+  interval?: number
+  /** ISO weekday numbers, where 1 is Monday and 7 is Sunday. */
+  weekdays?: number[]
+  /** Optional inclusive local end date. */
+  endDate?: string | null
+  /** Optional maximum number of generated occurrences. */
+  count?: number | null
+  /** Optional wall-clock sessions repeated for every generated occurrence. */
+  scheduledSessions?: RecurrenceSession[]
+}
+
+export interface RecurrenceSession {
+  /** Stable position identity inside the recurrence series. */
+  id: string
+  /** Local wall-clock start in HH:mm. */
+  startTime: string
+  /** Elapsed duration in minutes, or null for an untimed session. */
+  durationMinutes: number | null
+  /** IANA time zone used to interpret startTime across DST changes. */
+  timeZone: string
+}
+
+export interface TaskOccurrence {
+  id: string
+  user_id: string
+  task_id: string
+  occurrence_date: string
+  completed: boolean
+  skipped: boolean
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+export type NeedsAttentionKind = 'missed-session' | 'missed-occurrence'
+
+export interface NeedsAttentionItem {
+  id: string
+  kind: NeedsAttentionKind
+  task: TaskWithList
+  session: TimeBlock | null
+  occurrences: TaskOccurrence[]
+  occurredAt: string
 }
 
 export interface CalendarEvent {
@@ -103,6 +172,7 @@ export interface CreateTaskInput {
   dueDate: string | null
   dueTime: string | null
   focused: boolean
+  repeatRule?: RecurrenceRule | null
 }
 
 export interface UpdateTaskInput extends CreateTaskInput {

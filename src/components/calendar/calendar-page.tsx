@@ -22,7 +22,8 @@ import {
   deleteTask as deleteTaskAction,
   updateTaskCompleted as updateTaskCompletedAction,
 } from '@/components/tasks/actions'
-import { removeTimeBlock, saveTimeBlock } from '@/components/agenda/actions'
+import { updateTaskOccurrenceCompleted } from '@/components/tasks/recurrence-actions'
+import { removeTimeBlock, saveTimeBlock, skipTimeBlock, restoreTimeBlock } from '@/components/agenda/actions'
 import { TaskEditDialog } from '@/components/tasks/task-item/task-edit/task-edit-dialog'
 import { projectCalendarItems } from '@/lib/calendar-items'
 import {
@@ -46,13 +47,18 @@ import CalendarView from './calendar-view'
 import type { QuickCreateInput } from './calendar-quick-create'
 import { isCreatedScheduleVisible } from '@/lib/task-creation'
 import { showTaskCreatedToast } from '@/components/tasks/create-task/task-created-toast'
+import { localDateKey } from '@/lib/today'
+
+function sessionKey(block: Pick<AgendaBlock, 'id' | 'task_id' | 'starts_at'>) {
+  return block.id ?? `${block.task_id}:${block.starts_at}`
+}
 
 function replaceScheduledBlock(
   blocks: AgendaBlock[],
   next: AgendaBlock | null,
-  taskId: string,
+  sessionId: string,
 ) {
-  const remaining = blocks.filter((block) => block.task_id !== taskId)
+  const remaining = blocks.filter((block) => sessionKey(block) !== sessionId)
   return next ? [...remaining, next] : remaining
 }
 
@@ -61,8 +67,8 @@ function applyPendingSchedules(
   pending: Map<string, AgendaBlock | null>,
 ) {
   let merged = blocks
-  for (const [taskId, block] of pending) {
-    merged = replaceScheduledBlock(merged, block, taskId)
+  for (const [sessionId, block] of pending) {
+    merged = replaceScheduledBlock(merged, block, sessionId)
   }
   return merged
 }
@@ -331,7 +337,7 @@ export default function CalendarPage({
   )
 
   const handleTaskSchedule = useCallback(
-    async (task: TaskWithList, startsAt: Date, endsAt: Date | null) => {
+    async (task: TaskWithList, startsAt: Date, endsAt: Date | null, sessionId?: string) => {
       const normalizedEndsAt = taskDisplayEnd(startsAt, endsAt)
       if (
         pendingTasks.current.has(task.id) ||
@@ -339,32 +345,44 @@ export default function CalendarPage({
       )
         return false
 
-      const previous =
-        scheduledTasksRef.current.find((block) => block.task_id === task.id) ??
-        null
+      const optimisticSessionId = sessionId ?? `pending:${crypto.randomUUID()}`
+      const previous = sessionId
+        ? scheduledTasksRef.current.find((block) => sessionKey(block) === sessionId) ?? null
+        : null
       const next: AgendaBlock = {
+        id: optimisticSessionId,
         task_id: task.id,
         user_id: task.user_id,
         starts_at: startsAt.toISOString(),
         ends_at: normalizedEndsAt.toISOString(),
+        status: 'scheduled',
         task,
       }
 
-      pendingSchedules.current.set(task.id, next)
+      pendingSchedules.current.set(optimisticSessionId, next)
       setTaskBusy(task.id, true)
       commitScheduledTasks(
-        replaceScheduledBlock(scheduledTasksRef.current, next, task.id),
+        replaceScheduledBlock(scheduledTasksRef.current, next, optimisticSessionId),
       )
 
       try {
-        await saveTimeBlock(task.id, next.starts_at, next.ends_at)
-        pendingSchedules.current.delete(task.id)
+        const saved = await saveTimeBlock(task.id, next.starts_at, next.ends_at, sessionId)
+        const savedBlock: AgendaBlock = {
+          ...next,
+          id: saved.id,
+          occurrence_id: saved.occurrence_id,
+          status: saved.status,
+        }
+        pendingSchedules.current.delete(optimisticSessionId)
+        commitScheduledTasks(
+          replaceScheduledBlock(scheduledTasksRef.current, savedBlock, optimisticSessionId),
+        )
         notifyPlanTimeChanged('calendar')
         return true
       } catch (cause) {
-        pendingSchedules.current.delete(task.id)
+        pendingSchedules.current.delete(optimisticSessionId)
         commitScheduledTasks(
-          replaceScheduledBlock(scheduledTasksRef.current, previous, task.id),
+          replaceScheduledBlock(scheduledTasksRef.current, previous, optimisticSessionId),
         )
         toast.error(
           cause instanceof Error
@@ -380,29 +398,29 @@ export default function CalendarPage({
   )
 
   const handleTaskUnschedule = useCallback(
-    async (task: TaskWithList) => {
+    async (task: TaskWithList, sessionId: string) => {
       if (pendingTasks.current.has(task.id)) return false
       const previous =
-        scheduledTasksRef.current.find((block) => block.task_id === task.id) ??
+        scheduledTasksRef.current.find((block) => sessionKey(block) === sessionId) ??
         null
       if (!previous) return true
 
-      pendingSchedules.current.set(task.id, null)
+      pendingSchedules.current.set(sessionId, null)
       setTaskBusy(task.id, true)
       commitScheduledTasks(
-        replaceScheduledBlock(scheduledTasksRef.current, null, task.id),
+        replaceScheduledBlock(scheduledTasksRef.current, null, sessionId),
       )
       setSelectedTaskId(null)
 
       try {
-        await removeTimeBlock(task.id)
-        pendingSchedules.current.delete(task.id)
+        await removeTimeBlock(sessionId)
+        pendingSchedules.current.delete(sessionId)
         notifyPlanTimeChanged('calendar')
         return true
       } catch (cause) {
-        pendingSchedules.current.delete(task.id)
+        pendingSchedules.current.delete(sessionId)
         commitScheduledTasks(
-          replaceScheduledBlock(scheduledTasksRef.current, previous, task.id),
+          replaceScheduledBlock(scheduledTasksRef.current, previous, sessionId),
         )
         toast.error(
           cause instanceof Error
@@ -417,25 +435,92 @@ export default function CalendarPage({
     [commitScheduledTasks, setTaskBusy],
   )
 
-  const handleTaskComplete = useCallback(
+  const handleTaskDelete = useCallback(
     async (task: TaskWithList) => {
+      if (pendingTasks.current.has(task.id)) return false
+
+      const previousDueTasks = dueTasksRef.current
+      const previousScheduledTasks = scheduledTasksRef.current
+      for (const [sessionId, block] of pendingSchedules.current) {
+        if (block?.task_id === task.id) pendingSchedules.current.delete(sessionId)
+      }
+
+      setTaskBusy(task.id, true)
+      commitDueTasks(
+        previousDueTasks?.filter((candidate) => candidate.id !== task.id) ?? null,
+      )
+      commitScheduledTasks(
+        previousScheduledTasks.filter((block) => block.task_id !== task.id),
+      )
+      setSelectedTaskId(null)
+
+      try {
+        await deleteTaskAction(task.id)
+        notifyTasksChanged()
+        return true
+      } catch (cause) {
+        commitDueTasks(previousDueTasks)
+        commitScheduledTasks(previousScheduledTasks)
+        toast.error(
+          cause instanceof Error ? cause.message : 'Task was not deleted.',
+        )
+        return false
+      } finally {
+        setTaskBusy(task.id, false)
+      }
+    },
+    [commitDueTasks, commitScheduledTasks, setTaskBusy],
+  )
+
+  const handleTaskSkip = useCallback(
+    async (task: TaskWithList, sessionId: string, skipped: boolean) => {
+      if (pendingTasks.current.has(task.id)) return false
+      const previous = scheduledTasksRef.current.find((block) => sessionKey(block) === sessionId)
+      if (!previous) return false
+      setTaskBusy(task.id, true)
+      commitScheduledTasks(
+        scheduledTasksRef.current.map((block) =>
+          sessionKey(block) === sessionId ? { ...block, status: skipped ? 'skipped' : 'scheduled' } : block,
+        ),
+      )
+      try {
+        if (skipped) await skipTimeBlock(sessionId)
+        else await restoreTimeBlock(sessionId)
+        notifyPlanTimeChanged('calendar')
+        return true
+      } catch (cause) {
+        commitScheduledTasks(
+          scheduledTasksRef.current.map((block) => sessionKey(block) === sessionId ? previous : block),
+        )
+        toast.error(cause instanceof Error ? cause.message : 'Session state was not saved.')
+        return false
+      } finally {
+        setTaskBusy(task.id, false)
+      }
+    },
+    [commitScheduledTasks, setTaskBusy],
+  )
+
+  const handleTaskComplete = useCallback(
+    async (task: TaskWithList, occurrenceId?: string | null) => {
       if (pendingTasks.current.has(task.id)) return false
       const completed = !task.completed
       const updateTask = (candidate: TaskWithList) =>
         candidate.id === task.id ? { ...candidate, completed } : candidate
 
       setTaskBusy(task.id, true)
-      commitDueTasks(dueTasksRef.current?.map(updateTask) ?? null)
+      commitDueTasks(occurrenceId ? dueTasksRef.current : dueTasksRef.current?.map(updateTask) ?? null)
       commitScheduledTasks(
         scheduledTasksRef.current.map((block) =>
-          block.task_id === task.id
+          block.task_id === task.id && (!occurrenceId || block.occurrence_id === occurrenceId)
             ? { ...block, task: { ...block.task, completed } }
             : block,
         ),
       )
 
       try {
-        await updateTaskCompletedAction(task.id, completed)
+        if (occurrenceId) await updateTaskOccurrenceCompleted(occurrenceId, completed)
+        else await updateTaskCompletedAction(task.id, completed, localDateKey())
         notifyTasksChanged()
         return true
       } catch (cause) {
@@ -443,10 +528,10 @@ export default function CalendarPage({
           candidate.id === task.id
             ? { ...candidate, completed: task.completed }
             : candidate
-        commitDueTasks(dueTasksRef.current?.map(restoreTask) ?? null)
+        commitDueTasks(occurrenceId ? dueTasksRef.current : dueTasksRef.current?.map(restoreTask) ?? null)
         commitScheduledTasks(
           scheduledTasksRef.current.map((block) =>
-            block.task_id === task.id
+            block.task_id === task.id && (!occurrenceId || block.occurrence_id === occurrenceId)
               ? { ...block, task: { ...block.task, completed: task.completed } }
               : block,
           ),
@@ -492,10 +577,12 @@ export default function CalendarPage({
         list: selectedList,
       }
       const optimisticBlock: AgendaBlock = {
+        id: tempId,
         task_id: tempId,
         user_id: optimisticTask.user_id,
         starts_at: input.startsAt.toISOString(),
         ends_at: endsAt.toISOString(),
+        status: 'scheduled',
         task: optimisticTask,
       }
 
@@ -524,28 +611,33 @@ export default function CalendarPage({
         }
         const savedBlock: AgendaBlock = {
           ...optimisticBlock,
+          id: `pending-session:${crypto.randomUUID()}`,
           task_id: savedTask.id,
           user_id: savedTask.user_id,
           task: localTask,
         }
 
         pendingSchedules.current.delete(tempId)
-        pendingSchedules.current.set(savedTask.id, savedBlock)
+        pendingSchedules.current.set(savedBlock.id!, savedBlock)
         setTaskBusy(tempId, false)
         setTaskBusy(savedTask.id, true)
         commitScheduledTasks([
           ...scheduledTasksRef.current.filter(
-            (block) => block.task_id !== tempId,
+            (block) => block.id !== tempId,
           ),
           savedBlock,
         ])
 
-        await saveTimeBlock(
+        const savedSession = await saveTimeBlock(
           savedTask.id,
           savedBlock.starts_at,
           savedBlock.ends_at,
         )
-        pendingSchedules.current.delete(savedTask.id)
+        const persistedBlock = { ...savedBlock, id: savedSession.id, status: savedSession.status }
+        pendingSchedules.current.delete(savedBlock.id!)
+        commitScheduledTasks(
+          replaceScheduledBlock(scheduledTasksRef.current, persistedBlock, savedBlock.id!),
+        )
         notifyPlanTimeChanged('calendar')
         notifyTasksChanged()
         if (!isCreatedScheduleVisible(savedBlock, visibleRange.current)) {
@@ -554,7 +646,11 @@ export default function CalendarPage({
         return true
       } catch (cause) {
         pendingSchedules.current.delete(tempId)
-        if (createdTaskId) pendingSchedules.current.delete(createdTaskId)
+        if (createdTaskId) {
+          for (const key of pendingSchedules.current.keys()) {
+            if (key.includes(createdTaskId)) pendingSchedules.current.delete(key)
+          }
+        }
         commitScheduledTasks(
           scheduledTasksRef.current.filter(
             (block) =>
@@ -612,6 +708,8 @@ export default function CalendarPage({
             onTaskOpen={setEditingTaskId}
             onTaskSchedule={handleTaskSchedule}
             onTaskUnschedule={handleTaskUnschedule}
+            onTaskDelete={handleTaskDelete}
+            onTaskSkip={handleTaskSkip}
             onTaskComplete={handleTaskComplete}
             onQuickCreate={handleQuickCreate}
           />

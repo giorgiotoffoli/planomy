@@ -157,26 +157,95 @@ export type Database = {
       }
       task_time_blocks: {
         Row: {
+          created_at: string
           ends_at: string | null
+          id: string
+          is_override: boolean
+          occurrence_id: string | null
+          session_index: number | null
           starts_at: string
+          status: string
           task_id: string
+          updated_at: string
           user_id: string
         }
         Insert: {
+          created_at?: string
           ends_at?: string | null
+          id?: string
+          is_override?: boolean
+          occurrence_id?: string | null
+          session_index?: number | null
           starts_at: string
+          status?: string
           task_id: string
+          updated_at?: string
           user_id: string
         }
         Update: {
+          created_at?: string
           ends_at?: string | null
+          id?: string
+          is_override?: boolean
+          occurrence_id?: string | null
+          session_index?: number | null
           starts_at?: string
+          status?: string
           task_id?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "task_time_blocks_owned_task"
+            columns: ["task_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "task_time_blocks_owned_occurrence"
+            columns: ["occurrence_id", "user_id", "task_id"]
+            isOneToOne: false
+            referencedRelation: "task_occurrences"
+            referencedColumns: ["id", "user_id", "task_id"]
+          },
+        ]
+      }
+      task_occurrences: {
+        Row: {
+          completed: boolean
+          created_at: string
+          id: string
+          occurrence_date: string
+          skipped: boolean
+          task_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean
+          created_at?: string
+          id?: string
+          occurrence_date: string
+          skipped?: boolean
+          task_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean
+          created_at?: string
+          id?: string
+          occurrence_date?: string
+          skipped?: boolean
+          task_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_occurrences_owned_task"
             columns: ["task_id", "user_id"]
             isOneToOne: false
             referencedRelation: "tasks"
@@ -196,6 +265,7 @@ export type Database = {
           notes: string | null
           position: number
           category_id: string | null
+          recurrence_rule: Json | null
           stashed: boolean
           title: string | null
           user_id: string | null
@@ -211,6 +281,7 @@ export type Database = {
           notes?: string | null
           position?: number
           category_id?: string | null
+          recurrence_rule?: Json | null
           stashed?: boolean
           title?: string | null
           user_id?: string | null
@@ -226,6 +297,7 @@ export type Database = {
           notes?: string | null
           position?: number
           category_id?: string | null
+          recurrence_rule?: Json | null
           stashed?: boolean
           title?: string | null
           user_id?: string | null

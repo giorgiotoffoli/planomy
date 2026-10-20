@@ -5,6 +5,14 @@ import { createClient } from '@/lib/supabase/server'
 import { toTaskWithList } from '@/lib/supabase/domain-mappers'
 import type { CreateTaskInput, UpdateTaskInput } from '@/types'
 import { normalizeDeadline } from '@/lib/task-form'
+import {
+  nextOccurrenceDate,
+  normalizeRecurrenceRule,
+  recurrenceMatchesDate,
+} from '@/lib/recurrence'
+import { populateNextScheduledOccurrence } from '@/lib/recurring-sessions'
+import { isDateKey, localDateKey } from '@/lib/today'
+import type { Json } from '@/lib/supabase/database-types'
 
 type SupabaseError = { code?: string; message: string }
 
@@ -60,6 +68,7 @@ function normalizedTaskFields(input: CreateTaskInput) {
     due_date: dueDate,
     // A time without a date is never persisted as an invisible deadline.
     due_time: dueTime,
+    recurrence_rule: normalizeRecurrenceRule(input.repeatRule) as unknown as Json | null,
   }
 }
 
@@ -187,7 +196,18 @@ export async function updateTask(input: UpdateTaskInput) {
 }
 
 // Toggles tasks as complete or incomplete in the database
-export async function updateTaskCompleted(id: string, isCompleted: boolean) {
+export type TaskCompletionResult = {
+  recurring: boolean
+  taskCompleted: boolean
+  occurrenceDate?: string | null
+  nextOccurrenceDate?: string | null
+}
+
+export async function updateTaskCompleted(
+  id: string,
+  isCompleted: boolean,
+  completionDate?: string | null,
+): Promise<TaskCompletionResult> {
   const supabase = await createClient()
 
   const {
@@ -195,6 +215,100 @@ export async function updateTaskCompleted(id: string, isCompleted: boolean) {
   } = await supabase.auth.getUser()
 
   if (!user) throw new Error('Unauthorized')
+
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .select('recurrence_rule')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (taskError) throw new Error(taskError.message)
+  if (!task) throw new Error('Task not found.')
+
+  const rule = normalizeRecurrenceRule(task.recurrence_rule as never)
+  if (rule && isCompleted) {
+    const onDate = completionDate && isDateKey(completionDate)
+      ? completionDate
+      : localDateKey()
+    const { data: existingOccurrences, error: occurrenceError } = await supabase
+      .from('task_occurrences')
+      .select('id, occurrence_date, completed, skipped')
+      .eq('task_id', id)
+      .eq('user_id', user.id)
+      .order('occurrence_date')
+
+    if (occurrenceError) throw new Error(occurrenceError.message)
+
+    const pendingBeforeDate = existingOccurrences
+      .filter((occurrence) =>
+        occurrence.occurrence_date <= onDate &&
+        !occurrence.completed &&
+        !occurrence.skipped,
+      )
+      .at(-1)
+    const onDateOccurrence = existingOccurrences.find(
+      (occurrence) => occurrence.occurrence_date === onDate,
+    )
+    let occurrenceDate = pendingBeforeDate?.occurrence_date ?? null
+
+    if (!occurrenceDate && recurrenceMatchesDate(rule, onDate) &&
+      (!onDateOccurrence || (!onDateOccurrence.completed && !onDateOccurrence.skipped))) {
+      occurrenceDate = onDate
+    }
+
+    if (!occurrenceDate) occurrenceDate = nextOccurrenceDate(rule, onDate)
+
+    let savedOccurrenceId: string | null = null
+    if (occurrenceDate) {
+      const { data: savedOccurrence, error: saveOccurrenceError } = await supabase
+        .from('task_occurrences')
+        .upsert(
+          {
+            user_id: user.id,
+            task_id: id,
+            occurrence_date: occurrenceDate,
+            completed: true,
+            skipped: false,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'task_id,occurrence_date' },
+        )
+        .select('id')
+        .single()
+
+      if (saveOccurrenceError) throw new Error(saveOccurrenceError.message)
+      savedOccurrenceId = savedOccurrence.id
+    }
+
+    const nextOccurrence = occurrenceDate && savedOccurrenceId
+      ? await populateNextScheduledOccurrence(
+        supabase,
+        user.id,
+        id,
+        rule,
+        occurrenceDate,
+        savedOccurrenceId,
+      )
+      : null
+    const nextDate = nextOccurrence?.occurrence_date ?? null
+
+    const taskCompleted = !nextDate
+    const { error: taskStateError } = await supabase
+      .from('tasks')
+      .update({ completed: taskCompleted, ...(taskCompleted ? { focused: false } : {}) })
+      .eq('id', id)
+      .eq('user_id', user.id)
+
+    if (taskStateError) throw new Error(taskStateError.message)
+    revalidatePath('/')
+    return {
+      recurring: true,
+      taskCompleted,
+      occurrenceDate,
+      nextOccurrenceDate: nextDate,
+    }
+  }
 
   const { error } = await supabase
     .from('tasks')
@@ -206,6 +320,7 @@ export async function updateTaskCompleted(id: string, isCompleted: boolean) {
     throw new Error(error.message)
   }
   revalidatePath('/')
+  return { recurring: Boolean(rule), taskCompleted: isCompleted }
 }
 
 export async function renameTask(taskId: string, title: string) {

@@ -1,6 +1,6 @@
 import { List, TaskWithList } from '@/types'
 import { format, isBefore } from 'date-fns'
-import { ListPlus } from 'lucide-react'
+import { ListPlus, Repeat2 } from 'lucide-react'
 import Link from 'next/link'
 import { ListEmoji } from '@/components/lists/list-emoji'
 import {
@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { TaskEditMoveList } from './task-edit/task-edit-move-list'
+import { recurrenceLabel } from '@/lib/recurrence'
 
 interface TaskDetailProps {
   task: TaskWithList
@@ -82,6 +83,7 @@ export default function TaskDetail({
   showAddToList = false,
 }: TaskDetailProps) {
   const dueDateInfo = getDueDateLabel(task.due_date)
+  const repeatLabel = recurrenceLabel(task.recurrence_rule)
 
   const taskList = task.list_id
     ? lists.find((list) => list.id === task.list_id) ?? task.list
@@ -132,15 +134,22 @@ export default function TaskDetail({
       {/* Notes */}
       {task.notes && <p>{task.notes}</p>}
       {/* Metadata */}
-      {((showDueDate && dueDateInfo) || (shouldShowTaskList && taskListLabel)) && (
+      {((showDueDate && dueDateInfo) || repeatLabel || (shouldShowTaskList && taskListLabel)) && (
         <div className="flex min-w-0 items-center gap-1.5">
           {showDueDate && dueDateInfo && (
             <span className={dueDateInfo.isOverdue ? 'text-destructive' : ''}>
-              {dueDateInfo.label}
+              Finish by {dueDateInfo.label}
             </span>
           )}
 
-          {showDueDate && dueDateInfo && shouldShowTaskList && taskListLabel && (
+          {repeatLabel && (
+            <span className="inline-flex min-w-0 items-center gap-1 truncate text-muted-foreground/80">
+              <Repeat2 className="size-3 shrink-0" aria-hidden="true" />
+              {repeatLabel}
+            </span>
+          )}
+
+          {((showDueDate && dueDateInfo) || repeatLabel) && shouldShowTaskList && taskListLabel && (
             <span className="text-muted-foreground/60">·</span>
           )}
 

@@ -346,10 +346,15 @@ export default function DeadlinesPlanner({
 
   async function handleComplete(taskId: string, completed: boolean) {
     const previous = tasks
-    updateTask(taskId, { completed })
+    const task = tasks?.find((candidate) => candidate.id === taskId)
+    const recurringCompletion = completed && Boolean(task?.recurrence_rule)
+    updateTask(taskId, { completed: recurringCompletion ? false : completed })
 
     try {
-      await updateTaskCompleted(taskId, completed)
+      const result = await updateTaskCompleted(taskId, completed, localDateKey())
+      if (result.recurring && !result.taskCompleted) {
+        updateTask(taskId, { completed: false })
+      }
       notifyTasksChanged()
     } catch (cause) {
       setTasks(previous)
