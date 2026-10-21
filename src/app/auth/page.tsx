@@ -1,42 +1,89 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
+import Image from 'next/image'
+import Link from 'next/link'
+import './auth.css'
+
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import type { FormEvent } from 'react'
 import { useFormStatus } from 'react-dom'
-import { motion, AnimatePresence } from 'motion/react'
-import { Mail, Lock, ArrowRight } from 'lucide-react'
-import { signIn, signUp } from './actions'
-import { useSearchParams } from 'next/navigation'
+import { MotionConfig, motion } from 'motion/react'
+import { ArrowLeft, ArrowRight, Lock, Mail, RefreshCw } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
+
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import GlassBackground from '@/components/auth/glass-background'
 import { PlanomyIcon } from '@/icons/planomy-icon'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { createClient } from '@/lib/supabase/client'
+import { signInWithGoogle, signUp } from './actions'
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from '@/components/ui/input-otp'
 
-function AuthSubmitButton({ isLogin, disabled }: { isLogin: boolean; disabled: boolean }) {
+const PyramidScene = dynamic(() => import('@/components/auth/pyramid-scene'), { ssr: false })
+
+const OTP_LENGTH = 8
+const OTP_RESEND_COOLDOWN_SECONDS = 60
+
+type AuthStep = 'email' | 'verification'
+type SignupStep = 'choice' | 'form'
+type OtpAction = 'request' | 'verify'
+
+type AuthErrorLike = {
+  message?: string
+  status?: number
+}
+
+function getOtpErrorMessage(error: AuthErrorLike, action: OtpAction) {
+  const message = error.message?.toLowerCase() ?? ''
+
+  if (
+    error.status === 429 ||
+    message.includes('rate limit') ||
+    message.includes('too many') ||
+    message.includes('60 seconds')
+  ) {
+    return 'Too many attempts. Please wait a minute before trying again.'
+  }
+
+  if (action === 'verify') {
+    return 'That code is invalid or has expired. Request a new code and try again.'
+  }
+
+  return 'We could not send a code right now. Check your email address and try again.'
+}
+
+function SignupSubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus()
   const isMobile = useIsMobile()
 
   useEffect(() => {
-    // Keep mobile feedback in the form, away from the workspace controls.
     if (!pending || isMobile) return
 
-    const toastId = toast(isLogin ? 'Logging in…' : 'Signing up…', {
-      position: 'top-center',
-    })
-    // The root toaster survives navigation; login feedback must not.
-    return () => { toast.dismiss(toastId) }
-  }, [isLogin, isMobile, pending])
+    const toastId = toast('Creating your account…', { position: 'top-center' })
+    return () => {
+      toast.dismiss(toastId)
+    }
+  }, [isMobile, pending])
 
   return (
-    <button
+    <Button
       type="submit"
       disabled={disabled || pending}
       aria-busy={pending}
-      className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-primary/60"
+      className="h-auto w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-none hover:bg-primary/90"
     >
       <span role="status" aria-live="polite">
-        {pending ? (isLogin ? 'Logging in…' : 'Signing up…') : (isLogin ? 'Sign in' : 'Create account')}
+        {pending ? 'Creating account…' : 'Create account'}
       </span>
-      <ArrowRight aria-hidden="true" className="ml-2 h-4 w-4" />
-    </button>
+      <ArrowRight aria-hidden="true" className="size-4" />
+    </Button>
   )
 }
 
@@ -44,6 +91,7 @@ function DisplayErrorMessage() {
   const searchParams = useSearchParams()
   const message = searchParams.get('message')
   const accountDeleted = searchParams.get('deleted') === 'true'
+
   if (accountDeleted) {
     return (
       <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-400/25 dark:bg-emerald-500/10 dark:text-emerald-200">
@@ -51,181 +99,302 @@ function DisplayErrorMessage() {
       </div>
     )
   }
-  if (message) {
-    return (
-      <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-400/25 dark:bg-rose-500/10 dark:text-rose-200">
-        {message}
-      </div>
-    )
-  } else {
-    return
-  }
+
+  if (!message) return null
+
+  return (
+    <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-400/25 dark:bg-rose-500/10 dark:text-rose-200">
+      {message}
+    </div>
+  )
+}
+
+function GoogleSignupButton({ onStart }: { onStart: () => void }) {
+  return (
+    <form action={signInWithGoogle} onSubmit={onStart}>
+      <Button
+        type="submit"
+        variant="outline"
+        className="h-auto w-full rounded-xl border-border bg-background px-4 py-3 text-sm font-semibold text-foreground shadow-none hover:bg-surface-hover"
+      >
+        <Image src="/google-g.svg" width={18} height={18} alt="" aria-hidden="true" />
+        Sign up with Google
+      </Button>
+    </form>
+  )
 }
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true)
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+  return (
+    <Suspense>
+      <MotionConfig reducedMotion="user">
+        <AuthExperience />
+      </MotionConfig>
+    </Suspense>
+  )
+}
 
-  const passwordsMatch = password.length > 0 && password === confirmPassword
+function AuthExperience() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const supabase = useMemo(() => createClient(), [])
+  const [signupStep, setSignupStep] = useState<SignupStep>('choice')
+  const [pyramidSpinToken, setPyramidSpinToken] = useState(0)
+  const [authStep, setAuthStep] = useState<AuthStep>('email')
+  const [signupEmail, setSignupEmail] = useState('')
+  const [signupPassword, setSignupPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [signinEmail, setSigninEmail] = useState('')
+  const [otp, setOtp] = useState('')
+  const [otpError, setOtpError] = useState<string | null>(null)
+  const [isRequestingOtp, setIsRequestingOtp] = useState(false)
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)
+  const [resendSeconds, setResendSeconds] = useState(0)
+  const otpRequestInFlight = useRef(false)
+  const otpVerificationInFlight = useRef(false)
+  const otpVerificationCompleted = useRef(false)
+
+  const passwordsMatch = signupPassword.length > 0 && signupPassword === confirmPassword
+
+  function triggerSignupSpin() {
+    setPyramidSpinToken((current) => current + 1)
+  }
+
+  useEffect(() => {
+    if (authStep !== 'verification' || resendSeconds <= 0) return
+
+    const timeoutId = window.setTimeout(() => {
+      setResendSeconds((current) => Math.max(0, current - 1))
+    }, 1000)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [authStep, resendSeconds])
+
+  useEffect(() => {
+    if (searchParams.get('mode') !== 'signin') return
+
+    window.requestAnimationFrame(() => {
+      document.getElementById('auth-signin')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    })
+  }, [searchParams])
+
+  async function sendOtp() {
+    const normalizedEmail = signinEmail.trim()
+    if (otpRequestInFlight.current) return
+
+    otpRequestInFlight.current = true
+    setIsRequestingOtp(true)
+    setOtpError(null)
+
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: normalizedEmail,
+        options: { shouldCreateUser: false },
+      })
+
+      if (error) {
+        setOtpError(getOtpErrorMessage(error, 'request'))
+        return
+      }
+
+      setSigninEmail(normalizedEmail)
+      setOtp('')
+      setResendSeconds(OTP_RESEND_COOLDOWN_SECONDS)
+      otpVerificationCompleted.current = false
+      setAuthStep('verification')
+    } finally {
+      otpRequestInFlight.current = false
+      setIsRequestingOtp(false)
+    }
+  }
+
+  function handleSigninSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!event.currentTarget.reportValidity()) return
+    void sendOtp()
+  }
+
+  async function verifyOtp(token = otp) {
+    if (
+      token.length !== OTP_LENGTH ||
+      otpVerificationInFlight.current ||
+      otpVerificationCompleted.current
+    ) return
+
+    otpVerificationInFlight.current = true
+    setIsVerifyingOtp(true)
+    setOtpError(null)
+
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: signinEmail.trim(),
+        token,
+        type: 'email',
+      })
+
+      if (error) {
+        setOtpError(getOtpErrorMessage(error, 'verify'))
+        return
+      }
+
+      otpVerificationCompleted.current = true
+      router.replace('/home')
+    } finally {
+      otpVerificationInFlight.current = false
+      setIsVerifyingOtp(false)
+    }
+  }
+
+  function changeSigninEmail() {
+    setAuthStep('email')
+    setOtp('')
+    setOtpError(null)
+    setResendSeconds(0)
+    otpVerificationCompleted.current = false
+  }
+
+  async function resendOtp() {
+    if (resendSeconds > 0 || otpRequestInFlight.current) return
+    await sendOtp()
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 text-slate-900 relative overflow-hidden dark:bg-background dark:text-foreground">
-      {/* Background decorations */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-400/20 blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/10 blur-[100px] pointer-events-none" />
-
-      <div className="max-w-md w-full relative z-10">
-        {/* Logo/Header */}
-        <div className="text-center mb-8">
-          <motion.h1
-            initial={{ y: 10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="font-heading font-bold text-3xl tracking-tight"
-          >
-            <div className="flex items-end justify-center gap-2 ">
-              <PlanomyIcon size={32} />
-              <h2>planomy</h2>
-            </div>
-          </motion.h1>
-          <motion.p
-            initial={{ y: 10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-slate-500 mt-2 dark:text-muted-foreground"
-          >
-            {isLogin
-              ? 'Welcome back! Please enter your details.'
-              : 'Create an account to get started.'}
-          </motion.p>
+    <div className="auth-layout">
+      <aside className="auth-story">
+        <Link href="/" className="auth-brand" aria-label="Planomy home">
+          <PlanomyIcon size={28} />
+          <span>planomy</span>
+        </Link>
+        <div className="auth-art"><PyramidScene spinToken={pyramidSpinToken} /><span className="auth-ground" aria-hidden="true" /></div>
+        <div className="auth-story-copy">
+          <h2>A little structure.<br />A clearer mind.</h2>
+          <p>A private place for your plans.<br />Space for everything you want to become.</p>
         </div>
+        <div className="auth-story-footer"><span><Lock size={13} /> End-to-end encrypted</span><span className="auth-drag-hint">Drag to explore</span></div>
+      </aside>
 
-        {/* Card */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-slate-200/50 p-8 border border-white overflow-hidden relative dark:border-border dark:bg-surface-elevated dark:shadow-black/20"
-        >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={isLogin ? 'login' : 'signup'}
-              initial={{ opacity: 0, x: isLogin ? -20 : 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: isLogin ? 20 : -20 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-            >
-              <form
-                className="space-y-5"
-                action={isLogin ? signIn : signUp}
-              >
-                <Suspense fallback={<div>Loading error message...</div>}>
-                  <DisplayErrorMessage />
-                </Suspense>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5 dark:text-foreground">
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 dark:text-muted-foreground">
-                      <Mail className="h-5 w-5" />
-                    </div>
-                    <input
-                      type="email"
-                      name="email"
-                      className="block w-full pl-11 pr-3 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors bg-slate-50/50 focus:bg-white sm:text-sm outline-none dark:border-input dark:bg-background dark:text-foreground dark:focus:bg-surface-hover"
-                      placeholder="you@example.com"
-                      required
-                    />
-                  </div>
-                </div>
+      <section className="auth-panel" aria-label="Planomy authentication">
+        <GlassBackground />
+        <Link href="/" className="auth-mobile-brand"><PlanomyIcon size={26} />planomy</Link>
+        <div className="auth-form-wrap auth-stack">
+          <Suspense fallback={null}><DisplayErrorMessage /></Suspense>
 
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-sm font-medium text-slate-700 dark:text-foreground">
-                      Password
-                    </label>
-                    {isLogin && (
-                      <a
-                        href="#"
-                        className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-                      >
-                        Forgot password?
-                      </a>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 dark:text-muted-foreground">
-                      <Lock className="h-5 w-5" />
-                    </div>
-                    <input
-                      type="password"
-                      name="password"
-                      className="block w-full pl-11 pr-3 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors bg-slate-50/50 focus:bg-white sm:text-sm outline-none dark:border-input dark:bg-background dark:text-foreground dark:focus:bg-surface-hover"
-                      placeholder="••••••••"
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                {!isLogin && (
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-sm font-medium text-slate-700 dark:text-foreground">
-                        Confirm password
-                      </label>
-                      {!isLogin &&
-                        confirmPassword.length > 0 &&
-                        (passwordsMatch ? (
-                          <span className="text-sm font-medium text-green-500">
-                            Passwords match
-                          </span>
-                        ) : (
-                          <span className="text-sm font-medium text-rose-500">
-                            Passwords do not match
-                          </span>
-                        ))}
-                    </div>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 dark:text-muted-foreground">
-                        <Lock className="h-5 w-5" />
-                      </div>
-                      <input
-                        type="password"
-                        name="confirm-password"
-                        className="block w-full pl-11 pr-3 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors bg-slate-50/50 focus:bg-white sm:text-sm outline-none dark:border-input dark:bg-background dark:text-foreground dark:focus:bg-surface-hover"
-                        placeholder="••••••••"
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <AuthSubmitButton isLogin={isLogin} disabled={!isLogin && !passwordsMatch} />
+          {authStep === 'verification' ? (
+            <motion.div key="verification" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3, ease: 'easeInOut' }}>
+              <button type="button" onClick={changeSigninEmail} className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-md">
+                <ArrowLeft aria-hidden="true" className="size-4" />
+                Change email
+              </button>
+              <h1 className="auth-section-title">Check your email</h1>
+              <p className="auth-section-copy">We sent an 8-digit code to <span className="font-medium text-foreground">{signinEmail}</span>.</p>
+              <form onSubmit={(event) => { event.preventDefault(); void verifyOtp() }} className="mt-7">
+                <label htmlFor="email-otp" className="sr-only">8-digit verification code</label>
+                <InputOTP id="email-otp" maxLength={OTP_LENGTH} pattern="[0-9]*" value={otp} onChange={setOtp} onComplete={(value) => void verifyOtp(value)} pasteTransformer={(value) => value.replace(/\D/g, '').slice(0, OTP_LENGTH)} inputMode="numeric" autoComplete="one-time-code" autoFocus aria-describedby={otpError ? 'email-otp-error' : undefined} aria-invalid={Boolean(otpError)} aria-label="8-digit verification code" className="text-lg" containerClassName="justify-center">
+                  <InputOTPGroup>
+                    {Array.from({ length: OTP_LENGTH }, (_, index) => <InputOTPSlot key={index} index={index} className="h-11 w-8 text-base sm:h-12 sm:w-10 sm:text-lg" />)}
+                  </InputOTPGroup>
+                </InputOTP>
+                {otpError && <p id="email-otp-error" role="alert" className="mt-4 text-sm leading-5 text-destructive">{otpError}</p>}
+                <Button type="submit" disabled={isVerifyingOtp || otp.length !== OTP_LENGTH} aria-busy={isVerifyingOtp} className="mt-6 h-auto w-full rounded-xl px-4 py-3">
+                  <span role="status" aria-live="polite">{isVerifyingOtp ? 'Verifying…' : 'Verify code'}</span>
+                  <ArrowRight aria-hidden="true" className="size-4" />
+                </Button>
               </form>
+              <div className="mt-5 flex flex-col items-center gap-2 text-sm">
+                <button type="button" onClick={() => void resendOtp()} disabled={isRequestingOtp || resendSeconds > 0} className="inline-flex items-center gap-1.5 font-medium text-primary transition-colors hover:text-primary/80 disabled:cursor-not-allowed disabled:text-muted-foreground">
+                  <RefreshCw className="size-3.5" aria-hidden="true" />
+                  {isRequestingOtp ? 'Sending…' : resendSeconds > 0 ? `Resend code in ${resendSeconds}s` : 'Resend code'}
+                </button>
+              </div>
             </motion.div>
-          </AnimatePresence>
-        </motion.div>
+          ) : (
+            <motion.div key="auth-sections" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+              <header className="auth-heading">
+                <h1>Create your account.</h1>
+                <p>A private place for your plans. A little more clarity.</p>
+              </header>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          className="mt-8 text-center"
-        >
-          <p className="text-sm text-slate-600 dark:text-muted-foreground">
-            {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="font-semibold text-primary hover:text-primary/80 transition-colors"
-            >
-              {isLogin ? 'Sign up' : 'Log in'}
-            </button>
-          </p>
-        </motion.div>
-      </div>
+              <section className="auth-section" aria-labelledby="auth-signup-title">
+                <div className="auth-section-heading">
+                  <h2 id="auth-signup-title">Sign up</h2>
+                  <p>Start with the option that works best for you.</p>
+                </div>
+
+                {signupStep === 'choice' ? (
+                  <div className="auth-choice-stack">
+                    <GoogleSignupButton onStart={triggerSignupSpin} />
+                    <Button type="button" variant="outline" onClick={() => { triggerSignupSpin(); setSignupStep('form') }} className="h-auto w-full rounded-xl border-border bg-background px-4 py-3 text-sm font-semibold text-foreground shadow-none hover:bg-surface-hover">
+                      <Mail aria-hidden="true" className="size-4" />
+                      Sign up with email
+                    </Button>
+                  </div>
+                ) : (
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                    <button type="button" onClick={() => setSignupStep('choice')} className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                      <ArrowLeft aria-hidden="true" className="size-4" />
+                      Other signup options
+                    </button>
+                    <form className="space-y-5" action={signUp} onSubmit={triggerSignupSpin}>
+                      <div>
+                        <label htmlFor="signup-email" className="auth-field-label">Email address</label>
+                        <div className="relative">
+                          <Mail className="auth-field-icon" aria-hidden="true" />
+                          <Input id="signup-email" type="email" name="email" value={signupEmail} onChange={(event) => setSignupEmail(event.target.value)} placeholder="you@example.com" autoComplete="email" required className="auth-field-input" />
+                        </div>
+                      </div>
+                      <div>
+                        <label htmlFor="signup-password" className="auth-field-label">Password</label>
+                        <div className="relative">
+                          <Lock className="auth-field-icon" aria-hidden="true" />
+                          <Input id="signup-password" type="password" name="password" value={signupPassword} onChange={(event) => setSignupPassword(event.target.value)} placeholder="••••••••" autoComplete="new-password" required className="auth-field-input" />
+                        </div>
+                      </div>
+                      <div>
+                        <label htmlFor="confirm-password" className="auth-field-label">Confirm password</label>
+                        <div className="relative">
+                          <Lock className="auth-field-icon" aria-hidden="true" />
+                          <Input id="confirm-password" type="password" name="confirm-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="••••••••" autoComplete="new-password" required className="auth-field-input" />
+                        </div>
+                        {confirmPassword.length > 0 && <p className={`mt-2 text-xs ${passwordsMatch ? 'text-emerald-500' : 'text-destructive'}`}>{passwordsMatch ? 'Passwords match' : 'Passwords do not match'}</p>}
+                      </div>
+                      <SignupSubmitButton disabled={!passwordsMatch} />
+                    </form>
+                  </motion.div>
+                )}
+              </section>
+
+              {signupStep === 'choice' && (
+                <>
+                  <div className="auth-section-divider"><span>Sign in</span></div>
+
+                  <section id="auth-signin" className="auth-section" aria-labelledby="auth-signin-title">
+                    <div className="auth-section-heading">
+                      <h2 id="auth-signin-title">Welcome back.</h2>
+                      <p>Enter your email and we’ll send you a secure sign-in code.</p>
+                    </div>
+                    <form onSubmit={handleSigninSubmit} className="space-y-5">
+                      <div>
+                        <label htmlFor="signin-email" className="auth-field-label">Email address</label>
+                        <div className="relative">
+                          <Mail className="auth-field-icon" aria-hidden="true" />
+                          <Input id="signin-email" type="email" value={signinEmail} onChange={(event) => setSigninEmail(event.target.value)} placeholder="you@example.com" autoComplete="email" required className="auth-field-input" />
+                        </div>
+                      </div>
+                      {otpError && <p role="alert" className="text-sm leading-5 text-destructive">{otpError}</p>}
+                      <Button type="submit" disabled={isRequestingOtp} aria-busy={isRequestingOtp} className="h-auto w-full rounded-xl px-4 py-3">
+                        <Mail aria-hidden="true" className="size-4" />
+                        <span role="status" aria-live="polite">{isRequestingOtp ? 'Sending code…' : 'Sign in with email code'}</span>
+                        <ArrowRight aria-hidden="true" className="size-4" />
+                      </Button>
+                    </form>
+                  </section>
+                </>
+              )}
+            </motion.div>
+          )}
+        </div>
+        <p className="auth-privacy"><Lock size={13} aria-hidden="true" />Your plans are personal. Keep them that way.</p>
+      </section>
     </div>
   )
 }
