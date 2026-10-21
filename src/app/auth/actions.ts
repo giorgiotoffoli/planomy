@@ -1,7 +1,6 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 
 export async function signUp(formData: FormData) {
@@ -45,11 +44,9 @@ export async function signIn(formData: FormData) {
 
 export async function signInWithGoogle() {
   const supabase = await createClient()
-  const requestHeaders = await headers()
-  const forwardedHost = requestHeaders.get('x-forwarded-host')
-  const host = forwardedHost ?? requestHeaders.get('host') ?? 'localhost:3000'
-  const protocol = requestHeaders.get('x-forwarded-proto') ?? 'http'
-  const origin = (process.env.NEXT_PUBLIC_SITE_URL ?? `${protocol}://${host}`).replace(
+  const configuredOrigin = (
+    process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.planomy.com'
+  ).replace(
     /\/$/,
     '',
   )
@@ -57,7 +54,7 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${origin}/auth/callback?next=/onboarding&google_signup=1`,
+      redirectTo: `${configuredOrigin}/auth/callback?next=/onboarding&google_signup=1`,
     },
   })
 
