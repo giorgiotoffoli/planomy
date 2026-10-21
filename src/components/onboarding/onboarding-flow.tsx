@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Home, ShieldCheck, Star, Sun } from 'lucide-react'
+import { Home, KeyRound, ShieldCheck, Star, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import VaultPasswordForm from '@/components/e2ee/vault-password-form'
@@ -14,6 +14,7 @@ import {
   completeOnboarding,
   createOnboardingTask,
   finishOnboardingSecurity,
+  setAccountPassword,
   startOnboarding,
   type OnboardingTaskResult,
 } from './actions'
@@ -22,6 +23,8 @@ type OnboardingFlowProps = {
   initialStep: OnboardingStep
   initialKeychain: StoredKeychain | null
   pendingTaskExists: boolean
+  hasAccountPassword: boolean
+  googleSignup: boolean
 }
 
 function errorMessage(result: Extract<OnboardingTaskResult, { ok: false }>) {
@@ -36,10 +39,16 @@ export default function OnboardingFlow({
   initialStep,
   initialKeychain,
   pendingTaskExists,
+  hasAccountPassword,
+  googleSignup,
 }: OnboardingFlowProps) {
   const router = useRouter()
   const { isRestoring, isUnlocked, masterKey } = useE2EE()
   const [step, setStep] = useState(initialStep)
+  const [masterPasswordSet, setMasterPasswordSet] = useState(Boolean(initialKeychain))
+  const [accountPassword, setAccountPasswordValue] = useState('')
+  const [confirmAccountPassword, setConfirmAccountPassword] = useState('')
+  const [accountPasswordError, setAccountPasswordError] = useState<string | null>(null)
   const [title, setTitle] = useState('')
   const [focused, setFocused] = useState(false)
   const [isBusy, setIsBusy] = useState(false)
@@ -47,13 +56,25 @@ export default function OnboardingFlow({
   const [taskSaved, setTaskSaved] = useState(false)
   const [taskError, setTaskError] = useState<string | null>(null)
   const [completionError, setCompletionError] = useState<string | null>(null)
+  const accountPasswordStepLabel =
+    googleSignup || hasAccountPassword ? '2 of 3' : '2 of 4'
+  const securityStepLabel = googleSignup
+    ? '1 of 3'
+    : hasAccountPassword
+      ? '2 of 3'
+      : '3 of 4'
+  const firstTaskStepLabel = googleSignup
+    ? '3 of 3'
+    : hasAccountPassword
+      ? '3 of 3'
+      : '4 of 4'
 
   async function begin() {
     setIsBusy(true)
     setCompletionError(null)
     try {
-      await startOnboarding()
-      setStep('security')
+      const nextStep = await startOnboarding()
+      setStep(nextStep)
     } catch (error) {
       setCompletionError(
         error instanceof Error ? error.message : 'Onboarding could not start.',
@@ -63,9 +84,37 @@ export default function OnboardingFlow({
     }
   }
 
+  async function saveAccountPassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!event.currentTarget.reportValidity()) return
+
+    setIsBusy(true)
+    setAccountPasswordError(null)
+
+    try {
+      await setAccountPassword({
+        password: accountPassword,
+        confirmPassword: confirmAccountPassword,
+      })
+      setAccountPasswordValue('')
+      setConfirmAccountPassword('')
+      setStep(masterPasswordSet ? 'first-task' : 'security')
+    } catch (error) {
+      setAccountPasswordError(
+        error instanceof Error
+          ? error.message
+          : 'Your account password could not be saved.',
+      )
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
   async function securityReady() {
     await finishOnboardingSecurity()
-    setStep('first-task')
+    setMasterPasswordSet(true)
+    setStep(hasAccountPassword ? 'first-task' : 'account-password')
   }
 
   async function finish() {
@@ -186,11 +235,75 @@ export default function OnboardingFlow({
     )
   }
 
+  if (step === 'account-password') {
+    return (
+      <div>
+        <div className="mb-5 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+          <KeyRound className="size-4" /> Step {accountPasswordStepLabel}
+        </div>
+        <p className="text-sm font-medium text-primary">Account security</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">
+          Choose an account password.
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          {googleSignup
+            ? 'Your Google account still works for sign-in. Add a Planomy account password too; it is separate from the master password that protects your encrypted plans.'
+            : 'Add a password-based sign-in option for your Planomy account. It is separate from the master password that protects your encrypted plans.'}
+        </p>
+
+        <form onSubmit={saveAccountPassword} className="mt-6">
+          <label
+            className="block text-sm font-medium text-foreground"
+            htmlFor="account-password"
+          >
+            Account password
+          </label>
+          <Input
+            autoFocus
+            id="account-password"
+            type="password"
+            value={accountPassword}
+            onChange={(event) => setAccountPasswordValue(event.target.value)}
+            className="mt-1.5"
+            autoComplete="new-password"
+            required
+          />
+
+          <label
+            className="mt-4 block text-sm font-medium text-foreground"
+            htmlFor="confirm-account-password"
+          >
+            Confirm account password
+          </label>
+          <Input
+            id="confirm-account-password"
+            type="password"
+            value={confirmAccountPassword}
+            onChange={(event) => setConfirmAccountPassword(event.target.value)}
+            className="mt-1.5"
+            autoComplete="new-password"
+            required
+          />
+
+          {accountPasswordError && (
+            <p role="alert" className="mt-4 text-sm text-destructive">
+              {accountPasswordError}
+            </p>
+          )}
+
+          <Button type="submit" disabled={isBusy} className="mt-6 w-full">
+            {isBusy ? 'Saving password…' : 'Continue'}
+          </Button>
+        </form>
+      </div>
+    )
+  }
+
   if (step === 'security' || !isUnlocked) {
     return (
       <div>
         <div className="mb-5 flex items-center gap-2 text-xs font-medium text-muted-foreground">
-          <ShieldCheck className="size-4" /> Step 2 of 3
+          <ShieldCheck className="size-4" /> Step {securityStepLabel}
         </div>
         <VaultPasswordForm
           initialKeychain={initialKeychain}
@@ -228,7 +341,7 @@ export default function OnboardingFlow({
   return (
     <div>
       <div className="mb-5 flex items-center gap-2 text-xs font-medium text-muted-foreground">
-        <Sun className="size-4" /> Step 3 of 3
+        <Sun className="size-4" /> Step {firstTaskStepLabel}
       </div>
       <h1 className="text-3xl font-semibold tracking-tight text-foreground">
         Choose your first task.

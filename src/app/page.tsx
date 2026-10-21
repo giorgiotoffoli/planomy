@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect } from 'react'
 import { motion } from 'motion/react'
 import {
   ArrowUpRight,
@@ -17,6 +18,16 @@ import {
 import { PlanomyIcon } from '@/icons/planomy-icon'
 
 export default function Page() {
+  useEffect(() => {
+    const callbackUrl = new URL(window.location.href)
+    if (!callbackUrl.searchParams.has('code')) return
+
+    callbackUrl.pathname = '/auth/callback'
+    callbackUrl.searchParams.set('next', '/onboarding')
+    callbackUrl.searchParams.set('google_signup', '1')
+    window.location.replace(callbackUrl.toString())
+  }, [])
+
   return (
     <main className="min-h-screen overflow-hidden bg-[#f4f3ee] text-[#121316] selection:bg-blue-200 dark:bg-background dark:text-foreground dark:selection:bg-primary/30">
       <nav className="relative z-50 mx-auto flex h-16 max-w-330 items-center justify-between px-5 sm:px-8">

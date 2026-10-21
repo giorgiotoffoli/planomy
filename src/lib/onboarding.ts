@@ -1,6 +1,10 @@
 export const ONBOARDING_VERSION = 1
 
-export type OnboardingStep = 'welcome' | 'security' | 'first-task'
+export type OnboardingStep =
+  | 'welcome'
+  | 'account-password'
+  | 'security'
+  | 'first-task'
 
 type UserMetadata = Record<string, unknown>
 
@@ -13,6 +17,7 @@ export type OnboardingState = {
 export function resolveOnboardingState(
   metadata: UserMetadata,
   hasKeychain: boolean,
+  hasAccountPassword = true,
 ): OnboardingState {
   const status = metadata.onboarding_status
   const version = metadata.onboarding_version
@@ -24,9 +29,18 @@ export function resolveOnboardingState(
   if (!hasKeychain) {
     return {
       complete: false,
-      step: status === 'started' ? 'security' : 'welcome',
+      step:
+        status === 'started'
+          ? hasAccountPassword
+            ? 'security'
+            : 'account-password'
+          : 'welcome',
       pendingTaskId,
     }
+  }
+
+  if (!hasAccountPassword) {
+    return { complete: false, step: 'account-password', pendingTaskId }
   }
 
   if (status === 'started' && version === ONBOARDING_VERSION) {

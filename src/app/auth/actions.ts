@@ -49,12 +49,15 @@ export async function signInWithGoogle() {
   const forwardedHost = requestHeaders.get('x-forwarded-host')
   const host = forwardedHost ?? requestHeaders.get('host') ?? 'localhost:3000'
   const protocol = requestHeaders.get('x-forwarded-proto') ?? 'http'
-  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? `${protocol}://${host}`
+  const origin = (process.env.NEXT_PUBLIC_SITE_URL ?? `${protocol}://${host}`).replace(
+    /\/$/,
+    '',
+  )
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${origin}/auth/callback?next=/onboarding`,
+      redirectTo: `${origin}/auth/callback?next=/onboarding&google_signup=1`,
     },
   })
 

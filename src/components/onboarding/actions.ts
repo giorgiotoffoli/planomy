@@ -14,6 +14,7 @@ type InitialOnboardingState = OnboardingState & {
   userId: string
   keychain: StoredKeychain | null
   pendingTaskExists: boolean
+  hasAccountPassword: boolean
 }
 
 export type OnboardingTaskResult =
@@ -37,17 +38,22 @@ async function authenticatedClient() {
   return { supabase, user }
 }
 
-async function updateOnboardingMetadata(data: Record<string, unknown>) {
-  const { supabase } = await authenticatedClient()
-  const { error } = await supabase.auth.updateUser({ data })
-
-  if (error) throw new Error(error.message)
+function userHasAccountPassword(user: {
+  app_metadata?: Record<string, unknown>
+}) {
+  const providers = user.app_metadata?.providers
+  return Array.isArray(providers) && providers.includes('email')
 }
 
 export async function getOnboardingState(): Promise<InitialOnboardingState> {
   const { supabase, user } = await authenticatedClient()
   const keychain = await getUserKeychain()
-  const state = resolveOnboardingState(user.user_metadata, Boolean(keychain))
+  const hasAccountPassword = userHasAccountPassword(user)
+  const state = resolveOnboardingState(
+    user.user_metadata,
+    Boolean(keychain),
+    hasAccountPassword,
+  )
   let pendingTaskExists = false
 
   if (isUuid(state.pendingTaskId)) {
@@ -67,15 +73,53 @@ export async function getOnboardingState(): Promise<InitialOnboardingState> {
     userId: user.id,
     keychain,
     pendingTaskExists,
+    hasAccountPassword,
   }
 }
 
-export async function startOnboarding() {
-  await updateOnboardingMetadata({
-    onboarding_status: 'started',
-    onboarding_step: 'security',
-    onboarding_version: ONBOARDING_VERSION,
+export async function startOnboarding(): Promise<'account-password' | 'security'> {
+  const { supabase, user } = await authenticatedClient()
+  const step = userHasAccountPassword(user) ? 'security' : 'account-password'
+  const { error } = await supabase.auth.updateUser({
+    data: {
+      onboarding_status: 'started',
+      onboarding_step: step,
+      onboarding_version: ONBOARDING_VERSION,
+    },
   })
+
+  if (error) throw new Error(error.message)
+  return step
+}
+
+export async function setAccountPassword(input: {
+  password: string
+  confirmPassword: string
+}) {
+  if (!input.password) throw new Error('Choose an account password.')
+  if (input.password !== input.confirmPassword) {
+    throw new Error('Account passwords do not match.')
+  }
+
+  const { supabase, user } = await authenticatedClient()
+  const { data: keychain, error: keychainError } = await supabase
+    .from('user_keychain')
+    .select('user_id')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (keychainError) throw new Error(keychainError.message)
+
+  const { error } = await supabase.auth.updateUser({
+    password: input.password,
+    data: {
+      onboarding_status: 'started',
+      onboarding_step: keychain ? 'first-task' : 'security',
+      onboarding_version: ONBOARDING_VERSION,
+    },
+  })
+
+  if (error) throw new Error(error.message)
 }
 
 export async function finishOnboardingSecurity() {
@@ -89,10 +133,14 @@ export async function finishOnboardingSecurity() {
   if (keychainError) throw new Error(keychainError.message)
   if (!keychain) throw new Error('Create your encryption key before continuing.')
 
+  const nextStep = userHasAccountPassword(user)
+    ? 'first-task'
+    : 'account-password'
+
   const { error } = await supabase.auth.updateUser({
     data: {
       onboarding_status: 'started',
-      onboarding_step: 'first-task',
+      onboarding_step: nextStep,
       onboarding_version: ONBOARDING_VERSION,
     },
   })
@@ -102,6 +150,10 @@ export async function finishOnboardingSecurity() {
 
 export async function completeOnboarding() {
   const { supabase, user } = await authenticatedClient()
+  if (!userHasAccountPassword(user)) {
+    throw new Error('Create your account password before continuing.')
+  }
+
   const { data: keychain, error: keychainError } = await supabase
     .from('user_keychain')
     .select('user_id')

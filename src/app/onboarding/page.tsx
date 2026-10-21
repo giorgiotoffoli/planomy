@@ -4,10 +4,16 @@ import { E2EEProvider } from '@/components/e2ee/e2ee-provider'
 import OnboardingFlow from '@/components/onboarding/onboarding-flow'
 import { getOnboardingState } from '@/components/onboarding/actions'
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ google_signup?: string }>
+}) {
+  const { google_signup: googleSignupParam } = await searchParams
+  const googleSignup = googleSignupParam === '1'
   const state = await getOnboardingState()
 
-  if (state.complete) redirect('/home')
+  if (state.complete && !googleSignup) redirect('/home')
 
   return (
     <E2EEProvider userId={state.userId}>
@@ -21,9 +27,11 @@ export default async function OnboardingPage() {
           </div>
           <section className="rounded-3xl border border-border bg-surface-elevated/90 p-6 shadow-xl shadow-black/20 backdrop-blur-xl sm:p-8">
             <OnboardingFlow
-              initialStep={state.step}
+              initialStep={googleSignup ? 'security' : state.step}
               initialKeychain={state.keychain}
               pendingTaskExists={state.pendingTaskExists}
+              hasAccountPassword={state.hasAccountPassword}
+              googleSignup={googleSignup}
             />
           </section>
         </div>
