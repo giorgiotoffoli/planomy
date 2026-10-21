@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 
 export async function signUp(formData: FormData) {
@@ -37,9 +38,31 @@ export async function signIn(formData: FormData) {
   })
 
   if (error) {
-    redirect(`/auth?message=${encodeURIComponent(error.message)}`)
+    redirect(`/auth?mode=signin&message=${encodeURIComponent(error.message)}`)
   }
   redirect('/home')
+}
+
+export async function signInWithGoogle() {
+  const supabase = await createClient()
+  const requestHeaders = await headers()
+  const forwardedHost = requestHeaders.get('x-forwarded-host')
+  const host = forwardedHost ?? requestHeaders.get('host') ?? 'localhost:3000'
+  const protocol = requestHeaders.get('x-forwarded-proto') ?? 'http'
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? `${protocol}://${host}`
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${origin}/auth/callback?next=/onboarding`,
+    },
+  })
+
+  if (error || !data.url) {
+    redirect(`/auth?message=${encodeURIComponent(error?.message ?? 'Google sign-in is unavailable right now.')}`)
+  }
+
+  redirect(data.url)
 }
 
 export async function signOut() {

@@ -210,7 +210,7 @@ export default function Page() {
           <a href="https://github.com/giorgiotoffoli/planomy" target="_blank">
             GitHub
           </a>
-          <Link href="/auth">Sign in</Link>
+          <Link href="/auth?mode=signin">Sign in</Link>
         </div>
       </footer>
     </main>
