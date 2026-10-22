@@ -27,7 +27,7 @@ export default async function OnboardingPage({
           </div>
           <section className="rounded-3xl border border-border bg-surface-elevated/90 p-6 shadow-xl shadow-black/20 backdrop-blur-xl sm:p-8">
             <OnboardingFlow
-              initialStep={googleSignup ? 'security' : state.step}
+              initialStep={googleSignup ? 'account-password' : state.step}
               initialKeychain={state.keychain}
               pendingTaskExists={state.pendingTaskExists}
               hasAccountPassword={state.hasAccountPassword}

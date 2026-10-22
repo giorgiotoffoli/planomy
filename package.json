@@ -8,7 +8,13 @@
     "db:types": "supabase gen types typescript --linked > src/lib/supabase/database-types.ts",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test --experimental-strip-types src/lib/*.test.ts src/lib/**/*.test.ts"
+    "test": "node --test --experimental-strip-types src/lib/*.test.ts src/lib/**/*.test.ts",
+    "mobile": "pnpm --dir apps/mobile start",
+    "mobile:ios": "pnpm --dir apps/mobile ios",
+    "mobile:prebuild": "pnpm --dir apps/mobile prebuild",
+    "mobile:typecheck": "pnpm --dir apps/mobile typecheck",
+    "mobile:lint": "pnpm --dir apps/mobile lint",
+    "mobile:doctor": "pnpm --dir apps/mobile run doctor"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

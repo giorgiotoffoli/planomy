@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Planomy",
+    "slug": "planomy-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "planomy",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.planomy.mobile"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "android": {
+      "package": "com.planomy.mobile"
+    }
+  }
+}
