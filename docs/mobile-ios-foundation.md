@@ -19,17 +19,24 @@ Supabase, and encryption boundaries.
 
 ## Shared-code boundary
 
-The current web Supabase client uses `@supabase/ssr` and Next.js environment
-variables. The server client, admin client, middleware, and server actions are
-not mobile-compatible and must stay out of the native bundle. A future mobile
-client should use `@supabase/supabase-js` with only the public URL and
-publishable key, plus an explicitly chosen mobile session-storage strategy.
+The web Supabase client uses `@supabase/ssr` and Next.js environment variables.
+The server client, admin client, middleware, and server actions stay out of the
+native bundle. Phase 1 uses a separate `@supabase/supabase-js` client with only
+`EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Its
+session is stored in chunked Expo SecureStore values, with refresh while active
+and restoration on cold launch. Password sign-in and existing-account 8-digit
+email OTP are supported; OTP sign-in uses `shouldCreateUser: false`.
+
+Auth does not unlock the vault. Protected routing sends signed-in users to a
+locked-pending screen, and mounts `HomeProvider` only after an explicit future
+vault-unlocked transition. The session storage adapter stores Supabase tokens,
+not the encryption master key.
 
 The existing `src/lib/crypto/e2ee.ts` uses Web Crypto and browser base64 APIs.
 It is valuable as a protocol reference, but it is not imported by the mobile
-app. A native implementation must preserve the existing wire format and key
-handling guarantees, use platform-appropriate secure storage, and receive a
-separate security review before any sync or authentication work is added.
+app. A native vault implementation must preserve the existing wire format and
+key-handling guarantees, use platform-appropriate secure storage, and receive a
+separate security review before vault unlock or data sync is added.
 
 Pure TypeScript domain types and platform-neutral business logic can be
 considered for a future shared package after checking their imports. This

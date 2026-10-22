@@ -2,6 +2,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useColorScheme } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { AuthProvider, useAuth } from '@/lib/auth/AuthProvider'
 import { HomeProvider } from '@/features/home/provider'
 import { useHomeTheme } from '@/features/home/theme'
 
@@ -19,26 +20,49 @@ export default function RootLayout() {
       border: colors.separator,
     },
   }
+
   return (
     <SafeAreaProvider>
       <ThemeProvider value={theme}>
-        <HomeProvider>
-          <StatusBar style="auto" />
-          <Stack
-            screenOptions={{
-              contentStyle: { backgroundColor: colors.background },
-              headerStyle: { backgroundColor: colors.background },
-              headerTintColor: colors.accent,
-              headerTitleStyle: { color: colors.text },
-            }}
-          >
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="task" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="sources" options={{ presentation: 'modal' }} />
-          </Stack>
-        </HomeProvider>
+        <AuthProvider>
+          <RootNavigator />
+        </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   )
+}
+
+function RootNavigator() {
+  const colors = useHomeTheme()
+  const { state } = useAuth()
+  const routes = (
+    <>
+      <StatusBar style="auto" />
+      <Stack
+        screenOptions={{
+          contentStyle: { backgroundColor: colors.background },
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.accent,
+          headerTitleStyle: { color: colors.text },
+        }}
+      >
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Protected guard={state.status === 'unauthenticated'} redirectTo="/">
+          <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+        </Stack.Protected>
+        <Stack.Protected guard={state.status === 'authenticated-but-locked'} redirectTo="/">
+          <Stack.Screen name="locked" options={{ headerShown: false }} />
+        </Stack.Protected>
+        <Stack.Protected guard={state.status === 'unlocked'} redirectTo="/">
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="task" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="sources" options={{ presentation: 'modal' }} />
+        </Stack.Protected>
+      </Stack>
+    </>
+  )
+
+  // Mount decrypted Home state only after a future vault adapter explicitly
+  // transitions AuthProvider to `unlocked`; it is discarded on sign-out/lock.
+  return state.status === 'unlocked' ? <HomeProvider>{routes}</HomeProvider> : routes
 }

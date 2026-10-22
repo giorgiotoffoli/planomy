@@ -11,7 +11,13 @@
       "bundleIdentifier": "com.planomy.mobile"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

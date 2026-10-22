@@ -51,12 +51,31 @@ keys in `.env.example`. Only the Supabase URL and publishable key may be
 exposed to this bundle; never add `SUPABASE_SECRET_KEY` or another server-only
 credential here.
 
-The foundation intentionally does not import the web app's server actions,
-middleware, `@supabase/ssr` clients, or browser E2EE module. Future mobile data
-work should use a native Supabase client with mobile session persistence and a
-reviewed secure key-storage boundary. `src/lib/crypto/e2ee.ts` currently relies
-on Web Crypto plus browser `btoa`/`atob`, so it must not be reused in the native
-bundle until a compatible implementation is designed and security-reviewed.
+Native auth uses `@supabase/supabase-js` directly. It persists the Supabase
+session in Expo SecureStore, backed by iOS Keychain and Android Keystore. The
+adapter stores session JSON in 768-byte chunks in two alternating banks, with
+a small pointer written last; interrupted writes keep the prior session, while
+sign-out clears the pointer and both banks. The total session is capped at
+24 KiB and storage failures are shown instead of claiming that sign-in or
+sign-out completed. Refresh runs only while the app is active, and Supabase
+restores the saved session on cold launch. iOS Keychain items can survive an
+app uninstall/reinstall with the same bundle identifier, so users should sign
+out before removing the app when they need the saved session cleared.
+
+Email/password sign-in and existing-account email OTP are supported. OTP
+requests set `shouldCreateUser: false` and require the web app's existing
+8-digit email code. Sign up remains a separate section that opens web onboarding,
+because new accounts need the web vault-creation flow. A restored or newly
+authenticated account lands on “Your vault is locked.” No decrypted Home data
+is shown until a future native vault adapter explicitly unlocks it. The raw
+encryption master key is not stored by mobile auth.
+
+The mobile bundle does not import the web app's server actions, middleware,
+`@supabase/ssr` clients, or browser E2EE module. `src/lib/crypto/e2ee.ts` relies
+on Web Crypto plus browser `btoa`/`atob`, so it must not be reused by native code
+until a compatible implementation is designed and security-reviewed. The
+Expo web export does not instantiate the native auth client or fall back to
+browser storage.
 Home directly reuses audited pure domain types and helpers through mobile aliases; database schemas, authentication
 behavior, and encryption guarantees remain unchanged by this foundation.
 
