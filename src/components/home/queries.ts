@@ -148,8 +148,8 @@ export async function getHomeData(input: HomeDataInput = {}) {
   if (!user) redirect('/auth')
 
   const today = queryDate(input.today)
-  // Query one UTC day on either side so events near midnight in their own
-  // configured time zone are available to the client-side Home projection.
+  // Keep events close to midnight in their configured time zones available to
+  // the Home projection, which converts their timestamps to local dates.
   const upcomingStart = addCalendarDays(today, -1)
   const upcomingEnd = addCalendarDays(today, 8)
   const upcomingQueryEnd = addCalendarDays(upcomingEnd, 1)
