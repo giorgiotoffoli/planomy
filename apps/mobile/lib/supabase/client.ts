@@ -3,6 +3,7 @@ import 'react-native-url-polyfill/auto'
 import * as SecureStore from 'expo-secure-store'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { Platform } from 'react-native'
+import type { Database } from '@planomy/lib/supabase/database-types'
 import {
   AUTH_STORAGE_KEY,
   createSecureSessionStorage,
@@ -22,7 +23,7 @@ const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim()
 const supabasePublishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim()
 
 export let nativeSupabaseConfigurationError: string | null = null
-export let nativeSupabaseClient: SupabaseClient | null = null
+export let nativeSupabaseClient: SupabaseClient<Database> | null = null
 
 if (Platform.OS === 'web') {
   nativeSupabaseConfigurationError = 'Native sign-in is available in the iOS and Android apps.'
@@ -31,7 +32,7 @@ if (Platform.OS === 'web') {
     'Add the public Supabase URL and publishable key to apps/mobile/.env.local.'
 } else {
   try {
-    nativeSupabaseClient = createClient(supabaseUrl, supabasePublishableKey, {
+    nativeSupabaseClient = createClient<Database>(supabaseUrl, supabasePublishableKey, {
       auth: {
         autoRefreshToken: true,
         detectSessionInUrl: false,

@@ -134,6 +134,23 @@ test('completing a daily occurrence preserves the series and supports Undo', () 
   )
   assert.equal(original.currentOccurrences[0].completed, false)
 })
+test('restoring an archived recurring series reopens the series instead of editing an occurrence', () => {
+  const original = previewSnapshot(day)
+  const archived = {
+    ...original,
+    tasks: original.tasks.map((task) =>
+      task.id === 'repeat' ? { ...task, completed: true } : task,
+    ),
+  }
+  const restored = projectHomeCommand(archived, {
+    type: 'complete',
+    id: 'repeat',
+    completed: false,
+    day,
+  })
+  assert.equal(restored.tasks.find((task) => task.id === 'repeat')?.completed, false)
+  assert.deepEqual(restored.currentOccurrences, archived.currentOccurrences)
+})
 test('leaving preview discards the in-memory snapshot', async () => {
   const source = createPreviewSource(day)
   await source.execute({ type: 'stash', id: 'today', stashed: true })

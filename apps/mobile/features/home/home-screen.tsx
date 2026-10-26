@@ -29,6 +29,7 @@ import { CalendarPreviewWidget, FocusWidget, UpcomingWidget } from '@/components
 import { useHome } from './provider'
 import { uncategorizedListIds } from './model'
 import { useHomeTheme, spacing } from './theme'
+import { useAuth } from '@/lib/auth/AuthProvider'
 
 type Row = { kind: 'task'; task: TaskWithList } | { kind: 'empty'; text: string }
 type FeedSection = {
@@ -56,6 +57,7 @@ export function HomeScreen() {
     run,
   } = useHome()
   const colors = useHomeTheme()
+  const { lockVault } = useAuth()
   const insets = useSafeAreaInsets()
   const [stashedOpen, setStashedOpen] = useState(false)
   const [eventsOpen, setEventsOpen] = useState(false)
@@ -231,9 +233,13 @@ export function HomeScreen() {
           accessibilityLabel="Home account and privacy information"
           onPress={() => Alert.alert('Private by design', mode === 'preview'
             ? 'You’re exploring sample tasks. Changes stay in memory and are discarded when you leave preview.'
-            : 'Native sign-in and vault unlock are not connected yet. Your existing encrypted data stays protected.')}
+            : 'Your tasks are decrypted only while this vault is unlocked. Locking clears the mobile session copy.')}
         />
+        {mode === 'vault' ? <Stack.Toolbar.Button icon="lock.fill" accessibilityLabel="Lock vault" onPress={lockVault} /> : null}
         <Stack.Toolbar.Button icon="plus" accessibilityLabel="Add task" disabled={status !== 'ready'} onPress={() => router.push('/task')} />
+      </Stack.Toolbar>
+      <Stack.Toolbar placement="left">
+        <Stack.Toolbar.Button icon="archivebox" accessibilityLabel="Open Archive" disabled={status !== 'ready'} onPress={() => router.push('/archive')} />
       </Stack.Toolbar>
 
       {status === 'ready' && data && projection ? (

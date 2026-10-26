@@ -1,6 +1,7 @@
 import type {
   CalendarEventWithList,
   Category,
+  AgendaBlock,
   List,
   TaskOccurrence,
   TaskWithList,
@@ -22,6 +23,10 @@ export type HomeSnapshot = {
   lists: List[]
   categories: Category[]
   currentOccurrences: TaskOccurrence[]
+  /** Materialized recurrence state in the visible calendar horizon. */
+  occurrences: TaskOccurrence[]
+  /** Persisted calendar sessions; due dates remain a separate task field. */
+  scheduledBlocks: AgendaBlock[]
   upcomingEvents: CalendarEventWithList[]
   preferences: HomeSourcePreferences
 }
@@ -38,6 +43,7 @@ export type HomeCommand =
   | { type: 'focus'; id: string; focused: boolean }
   | { type: 'stash'; id: string; stashed: boolean }
   | { type: 'save'; id: string; draft: TaskDraft; creating: boolean }
+  | { type: 'delete'; id: string }
   | { type: 'source'; source: HomeSource; visible: boolean }
   | { type: 'category'; id: string; visible: boolean }
   | { type: 'showAll' }
@@ -149,6 +155,14 @@ export function projectHomeCommand(
         : data.tasks.map((item) => (item.id === task.id ? task : item)),
     }
   }
+  if (command.type === 'delete')
+    return {
+      ...data,
+      tasks: data.tasks.filter((item) => item.id !== command.id),
+      currentOccurrences: data.currentOccurrences.filter((item) => item.task_id !== command.id),
+      occurrences: data.occurrences.filter((item) => item.task_id !== command.id),
+      scheduledBlocks: data.scheduledBlocks.filter((item) => item.task_id !== command.id),
+    }
   const task = data.tasks.find((task) => task.id === command.id)
   if (!task) throw new Error('This task is no longer available.')
   if (command.type === 'focus' && command.focused) {
@@ -165,7 +179,7 @@ export function projectHomeCommand(
   let occurrences = data.currentOccurrences
   let patch: Partial<TaskWithList>
   if (command.type === 'complete') {
-    if (task.recurrence_rule) {
+    if (task.recurrence_rule && !task.completed) {
       // Preview only completes today's materialized occurrence; it cannot fabricate future sessions.
       const current = occurrences.find(
         (item) =>
@@ -318,6 +332,18 @@ export function previewSnapshot(day: string): HomeSnapshot {
         cancelled: false,
       },
     ],
+    occurrences: [
+      {
+        id: 'repeat-today',
+        user_id: 'preview',
+        task_id: 'repeat',
+        occurrence_date: day,
+        completed: false,
+        skipped: false,
+        cancelled: false,
+      },
+    ],
+    scheduledBlocks: [],
     upcomingEvents: [
       {
         id: 'event',
@@ -358,6 +384,8 @@ export function createPreviewSource(day: string): HomeDataSource {
         lists: [],
         categories: [],
         currentOccurrences: [],
+        occurrences: [],
+        scheduledBlocks: [],
         upcomingEvents: [],
         preferences: defaultHomeSourcePreferences(),
       }

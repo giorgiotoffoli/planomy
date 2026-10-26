@@ -4,6 +4,7 @@ import {
   generateOccurrenceDateKeys,
   isMissedSession,
   normalizeRecurrenceRule,
+  occurrenceDateForCompletion,
   recurrenceLabel,
   recurrenceMatchesDate,
   recurringSessionTimes,
@@ -89,6 +90,29 @@ test('occurrence counts remain stable when a later window is requested', () => {
     ),
     ['2026-10-02'],
   )
+})
+
+test('recurring completion consumes the latest pending occurrence through the selected date', () => {
+  assert.equal(occurrenceDateForCompletion(
+    { frequency: 'daily', startDate: '2026-10-01' },
+    '2026-10-10',
+    [
+      { occurrence_date: '2026-10-03', completed: true, skipped: false },
+      { occurrence_date: '2026-10-07', completed: false, skipped: false },
+      { occurrence_date: '2026-10-09', completed: false, skipped: false },
+    ],
+  ), '2026-10-09')
+})
+
+test('recurring completion uses today when actionable and advances past completed or skipped dates', () => {
+  const rule = { frequency: 'daily' as const, startDate: '2026-10-01' }
+  assert.equal(occurrenceDateForCompletion(rule, '2026-10-10', []), '2026-10-10')
+  assert.equal(occurrenceDateForCompletion(rule, '2026-10-10', [
+    { occurrence_date: '2026-10-10', completed: true, skipped: false },
+  ]), '2026-10-11')
+  assert.equal(occurrenceDateForCompletion(rule, '2026-10-10', [
+    { occurrence_date: '2026-10-10', completed: false, skipped: true },
+  ]), '2026-10-11')
 })
 
 test('missed sessions are distinct from skipped and completed work', () => {

@@ -143,6 +143,38 @@ export function CalendarEventCard({
   )
 }
 
+export function CalendarSessionCard({
+  task,
+  label,
+  time,
+  onPress,
+}: {
+  task: TaskWithList
+  label: string
+  time: string | null
+  onPress?: () => void
+}) {
+  const colors = useHomeTheme()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Scheduled task, ${task.title}, ${label}${time ? `, ${time}` : ''}`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.agendaRow, { borderLeftColor: colors.accent, backgroundColor: colors.surface }, pressed && { opacity: 0.7 }]}
+    >
+      <AppIcon name={{ ios: 'clock', android: 'schedule', web: 'schedule' }} size={17} color={colors.accent} />
+      <View style={styles.agendaCopy}>
+        <AppText weight="600" numberOfLines={2}>{task.title}</AppText>
+        <View style={styles.agendaMeta}>
+          <DatePill icon="repeat" label={label} />
+          <DatePill icon="clock" label={time ?? 'Time not set'} />
+          {task.list ? <ListIndicator list={task.list} compact /> : null}
+        </View>
+      </View>
+    </Pressable>
+  )
+}
+
 export function CalendarTaskCard({
   task,
   dueDate,

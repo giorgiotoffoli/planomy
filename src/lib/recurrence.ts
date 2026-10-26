@@ -414,3 +414,29 @@ export function nextOccurrenceDate(rule: RecurrenceRule, fromDate: string) {
   const end = addCalendarDays(next, 366 * Math.max(1, rule.interval ?? 1))
   return generateOccurrenceDateKeys(rule, next, end)[0] ?? null
 }
+
+/** Pick the occurrence the web completion flow consumes for a recurring task. */
+export function occurrenceDateForCompletion(
+  rule: RecurrenceRule,
+  onDate: string,
+  occurrences: Pick<TaskOccurrence, 'occurrence_date' | 'completed' | 'skipped'>[],
+) {
+  const pendingBeforeDate = occurrences
+    .filter((occurrence) =>
+      occurrence.occurrence_date <= onDate &&
+      !occurrence.completed &&
+      !occurrence.skipped,
+    )
+    .at(-1)
+  const onDateOccurrence = occurrences.find(
+    (occurrence) => occurrence.occurrence_date === onDate,
+  )
+  let occurrenceDate = pendingBeforeDate?.occurrence_date ?? null
+
+  if (!occurrenceDate && recurrenceMatchesDate(rule, onDate) &&
+    (!onDateOccurrence || (!onDateOccurrence.completed && !onDateOccurrence.skipped))) {
+    occurrenceDate = onDate
+  }
+
+  return occurrenceDate ?? nextOccurrenceDate(rule, onDate)
+}

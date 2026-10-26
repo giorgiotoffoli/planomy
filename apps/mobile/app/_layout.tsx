@@ -34,7 +34,7 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const colors = useHomeTheme()
-  const { state } = useAuth()
+  const { state, homeSource } = useAuth()
   const routes = (
     <>
       <StatusBar style="auto" />
@@ -56,13 +56,16 @@ function RootNavigator() {
         <Stack.Protected guard={state.status === 'unlocked'} redirectTo="/">
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="task" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="archive" options={{ presentation: 'modal', title: 'Archive' }} />
           <Stack.Screen name="sources" options={{ presentation: 'modal' }} />
         </Stack.Protected>
       </Stack>
     </>
   )
 
-  // Mount decrypted Home state only after a future vault adapter explicitly
-  // transitions AuthProvider to `unlocked`; it is discarded on sign-out/lock.
-  return state.status === 'unlocked' ? <HomeProvider>{routes}</HomeProvider> : routes
+  // Keep decrypted Home state mounted only for an explicitly unlocked vault;
+  // AuthProvider disposes the key and source on lock, sign-out, or account change.
+  return state.status === 'unlocked' && homeSource
+    ? <HomeProvider source={homeSource}>{routes}</HomeProvider>
+    : routes
 }

@@ -345,16 +345,44 @@ export function TaskScreen() {
                     task.stashed ? 'Task unstashed' : 'Task stashed',
                   ),
               )}
-              {field('Complete task', '', async () => {
+              {field(task.completed ? 'Restore task' : 'Complete task', '', async () => {
                 if (
                   await run(
-                    { type: 'complete', id: task.id, completed: true, day },
-                    'Task completed',
-                    { type: 'complete', id: task.id, completed: false, day },
+                    { type: 'complete', id: task.id, completed: !task.completed, day },
+                    task.completed ? 'Task restored' : 'Task completed',
+                    task.completed
+                      ? undefined
+                      : { type: 'complete', id: task.id, completed: false, day },
                   )
                 )
                   router.back()
               })}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Delete task"
+                disabled={busy}
+                onPress={() => Alert.alert(
+                  'Delete this task?',
+                  task.recurrence_rule
+                    ? 'This removes the task series and its scheduled occurrences from your account.'
+                    : 'This removes the task from your account.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: () => {
+                        void run({ type: 'delete', id: task.id }, 'Task deleted').then((ok) => {
+                          if (ok) router.back()
+                        })
+                      },
+                    },
+                  ],
+                )}
+                style={[styles.deleteAction, { borderTopColor: colors.separator }]}
+              >
+                <Text style={{ color: colors.danger, fontSize: 16, fontWeight: '600' }}>Delete task</Text>
+              </Pressable>
             </View>
           ) : null}
           {error ? (
@@ -403,4 +431,5 @@ const styles = StyleSheet.create({
   value: { fontSize: 15, flexShrink: 1 },
   headerButton: { minHeight: 44, minWidth: 44, justifyContent: 'center' },
   footnote: { fontSize: 13, lineHeight: 19 },
+  deleteAction: { minHeight: 52, justifyContent: 'center', paddingHorizontal: 18, borderTopWidth: StyleSheet.hairlineWidth },
 })

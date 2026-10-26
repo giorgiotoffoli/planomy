@@ -11,6 +11,8 @@ import {
 } from 'react'
 import { AppState, type AppStateStatus } from 'react-native'
 import type { Session, SupabaseClient, User } from '@supabase/supabase-js'
+import type { HomeDataSource } from '@/features/home/model'
+import { createSupabaseHomeSource, unlockNativeVault } from '@/features/home/supabase-source'
 import { authErrorMessage, OTP_LENGTH } from './errors'
 import {
   initialAuthState,
@@ -31,11 +33,14 @@ export type AuthActionResult =
 
 type AuthContextValue = {
   state: AuthState
+  homeSource: HomeDataSource | null
   notice: string | null
   clearNotice: () => void
   signInWithPassword: (email: string, password: string) => Promise<AuthActionResult>
   requestEmailCode: (email: string) => Promise<AuthActionResult>
   verifyEmailCode: (email: string, token: string) => Promise<AuthActionResult>
+  unlockVault: (password: string) => Promise<AuthActionResult>
+  lockVault: () => void
   signOut: () => Promise<AuthActionResult>
 }
 
@@ -92,12 +97,21 @@ async function verifySavedSession(session: Session) {
 export function AuthProvider({ children }: PropsWithChildren) {
   const [state, dispatch] = useReducer(reduceAuthState, providerInitialState)
   const [notice, setNotice] = useState<string | null>(nativeSupabaseConfigurationError)
+  const [homeSource, setHomeSource] = useState<HomeDataSource | null>(null)
+  const homeSourceRef = useRef<HomeDataSource | null>(null)
+  const unlockInProgress = useRef(false)
   const stateRef = useRef<AuthState>(providerInitialState)
   const manualSignOut = useRef(false)
 
   const apply = useCallback((event: AuthStateEvent) => {
     stateRef.current = reduceAuthState(stateRef.current, event)
     dispatch(event)
+  }, [])
+
+  const clearHomeSource = useCallback(() => {
+    homeSourceRef.current?.dispose()
+    homeSourceRef.current = null
+    setHomeSource(null)
   }, [])
 
   useEffect(() => {
@@ -120,6 +134,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       authEvents += 1
       if (event === 'SIGNED_OUT') {
+        clearHomeSource()
         const message = isAuthenticated(stateRef.current)
           ? 'Your session ended. Sign in again to continue.'
           : undefined
@@ -132,9 +147,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const user = toAuthUser(session.user)
       if (!user) return
       if (event === 'SIGNED_IN') {
+        const previousUserId = isAuthenticated(stateRef.current) ? stateRef.current.user.id : null
+        if (previousUserId && previousUserId !== user.id) clearHomeSource()
         setNotice(null)
         apply({ type: 'signed-in', user })
       } else {
+        const previousUserId = isAuthenticated(stateRef.current) ? stateRef.current.user.id : null
+        if (previousUserId && previousUserId !== user.id) clearHomeSource()
         apply({ type: 'session-updated', user })
       }
     })
@@ -167,7 +186,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       appStateSubscription.remove()
       void Promise.resolve(configuredClient.auth.stopAutoRefresh()).catch(() => {})
     }
-  }, [apply])
+  }, [apply, clearHomeSource])
 
   const persistSuccessfulSession = useCallback(async (session: Session): Promise<AuthActionResult> => {
     try {
@@ -267,8 +286,58 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, [persistSuccessfulSession])
 
+  const unlockVault = useCallback(async (password: string): Promise<AuthActionResult> => {
+    if (unlockInProgress.current) return { ok: false, error: 'Unlock is already in progress.' }
+    const currentState = stateRef.current
+    if (currentState.status !== 'authenticated-but-locked') {
+      return { ok: false, error: 'Sign in before unlocking your vault.' }
+    }
+    const client = nativeSupabaseClient
+    if (!client) {
+      return { ok: false, error: nativeSupabaseConfigurationError ?? 'Supabase is not configured.' }
+    }
+    unlockInProgress.current = true
+    setNotice(null)
+    let masterKey: Uint8Array | null = null
+    try {
+      const { data, error } = await client.auth.getUser()
+      if (error) throw error
+      if (!data.user || data.user.id !== currentState.user.id) {
+        clearHomeSource()
+        apply({ type: 'signed-out' })
+        return { ok: false, error: 'Your sign-in session ended. Sign in again.' }
+      }
+      masterKey = await unlockNativeVault(client, data.user.id, password)
+      if (stateRef.current.status !== 'authenticated-but-locked' || stateRef.current.user.id !== data.user.id) {
+        return { ok: false, error: 'Your account changed. Sign in again to unlock your vault.' }
+      }
+      const source = createSupabaseHomeSource(client, data.user.id, masterKey)
+      masterKey = null
+      clearHomeSource()
+      homeSourceRef.current = source
+      setHomeSource(source)
+      apply({ type: 'vault-unlocked' })
+      return { ok: true }
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : 'Could not unlock the vault. Try again.',
+      }
+    } finally {
+      masterKey?.fill(0)
+      unlockInProgress.current = false
+    }
+  }, [apply, clearHomeSource])
+
+  const lockVault = useCallback(() => {
+    clearHomeSource()
+    apply({ type: 'vault-locked' })
+  }, [apply, clearHomeSource])
+
   const signOut = useCallback(async (): Promise<AuthActionResult> => {
     manualSignOut.current = true
+    clearHomeSource()
+    apply({ type: 'vault-locked' })
     try {
       await clearLocalSession()
       apply({ type: 'signed-out' })
@@ -280,18 +349,21 @@ export function AuthProvider({ children }: PropsWithChildren) {
     } finally {
       manualSignOut.current = false
     }
-  }, [apply])
+  }, [apply, clearHomeSource])
 
   const clearNotice = useCallback(() => setNotice(null), [])
   const value = useMemo<AuthContextValue>(() => ({
     state,
+    homeSource,
     notice,
     clearNotice,
     signInWithPassword,
     requestEmailCode,
     verifyEmailCode,
+    unlockVault,
+    lockVault,
     signOut,
-  }), [state, notice, clearNotice, signInWithPassword, requestEmailCode, verifyEmailCode, signOut])
+  }), [state, homeSource, notice, clearNotice, signInWithPassword, requestEmailCode, verifyEmailCode, unlockVault, lockVault, signOut])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

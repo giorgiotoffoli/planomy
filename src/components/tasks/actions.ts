@@ -6,9 +6,8 @@ import { toTaskWithList } from '@/lib/supabase/domain-mappers'
 import type { CreateTaskInput, UpdateTaskInput } from '@/types'
 import { normalizeDeadline } from '@/lib/task-form'
 import {
-  nextOccurrenceDate,
   normalizeRecurrenceRule,
-  recurrenceMatchesDate,
+  occurrenceDateForCompletion,
 } from '@/lib/recurrence'
 import { populateNextScheduledOccurrence } from '@/lib/recurring-sessions'
 import { isDateKey, localDateKey } from '@/lib/today'
@@ -240,24 +239,7 @@ export async function updateTaskCompleted(
 
     if (occurrenceError) throw new Error(occurrenceError.message)
 
-    const pendingBeforeDate = existingOccurrences
-      .filter((occurrence) =>
-        occurrence.occurrence_date <= onDate &&
-        !occurrence.completed &&
-        !occurrence.skipped,
-      )
-      .at(-1)
-    const onDateOccurrence = existingOccurrences.find(
-      (occurrence) => occurrence.occurrence_date === onDate,
-    )
-    let occurrenceDate = pendingBeforeDate?.occurrence_date ?? null
-
-    if (!occurrenceDate && recurrenceMatchesDate(rule, onDate) &&
-      (!onDateOccurrence || (!onDateOccurrence.completed && !onDateOccurrence.skipped))) {
-      occurrenceDate = onDate
-    }
-
-    if (!occurrenceDate) occurrenceDate = nextOccurrenceDate(rule, onDate)
+    const occurrenceDate = occurrenceDateForCompletion(rule, onDate, existingOccurrences)
 
     let savedOccurrenceId: string | null = null
     if (occurrenceDate) {
