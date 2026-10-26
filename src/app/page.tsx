@@ -1,18 +1,16 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useEffect } from 'react'
 import { motion } from 'motion/react'
 import {
   ArrowUpRight,
   CalendarDays,
-  Check,
-  CheckCircle2,
   Github,
   Inbox,
   KanbanSquare,
   LockKeyhole,
-  PyramidIcon,
   Star,
 } from 'lucide-react'
 import { PlanomyIcon } from '@/icons/planomy-icon'
@@ -160,20 +158,43 @@ export default function Page() {
             initial={{ opacity: 0, y: 60, rotateX: 9 }}
             animate={{ opacity: 1, y: 0, rotateX: 0 }}
             transition={{ duration: 1, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="relative mx-auto mt-16 max-w-245 rounded-t-[22px] border border-black/15 border-b-0 bg-[#131722] p-1.5 pb-0 shadow-[0_35px_100px_rgba(37,99,235,.22)] dark:border-border sm:mt-12 sm:rounded-t-[30px] sm:p-2.5 sm:pb-0"
+            className="relative mx-auto mt-16 max-w-280 overflow-hidden rounded-[22px] border border-black/10 bg-white shadow-[0_35px_100px_rgba(37,99,235,.22)] dark:border-border dark:bg-[#111214] sm:mt-12 sm:rounded-[30px]"
             style={{ perspective: 1200 }}
           >
-            <div className="h-100 overflow-hidden sm:h-120 md:h-80 lg:h-112">
-              {/* Mobile */}
-              <img
-                src="/planomy-landing-page-mobile.png"
-                alt="A custom list in Planomy mobile depicting example school tasks."
-                className="w-full h-auto rounded-t-[18px] block md:hidden"
+            <div className="md:hidden">
+              <Image
+                src="/planomy-home-mobile-light.png"
+                alt="Planomy’s mobile home showing focus, upcoming tasks, and their lists in light theme."
+                width={968}
+                height={1866}
+                sizes="100vw"
+                className="block h-auto w-full dark:hidden"
               />
-              <img
-                src="/planomy-landing-page-desktop.png"
-                alt="A custom list in Planomy desktop depicting to-come features."
-                className="w-full h-full md:h-auto rounded-t-[18px] hidden md:block"
+              <Image
+                src="/planomy-home-mobile-dark.png"
+                alt="Planomy’s mobile home showing focus, upcoming tasks, and their lists in dark theme."
+                width={968}
+                height={1866}
+                sizes="100vw"
+                className="hidden h-auto w-full dark:block"
+              />
+            </div>
+            <div className="hidden md:block">
+              <Image
+                src="/planomy-home-desktop-light.png"
+                alt="Planomy’s desktop home showing its sidebar, focus tasks, and upcoming tasks in light theme."
+                width={2992}
+                height={1866}
+                sizes="(max-width: 768px) 100vw, 1120px"
+                className="block h-auto w-full dark:hidden"
+              />
+              <Image
+                src="/planomy-home-desktop-dark.png"
+                alt="Planomy’s desktop home showing its sidebar, focus tasks, and upcoming tasks in dark theme."
+                width={2992}
+                height={1866}
+                sizes="(max-width: 768px) 100vw, 1120px"
+                className="hidden h-auto w-full dark:block"
               />
             </div>
           </motion.div>

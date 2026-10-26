@@ -24,7 +24,8 @@ import {
 import { toast } from 'sonner'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
-import { addCalendarDays, localDateKey } from '@/lib/today'
+import { addCalendarDays, calendarDaysBetween, localDateKey } from '@/lib/today'
+import { nextOccurrenceDate } from '@/lib/recurrence'
 import { applyTaskOrganizationChange, matchesTaskSearch } from '@/lib/tasks'
 import type { TaskCreationView } from '@/lib/task-creation'
 import TaskSortSelect from '@/components/lists/task-sort-select'
@@ -78,7 +79,7 @@ import {
 import HomeSourcesPicker from './home-sources-picker'
 import { updateTaskCompleted as updateTaskCompletedAction } from '@/components/tasks/actions'
 import { updateTaskOccurrenceSkipped } from '@/components/tasks/recurrence-actions'
-import { eventColorStyle } from '@/lib/list-colors'
+import { eventColorStyle, inheritedColorStyle } from '@/lib/list-colors'
 import { ListEmoji } from '@/components/lists/list-emoji'
 import { skipTimeBlock } from '@/components/agenda/actions'
 import {
@@ -113,6 +114,10 @@ import {
   TaskItem,
   waitForTaskExit,
 } from '@/components/tasks/task-item/task-item'
+import { TaskCheckbox } from '@/components/tasks/task-item/task-checkbox'
+import { TaskTitle } from '@/components/tasks/task-item/task-title'
+import TaskDetail from '@/components/tasks/task-item/task-details'
+import { TaskEditDropdown } from '@/components/tasks/task-item/task-edit/task-edit-dropdown'
 import type { TaskOccurrenceContext } from '@/components/tasks/task-form/task-occurrence-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -155,11 +160,56 @@ function eventLocalParts(event: CalendarEventWithList) {
   }
 }
 
-type UpcomingEventEntry = {
-  event: CalendarEventWithList
-  time: string | null
+type UpcomingSectionKey = 'overdue' | 'today' | 'week'
+
+type UpcomingTaskEntry = {
+  kind: 'task'
+  task: TaskWithList
+  section: UpcomingSectionKey
   label: string
+  time: string | null
   sortKey: string
+  tieBreak: number
+}
+
+type UpcomingEventEntry = {
+  kind: 'event'
+  event: CalendarEventWithList
+  section: UpcomingSectionKey
+  label: string
+  time: string | null
+  sortKey: string
+  tieBreak: number
+}
+
+type UpcomingEntry = UpcomingTaskEntry | UpcomingEventEntry
+
+const UPCOMING_SECTION_LABELS: Record<UpcomingSectionKey, string> = {
+  overdue: 'Overdue',
+  today: 'Today',
+  week: 'Coming up this week',
+}
+
+function upcomingSectionForDate(dateKey: string, day: string): UpcomingSectionKey {
+  if (dateKey < day) return 'overdue'
+  return dateKey === day ? 'today' : 'week'
+}
+
+function formatUpcomingTime(value: string | null) {
+  if (!value) return null
+  const [hours, minutes] = value.split(':').map(Number)
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+function formatUpcomingDay(dateKey: string) {
+  return format(new Date(`${dateKey}T12:00:00`), 'EEE')
+}
+
+function formatOverdueLabel(dateKey: string, day: string) {
+  const daysLate = Math.abs(calendarDaysBetween(day, dateKey))
+  return `${daysLate} day${daysLate === 1 ? '' : 's'} late`
 }
 
 function decryptHomeData(data: HomeData, masterKey: Uint8Array) {
@@ -209,21 +259,13 @@ function decryptHomeData(data: HomeData, masterKey: Uint8Array) {
     Promise.all(data.upcomingEvents.map(async (event) => ({
       ...event,
       title: await decryptString(event.title, masterKey),
-      description: event.description
-        ? await decryptString(event.description, masterKey)
-        : event.description,
-      location: event.location
-        ? await decryptString(event.location, masterKey)
-        : event.location,
-      list: event.list
-        ? {
-            ...event.list,
-            title: await decryptString(event.list.title, masterKey),
-            emoji: event.list.emoji
-              ? await decryptString(event.list.emoji, masterKey)
-              : event.list.emoji,
-          }
-        : null,
+      description: event.description ? await decryptString(event.description, masterKey) : event.description,
+      location: event.location ? await decryptString(event.location, masterKey) : event.location,
+      list: event.list ? {
+        ...event.list,
+        title: await decryptString(event.list.title, masterKey),
+        emoji: event.list.emoji ? await decryptString(event.list.emoji, masterKey) : event.list.emoji,
+      } : null,
     }))),
   ]).then(([lists, tasks, categories, homePreferences, attention, upcomingEvents]) => ({
     lists,
@@ -250,6 +292,12 @@ function getDeadlineBadgeClassName(deadlineLabel?: string | null) {
   }
 
   return 'border-urgency-later-border bg-urgency-later-bg text-urgency-later'
+}
+
+function getUpcomingPillClassName(section: UpcomingSectionKey) {
+  return getDeadlineBadgeClassName(
+    section === 'overdue' ? 'overdue' : section === 'today' ? 'Today' : 'Later',
+  )
 }
 
 type HomeTaskRowProps = {
@@ -339,6 +387,124 @@ function HomeTaskRow({
   )
 }
 
+function UpcomingTaskRow({
+  entry,
+  lists,
+  categories,
+  onComplete,
+  onRename,
+  onDueDateChange,
+  onNotesChange,
+  onDelete,
+  onFocus,
+  onStash,
+  isExiting,
+}: {
+  entry: UpcomingTaskEntry
+  lists: List[]
+  categories: Category[]
+  onComplete: (taskId: string, completed: boolean) => void
+  onRename: (taskId: string, title: string) => void
+  onDueDateChange: (taskId: string, dueDate: string) => void
+  onNotesChange: (taskId: string, notes: string) => void
+  onDelete: (taskId: string) => void
+  onFocus: (taskId: string, focused: boolean) => void
+  onStash: (taskId: string, stashed: boolean) => void
+  isExiting: boolean
+}) {
+  const displayTask = isExiting ? { ...entry.task, completed: true } : entry.task
+  const status = entry.section === 'overdue'
+    ? entry.label
+    : `${entry.label}${entry.time ? ` · ${entry.time}` : ''}`
+
+  return (
+    <li
+      className="group"
+      style={inheritedColorStyle(entry.task.category?.color, entry.task.list?.color)}
+    >
+      <div
+        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${isExiting ? 'pointer-events-none grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'}`}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 px-0 py-2.5">
+            <div className="flex h-7 items-center pt-0.5">
+              <TaskCheckbox
+                task={displayTask}
+                handleOnComplete={onComplete}
+              />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-medium leading-tight">
+                <TaskTitle task={displayTask} handleOnRename={onRename} />
+              </div>
+              <div className="upcoming-task-detail [&>div]:text-xs">
+                <TaskDetail
+                  task={displayTask}
+                  currentListId={null}
+                  lists={lists}
+                  isInbox={false}
+                  showDueDate={false}
+                  showAddToList
+                  categories={categories}
+                  showCategory
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 pt-0.5">
+              <span
+                className={`inline-flex max-w-28 truncate rounded-full border px-2.5 py-1 text-[11px] font-medium tabular-nums sm:max-w-none sm:text-xs ${getUpcomingPillClassName(entry.section)}`}
+              >
+                {status}
+              </span>
+              {!entry.task.stashed && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  title={entry.task.focused ? 'Remove from Focus' : 'Add to Focus'}
+                  aria-label={entry.task.focused ? 'Remove from Focus' : 'Add to Focus'}
+                  aria-pressed={entry.task.focused}
+                  onClick={() => onFocus(entry.task.id, !entry.task.focused)}
+                  className={
+                    entry.task.focused
+                      ? 'h-7 w-7 shrink-0 cursor-pointer text-yellow-400 hover:text-yellow-500 dark:text-kanban-board-circle-yellow dark:hover:text-yellow-300'
+                      : 'h-7 w-7 shrink-0 cursor-pointer text-slate-400 dark:text-muted-foreground'
+                  }
+                >
+                  <Star className={entry.task.focused ? 'fill-current' : undefined} />
+                </Button>
+              )}
+              <TaskEditDropdown
+                task={displayTask}
+                lists={lists}
+                currentListId={null}
+                handleOnDueDateChange={onDueDateChange}
+                handleOnNotesChange={onNotesChange}
+                handleOnDelete={onDelete}
+                handleOnRename={onRename}
+                handleOnFocus={onFocus}
+                handleOnStash={onStash}
+                categories={categories}
+              >
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  title={`Actions for ${entry.task.title}`}
+                  aria-label={`Actions for ${entry.task.title}`}
+                  className="h-7 w-7 shrink-0 cursor-pointer"
+                >
+                  ⋯
+                </Button>
+              </TaskEditDropdown>
+            </div>
+          </div>
+        </div>
+      </div>
+    </li>
+  )
+}
+
 function UpcomingEventRow({
   entry,
   categories,
@@ -348,12 +514,12 @@ function UpcomingEventRow({
   categories: Category[]
   onOpen: () => void
 }) {
+  const status = entry.section === 'today'
+    ? entry.time ?? 'All day'
+    : `${entry.label}${entry.time ? ` · ${entry.time}` : ''}`
   const categoryTitle = entry.event.category_id
     ? categories.find((category) => category.id === entry.event.category_id)?.title
     : null
-  const status = entry.time
-    ? `${entry.label} · ${entry.time}`
-    : `${entry.label} · All day`
 
   return (
     <li
@@ -367,7 +533,7 @@ function UpcomingEventRow({
           onClick={onOpen}
           aria-label={`Edit event: ${entry.event.title}`}
         >
-          <CalendarFold className="size-5" strokeWidth={1.8} aria-hidden="true" />
+          <CalendarFold className="size-6" strokeWidth={1.8} aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -385,25 +551,159 @@ function UpcomingEventRow({
                   <span className="truncate">{entry.event.list.title}</span>
                 </>
               ) : null}
-              {entry.event.list && categoryTitle ? (
+              {entry.event.list && categoryTitle && (
                 <span className="text-muted-foreground/60">/</span>
+              )}
+              {categoryTitle ? (
+                <span className="truncate">
+                  {categoryTitle}
+                </span>
               ) : null}
-              {categoryTitle ? <span className="truncate">{categoryTitle}</span> : null}
             </span>
           ) : null}
         </button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 max-w-32 truncate rounded-full px-2.5 text-[11px] font-medium sm:max-w-none sm:text-xs"
-          onClick={onOpen}
-          aria-label={`Edit event: ${entry.event.title}. ${status}`}
-        >
-          {status}
-        </Button>
+        <div className="flex items-center gap-1.5 pt-0.5">
+          <span className={`inline-flex max-w-28 truncate rounded-full border px-2.5 py-1 text-[11px] font-medium tabular-nums sm:max-w-none sm:text-xs ${getUpcomingPillClassName(entry.section)}`}>
+            {status}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            title="Edit event"
+            aria-label={`Edit event: ${entry.event.title}`}
+            onClick={onOpen}
+            className="h-7 w-7 shrink-0 cursor-pointer"
+          >
+            ⋯
+          </Button>
+        </div>
       </div>
     </li>
+  )
+}
+
+function UpcomingSection({
+  entries,
+  expanded,
+  onExpandedChange,
+  lists,
+  categories,
+  onComplete,
+  onRename,
+  onDueDateChange,
+  onNotesChange,
+  onDelete,
+  onFocus,
+  onStash,
+  exitingTaskIds,
+  onOpenEvent,
+}: {
+  entries: UpcomingEntry[]
+  expanded: boolean
+  onExpandedChange: (expanded: boolean) => void
+  lists: List[]
+  categories: Category[]
+  onComplete: (taskId: string, completed: boolean) => void
+  onRename: (taskId: string, title: string) => void
+  onDueDateChange: (taskId: string, dueDate: string) => void
+  onNotesChange: (taskId: string, notes: string) => void
+  onDelete: (taskId: string) => void
+  onFocus: (taskId: string, focused: boolean) => void
+  onStash: (taskId: string, stashed: boolean) => void
+  exitingTaskIds: Set<string>
+  onOpenEvent: (event: CalendarEventWithList) => void
+}) {
+  const [open, setOpen] = useState(true)
+
+  if (!entries.length) return null
+
+  const visibleEntries = expanded ? entries : entries.slice(0, 6)
+  const groups = (Object.keys(UPCOMING_SECTION_LABELS) as UpcomingSectionKey[])
+    .map((key) => ({
+      key,
+      title: UPCOMING_SECTION_LABELS[key],
+      entries: visibleEntries.filter((entry) => entry.section === key),
+    }))
+    .filter((group) => group.entries.length > 0)
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="upcoming-panel overflow-hidden rounded-2xl border border-yellow-100/80 bg-yellow-50/75 p-3 shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:border-border dark:bg-surface dark:shadow-none sm:p-3.5"
+    >
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="group flex w-full items-center gap-2.5 px-1 py-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          aria-label={`${open ? 'Collapse' : 'Expand'} Upcoming`}
+        >
+          <Clock3 className="size-5 shrink-0 text-yellow-600 dark:text-yellow-200" strokeWidth={1.8} aria-hidden="true" />
+          <span className="font-heading text-base font-semibold tracking-[-0.02em] sm:text-lg">Upcoming</span>
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-slate-900/[0.06] text-[11px] font-semibold text-slate-600 dark:border dark:border-border-subtle dark:bg-surface-hover dark:text-text-secondary">
+            {entries.length}
+          </span>
+          <ChevronDown
+            className={`ml-auto size-4 text-slate-400 transition-transform duration-200 dark:text-muted-foreground motion-reduce:transition-none ${open ? 'rotate-180' : ''}`}
+            aria-hidden="true"
+          />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="pb-0.5">
+          {groups.map((group, groupIndex) => (
+            <section
+              key={group.key}
+              className={groupIndex > 0 ? 'border-t border-border/70 pt-4' : 'pt-2'}
+            >
+              <h2 className="text-sm font-medium uppercase leading-5 text-muted-foreground">
+                {group.title}
+              </h2>
+              <ul className="mt-1">
+                {group.entries.map((entry) => entry.kind === 'task' ? (
+                  <UpcomingTaskRow
+                    key={entry.task.id}
+                    entry={entry}
+                    lists={lists}
+                    categories={categories}
+                    onComplete={onComplete}
+                    onRename={onRename}
+                    onDueDateChange={onDueDateChange}
+                    onNotesChange={onNotesChange}
+                    onDelete={onDelete}
+                    onFocus={onFocus}
+                    onStash={onStash}
+                    isExiting={exitingTaskIds.has(entry.task.id)}
+                  />
+                ) : (
+                  <UpcomingEventRow
+                    key={entry.event.id}
+                    entry={entry}
+                    categories={categories}
+                    onOpen={() => onOpenEvent(entry.event)}
+                  />
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+        {entries.length > 6 ? (
+          <div className="border-t border-border/70 px-1 pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mx-auto flex h-7 gap-2 px-2 text-xs font-normal text-muted-foreground hover:text-foreground"
+              onClick={() => onExpandedChange(!expanded)}
+            >
+              {expanded ? 'Show less' : `Show ${entries.length - 6} more`}
+              <ChevronDown className={`size-4 transition-transform motion-reduce:transition-none ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
+            </Button>
+          </div>
+        ) : null}
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 
@@ -706,6 +1006,7 @@ export default function HomePlanner({
   const [currentTime, setCurrentTime] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortOption, setSortOption] = useState<TaskSortOption>('manual')
+  const [upcomingExpanded, setUpcomingExpanded] = useState(false)
   const [exitingTaskIds, setExitingTaskIds] = useState<Set<string>>(
     () => new Set(),
   )
@@ -818,7 +1119,7 @@ export default function HomePlanner({
   }, [])
 
   useEffect(() => {
-    const refreshDay = () => {
+    const refreshCalendar = () => {
       setCurrentTime(Date.now())
       const nextDay = localDateKey()
       if (dayRef.current === nextDay) return
@@ -826,7 +1127,7 @@ export default function HomePlanner({
       setDay(nextDay)
     }
     const refreshTasks = () => {
-      refreshDay()
+      refreshCalendar()
       void load()
     }
     const handleListsChanged = (event: Event) => {
@@ -907,8 +1208,8 @@ export default function HomePlanner({
       )
     }
 
-    const interval = window.setInterval(refreshDay, 60_000)
-    refreshDay()
+    const interval = window.setInterval(refreshCalendar, 60_000)
+    refreshCalendar()
     const onVisibility = () => {
       if (!document.hidden) refreshTasks()
     }
@@ -966,6 +1267,11 @@ export default function HomePlanner({
     [categories, currentOccurrences, homePreferences, tasks],
   )
 
+  const filteredDefinitions = useMemo(
+    () => filterHomeTasks(tasks ?? [], homePreferences, categories).filter((task) => matchesTaskSearch(task, searchQuery)),
+    [categories, homePreferences, searchQuery, tasks],
+  )
+
   const filteredTasks = useMemo(
     () => homeTasks.filter((task) => matchesTaskSearch(task, searchQuery)),
     [homeTasks, searchQuery],
@@ -979,17 +1285,57 @@ export default function HomePlanner({
 
     return {
       focus: sortTasks(homeBuckets.focus, sortOption),
-      dueSoon: homeBuckets.dueSoon,
+      dueSoon: sortTasks(homeBuckets.dueSoon, sortOption),
       tasks: sortTasks(homeBuckets.tasks, sortOption),
       stashed: sortTasks(homeBuckets.stashed, sortOption),
     }
   }, [day, filteredTasks, sortOption])
 
-  const upcomingEventEntries = useMemo(() => {
+  const upcoming = useMemo(() => {
     const upcomingEnd = addCalendarDays(day, HOME_UPCOMING_DAYS)
-    const now = currentTime ?? Number.POSITIVE_INFINITY
-    const eventSeries = new Map<string, UpcomingEventEntry>()
+    const taskEntries: UpcomingTaskEntry[] = []
+    const taskOrder = new Map(
+      sortTasks(
+        filteredDefinitions.filter((task) => !task.completed && !task.stashed),
+        sortOption,
+      )
+        .map((task, index) => [task.id, index]),
+    )
 
+    for (const task of filteredDefinitions) {
+      if (task.completed || task.stashed) continue
+
+      const current = task.recurrence_rule
+        ? currentOccurrences.find((occurrence) => occurrence.task_id === task.id)
+        : null
+      const dateKey = task.recurrence_rule
+        ? current && !current.completed && !current.skipped
+          ? day
+          : nextOccurrenceDate(task.recurrence_rule, day)
+        : task.due_date
+      if (!dateKey || dateKey >= upcomingEnd) continue
+
+      const section = upcomingSectionForDate(dateKey, day)
+      const time = formatUpcomingTime(task.due_time)
+      taskEntries.push({
+        kind: 'task',
+        task,
+        section,
+        label: section === 'overdue'
+          ? formatOverdueLabel(dateKey, day)
+          : section === 'today'
+            ? 'Today'
+            : formatUpcomingDay(dateKey),
+        time,
+        sortKey: `${dateKey}T${task.due_time ?? '23:59:59'}`,
+        tieBreak: taskOrder.get(task.id) ?? 0,
+      })
+    }
+
+    // The clock effect runs immediately after the first client render. Until
+    // then, keep timed events out rather than treating every instant as future.
+    const now = currentTime ?? Number.POSITIVE_INFINITY
+    const eventSeries = new Map<string, CalendarEventWithList>()
     for (const event of filterHomeEvents(upcomingEvents, homePreferences, categories)) {
       const parts = eventLocalParts(event)
       const startsOn = event.all_day ? event.starts_on : parts.date
@@ -1001,39 +1347,45 @@ export default function HomePlanner({
       const isUpcoming = event.all_day
         ? Boolean(startsOn && startsOn >= day && startsOn < upcomingEnd)
         : Number.isFinite(start) && start >= now && Boolean(startsOn && startsOn < upcomingEnd)
+      if (!isOngoing && !isUpcoming) continue
 
-      if ((!isOngoing && !isUpcoming) || !startsOn || startsOn >= upcomingEnd) continue
-
-      const displayDate = startsOn < day ? day : startsOn
-      const time = event.all_day ? null : parts.time
-      const label = displayDate === day
-        ? 'Today'
-        : displayDate === addCalendarDays(day, 1)
-          ? 'Tomorrow'
-          : format(new Date(`${displayDate}T12:00:00`), 'EEE')
-      const entry: UpcomingEventEntry = {
-        event,
-        time,
-        label,
-        sortKey: `${displayDate}T${time ?? '00:00'}`,
-      }
       const seriesId = event.source_event_id ?? event.id
       const existing = eventSeries.get(seriesId)
-
-      if (!existing || entry.sortKey < existing.sortKey) {
-        eventSeries.set(seriesId, entry)
+      if (!existing) {
+        eventSeries.set(seriesId, event)
+        continue
       }
+
+      const eventSortKey = event.all_day
+        ? `${event.starts_on ?? '9999-12-31'}T00:00`
+        : event.starts_at ?? '9999-12-31T23:59:59.999Z'
+      const existingSortKey = existing.all_day
+        ? `${existing.starts_on ?? '9999-12-31'}T00:00`
+        : existing.starts_at ?? '9999-12-31T23:59:59.999Z'
+      if (eventSortKey < existingSortKey) eventSeries.set(seriesId, event)
     }
+    const eventEntries: UpcomingEventEntry[] = Array.from(eventSeries.values()).flatMap((event, index) => {
+      const parts = eventLocalParts(event)
+      const startsOn = event.all_day ? event.starts_on : parts.date
+      const time = event.all_day ? null : parts.time
+      const displayDate = startsOn && startsOn < day ? day : startsOn
+      if (!displayDate || displayDate >= upcomingEnd) return []
+      const section = upcomingSectionForDate(displayDate, day)
+      return [{
+        kind: 'event' as const,
+        event,
+        section,
+        label: section === 'today' ? 'Today' : formatUpcomingDay(displayDate),
+        time,
+        sortKey: `${displayDate}T${time ?? '00:00'}`,
+        tieBreak: filteredDefinitions.length + index,
+      }]
+    })
+    return [...taskEntries, ...eventEntries]
+      .sort((left, right) => left.sortKey.localeCompare(right.sortKey) || left.tieBreak - right.tieBreak)
+  }, [categories, currentOccurrences, currentTime, day, filteredDefinitions, homePreferences, sortOption, upcomingEvents])
 
-    return Array.from(eventSeries.values()).sort((left, right) =>
-      left.sortKey.localeCompare(right.sortKey),
-    )
-  }, [categories, currentTime, day, homePreferences, upcomingEvents])
-
-  const hasVisibleHomeContent =
-    Object.values(buckets).some((bucket) => bucket.length > 0) ||
-    attention.length > 0 ||
-    upcomingEventEntries.length > 0
+  const hasVisibleHomeTasks = Object.values(buckets).some((bucket) => bucket.length > 0) || upcoming.length > 0 || attention.length > 0
 
   const activeCount = homeTasks.filter(
     (task) => !task.completed && !task.stashed && !exitingTaskIds.has(task.id),
@@ -1456,7 +1808,7 @@ export default function HomePlanner({
 
           {tasks && (
             <div className="space-y-3">
-              {enabledHomeSourceCount === 0 && !hasVisibleHomeContent ? (
+              {enabledHomeSourceCount === 0 && !hasVisibleHomeTasks ? (
                 <div className="rounded-2xl border border-blue-200 bg-blue-50 px-5 py-6 text-center shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:border-blue-400/25 dark:bg-blue-500/10 dark:shadow-none">
                   <h2 className="font-heading text-lg font-semibold text-slate-950 dark:text-foreground">
                     Nothing is shown on Home
@@ -1489,36 +1841,22 @@ export default function HomePlanner({
                       {buckets.focus.map((task) => renderTask(task))}
                     </SectionShell>
 
-                    <SectionShell
-                      title="Due Soon"
-                      count={buckets.dueSoon.length}
-                      icon={<Clock3 className="size-5" />}
-                      tone="due"
-                      empty="Nothing is due soon."
-                      compactWhenEmpty
-                      compactEmptyLabel="All clear"
-                    >
-                      {buckets.dueSoon.map((task) => renderTask(task))}
-                    </SectionShell>
-
-                    {upcomingEventEntries.length > 0 ? (
-                      <SectionShell
-                        title="Upcoming"
-                        count={upcomingEventEntries.length}
-                        icon={<CalendarFold className="size-5" />}
-                        tone="tasks"
-                        empty="No upcoming events."
-                      >
-                        {upcomingEventEntries.map((entry) => (
-                          <UpcomingEventRow
-                            key={entry.event.id}
-                            entry={entry}
-                            categories={categories}
-                            onOpen={() => setEditingEvent(entry.event)}
-                          />
-                        ))}
-                      </SectionShell>
-                    ) : null}
+                    <UpcomingSection
+                      entries={upcoming}
+                      expanded={upcomingExpanded}
+                      onExpandedChange={setUpcomingExpanded}
+                      lists={lists}
+                      categories={categories}
+                      onComplete={handleComplete}
+                      onRename={handleRename}
+                      onDueDateChange={handleDueDateChange}
+                      onNotesChange={handleNotesChange}
+                      onDelete={handleDelete}
+                      onFocus={handleFocus}
+                      onStash={handleStash}
+                      exitingTaskIds={exitingTaskIds}
+                      onOpenEvent={setEditingEvent}
+                    />
 
                   </aside>
 
@@ -1600,17 +1938,7 @@ export default function HomePlanner({
         </div>
       </div>
     </div>
-    {editingEvent ? (
-      <EventDialog
-        lists={lists}
-        categories={categories}
-        event={editingEvent}
-        open
-        onOpenChange={(open) => {
-          if (!open) setEditingEvent(null)
-        }}
-      />
-    ) : null}
+    {editingEvent ? <EventDialog lists={lists} categories={categories} event={editingEvent} open onOpenChange={(open) => { if (!open) setEditingEvent(null) }} /> : null}
     </>
   )
 }
