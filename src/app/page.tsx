@@ -49,10 +49,19 @@ export default function Page() {
 
       <section className="relative border-y border-black/[0.07]">
         <div
-          className="pointer-events-none absolute inset-0 opacity-60"
+          className="pointer-events-none absolute inset-0 opacity-60 dark:hidden"
           style={{
             backgroundImage:
               'linear-gradient(rgba(20,38,75,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(20,38,75,.07) 1px, transparent 1px)',
+            backgroundSize: '32px 32px',
+            maskImage: 'linear-gradient(to bottom, black, transparent 72%)',
+          }}
+        />
+        <div
+          className="pointer-events-none absolute inset-0 hidden opacity-70 dark:block"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(129,158,214,.14) 1px, transparent 1px), linear-gradient(90deg, rgba(129,158,214,.14) 1px, transparent 1px)',
             backgroundSize: '32px 32px',
             maskImage: 'linear-gradient(to bottom, black, transparent 72%)',
           }}
@@ -161,40 +170,36 @@ export default function Page() {
             className="relative mx-auto mt-16 max-w-280 overflow-hidden rounded-[22px] border border-black/10 bg-white shadow-[0_35px_100px_rgba(37,99,235,.22)] dark:border-border dark:bg-[#111214] sm:mt-12 sm:rounded-[30px]"
             style={{ perspective: 1200 }}
           >
-            <div className="md:hidden">
+            <div className="relative aspect-[0.6] md:hidden">
               <Image
                 src="/planomy-home-mobile-light.png"
                 alt="Planomy’s mobile home showing focus, upcoming tasks, and their lists in light theme."
-                width={968}
-                height={1866}
+                fill
                 sizes="100vw"
-                className="block h-auto w-full dark:hidden"
+                className="object-cover object-top dark:hidden"
               />
               <Image
                 src="/planomy-home-mobile-dark.png"
                 alt="Planomy’s mobile home showing focus, upcoming tasks, and their lists in dark theme."
-                width={968}
-                height={1866}
+                fill
                 sizes="100vw"
-                className="hidden h-auto w-full dark:block"
+                className="hidden object-cover object-top dark:block"
               />
             </div>
-            <div className="hidden md:block">
+            <div className="relative hidden aspect-[1.82] md:block">
               <Image
                 src="/planomy-home-desktop-light.png"
                 alt="Planomy’s desktop home showing its sidebar, focus tasks, and upcoming tasks in light theme."
-                width={2992}
-                height={1866}
+                fill
                 sizes="(max-width: 768px) 100vw, 1120px"
-                className="block h-auto w-full dark:hidden"
+                className="object-cover object-top dark:hidden"
               />
               <Image
                 src="/planomy-home-desktop-dark.png"
                 alt="Planomy’s desktop home showing its sidebar, focus tasks, and upcoming tasks in dark theme."
-                width={2992}
-                height={1866}
+                fill
                 sizes="(max-width: 768px) 100vw, 1120px"
-                className="hidden h-auto w-full dark:block"
+                className="hidden object-cover object-top dark:block"
               />
             </div>
           </motion.div>
