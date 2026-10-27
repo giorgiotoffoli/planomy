@@ -46,6 +46,7 @@ export default function OnboardingFlow({
   const { isRestoring, isUnlocked, masterKey } = useE2EE()
   const [step, setStep] = useState(initialStep)
   const [masterPasswordSet, setMasterPasswordSet] = useState(Boolean(initialKeychain))
+  const [accountPasswordSet, setAccountPasswordSet] = useState(hasAccountPassword)
   const [accountPassword, setAccountPasswordValue] = useState('')
   const [confirmAccountPassword, setConfirmAccountPassword] = useState('')
   const [accountPasswordError, setAccountPasswordError] = useState<string | null>(null)
@@ -57,15 +58,15 @@ export default function OnboardingFlow({
   const [taskError, setTaskError] = useState<string | null>(null)
   const [completionError, setCompletionError] = useState<string | null>(null)
   const accountPasswordStepLabel =
-    googleSignup || hasAccountPassword ? '2 of 3' : '2 of 4'
+    googleSignup ? '1 of 4' : accountPasswordSet ? '2 of 3' : '2 of 4'
   const securityStepLabel = googleSignup
-    ? '1 of 3'
-    : hasAccountPassword
+    ? '3 of 4'
+    : accountPasswordSet
       ? '2 of 3'
       : '3 of 4'
   const firstTaskStepLabel = googleSignup
-    ? '3 of 3'
-    : hasAccountPassword
+    ? '4 of 4'
+    : accountPasswordSet
       ? '3 of 3'
       : '4 of 4'
 
@@ -93,13 +94,25 @@ export default function OnboardingFlow({
     setAccountPasswordError(null)
 
     try {
-      await setAccountPassword({
+      const result = await setAccountPassword({
         password: accountPassword,
         confirmPassword: confirmAccountPassword,
       })
+      if (!result.ok) {
+        setAccountPasswordError(result.message)
+        return
+      }
+
+      setAccountPasswordSet(true)
       setAccountPasswordValue('')
       setConfirmAccountPassword('')
-      setStep(masterPasswordSet ? 'first-task' : 'security')
+      setStep(
+        googleSignup && !masterPasswordSet
+          ? 'welcome'
+          : masterPasswordSet
+            ? 'first-task'
+            : 'security',
+      )
     } catch (error) {
       setAccountPasswordError(
         error instanceof Error
@@ -114,7 +127,7 @@ export default function OnboardingFlow({
   async function securityReady() {
     await finishOnboardingSecurity()
     setMasterPasswordSet(true)
-    setStep(hasAccountPassword ? 'first-task' : 'account-password')
+    setStep(accountPasswordSet ? 'first-task' : 'account-password')
   }
 
   async function finish() {
@@ -191,6 +204,11 @@ export default function OnboardingFlow({
   if (step === 'welcome') {
     return (
       <div>
+        {googleSignup && (
+          <div className="mb-5 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <Home className="size-4" /> Step 2 of 4
+          </div>
+        )}
         <p className="text-sm font-medium text-primary">Welcome to Planomy</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">
           Capture everything. Choose what matters today.
