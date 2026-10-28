@@ -21,7 +21,7 @@ import { useHome } from './provider'
 import { useHomeTheme } from './theme'
 import type { TaskDraft } from './model'
 
-export function TaskScreen() {
+export function TaskScreen({ onDone }: { onDone?: () => void } = {}) {
   const { id } = useLocalSearchParams<{ id?: string }>()
   // Route keys give each presentation a fresh draft; the draft survives authoritative refreshes.
   const { data, busy, day, run } = useHome()
@@ -38,6 +38,10 @@ export function TaskScreen() {
   const [picker, setPicker] = useState<'date' | 'time' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const saving = useRef(false)
+  function close() {
+    if (onDone) onDone()
+    else router.back()
+  }
   if (!data || (id && !task))
     return (
       <View
@@ -84,7 +88,7 @@ export function TaskScreen() {
       id ? 'Task updated' : 'Task added',
     )
     saving.current = false
-    if (ok) router.back()
+    if (ok) close()
     else
       setError(
         'Couldn’t save this task. Check the title and selected fields, then try again.',
@@ -111,12 +115,13 @@ export function TaskScreen() {
       <Stack.Screen
         options={{
           title: id ? 'Task' : 'New task',
+          headerLargeTitleEnabled: true,
           headerLeft: () => (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Cancel task editing"
               disabled={busy}
-              onPress={() => router.back()}
+              onPress={close}
               style={styles.headerButton}
             >
               <Text style={{ color: colors.accent, fontSize: 17 }}>Cancel</Text>
@@ -146,11 +151,13 @@ export function TaskScreen() {
         }}
       />
       <KeyboardAvoidingView
+        collapsable={false}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={100}
         style={{ flex: 1, backgroundColor: colors.background }}
       >
         <ScrollView
+          style={{ flex: 1 }}
           contentInsetAdjustmentBehavior="automatic"
           automaticallyAdjustKeyboardInsets
           keyboardShouldPersistTaps="handled"
@@ -355,7 +362,7 @@ export function TaskScreen() {
                       : { type: 'complete', id: task.id, completed: false, day },
                   )
                 )
-                  router.back()
+                  close()
               })}
               <Pressable
                 accessibilityRole="button"
@@ -373,7 +380,7 @@ export function TaskScreen() {
                       style: 'destructive',
                       onPress: () => {
                         void run({ type: 'delete', id: task.id }, 'Task deleted').then((ok) => {
-                          if (ok) router.back()
+                          if (ok) close()
                         })
                       },
                     },
@@ -399,7 +406,7 @@ export function TaskScreen() {
   )
 }
 const styles = StyleSheet.create({
-  content: { padding: 20, gap: 20, paddingBottom: 64 },
+  content: { flexGrow: 1, padding: 20, gap: 20, paddingBottom: 64 },
   group: { borderRadius: 16, overflow: 'hidden' },
   titleInput: {
     padding: 18,

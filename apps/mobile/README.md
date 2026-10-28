@@ -1,12 +1,17 @@
 # Planomy Mobile
 
 The iOS foundation for Planomy lives here as an independent Expo workspace.
-It contains native Home and Calendar destinations with Expo Router
-native tabs. Home now includes Focus, Upcoming, tasks, task editing and Sources;
-see `../../docs/mobile-home.md` for the current integration boundary. Home’s native header toolbar opens a task sheet; task creation is not a tab. The tab bar uses Apple's
-system rendering, including the Liquid Glass appearance on supported iOS
-versions; feedback uses `expo-glass-effect` only when the runtime
-and accessibility settings allow it.
+The app opens directly to the Home productivity dashboard, with native tabs
+for Home, Calendar, and Lists. Home includes Focus, Upcoming, the calendar
+preview, task editing, and Sources; the Upcoming card links to the existing
+Deadlines screen. List rows use their emojis, and list detail headers use each
+list's color. See `../../docs/mobile-home.md` for the current integration
+boundary. The native create-task action opens the existing Add Task sheet. On
+iOS 26 it uses the detached search-style tab item, and on iOS 27 it uses the
+prominent native tab item; iOS manages its placement and Liquid Glass
+appearance. Other platforms keep the create action in their native tab bar.
+Other glass surfaces use `expo-glass-effect` only when the runtime and
+accessibility settings allow it.
 
 ## Run on an iOS Simulator
 
@@ -40,9 +45,8 @@ pnpm --dir apps/mobile test
 ```
 
 Native Liquid Glass appearance cannot be confirmed by TypeScript or static
-configuration checks. Verify it on an iOS 26+ simulator or device after
-building the app. Older iOS versions use the native tab bar's supported
-fallback behavior.
+configuration checks. Verify the native tab bar and create-task sheet on an
+iOS 26+ simulator or device after building the app.
 
 ## Environment and shared code
 

@@ -225,8 +225,8 @@ export function HomeScreen() {
   }).format(new Date(`${day}T12:00:00`))
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ title: 'Home', headerLargeTitle: true, headerStyle: { backgroundColor: colors.background }, headerTintColor: colors.accent }} />
+    <View collapsable={false} style={[styles.screen, { backgroundColor: colors.background }]}>
+      <Stack.Screen options={{ headerShown: true, title: 'Home', headerLargeTitleEnabled: true, headerTintColor: colors.accent }} />
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button
           icon="person.crop.circle"
@@ -236,7 +236,6 @@ export function HomeScreen() {
             : 'Your tasks are decrypted only while this vault is unlocked. Locking clears the mobile session copy.')}
         />
         {mode === 'vault' ? <Stack.Toolbar.Button icon="lock.fill" accessibilityLabel="Lock vault" onPress={lockVault} /> : null}
-        <Stack.Toolbar.Button icon="plus" accessibilityLabel="Add task" disabled={status !== 'ready'} onPress={() => router.push('/task')} />
       </Stack.Toolbar>
       <Stack.Toolbar placement="left">
         <Stack.Toolbar.Button icon="archivebox" accessibilityLabel="Open Archive" disabled={status !== 'ready'} onPress={() => router.push('/archive')} />
@@ -244,6 +243,7 @@ export function HomeScreen() {
 
       {status === 'ready' && data && projection ? (
         <SectionList
+          style={styles.screen}
           sections={sections}
           stickySectionHeadersEnabled={false}
           contentInsetAdjustmentBehavior="automatic"
@@ -299,6 +299,7 @@ export function HomeScreen() {
                 onTaskComplete={completeTask}
                 onTaskActions={taskActions}
                 onEventPress={eventPress}
+                onSeeAll={() => router.push('/home/deadlines')}
               />
               <CalendarPreviewWidget day={day} entries={projection.upcoming} onTaskPress={openTask} onEventPress={eventPress} />
             </View>
@@ -367,7 +368,7 @@ export function HomeScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 160, maxWidth: 680, width: '100%', alignSelf: 'center' },
+  content: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 104, maxWidth: 680, width: '100%', alignSelf: 'center' },
   headerContent: { gap: spacing.xs },
   date: { marginBottom: spacing.sm },
   preview: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md },

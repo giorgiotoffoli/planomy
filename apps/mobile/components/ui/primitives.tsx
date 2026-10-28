@@ -73,11 +73,13 @@ export function AppSurface({
   variant = 'card',
   style,
   accessibilityLabel,
+  interactive = false,
 }: {
   children: ReactNode
   variant?: 'plain' | 'card' | 'elevated' | 'glass'
   style?: StyleProp<ViewStyle>
   accessibilityLabel?: string
+  interactive?: boolean
 }) {
   const colors = useHomeTheme()
   const metrics = surfaceVariants[variant]
@@ -90,7 +92,7 @@ export function AppSurface({
   ]
   if (variant === 'glass')
     return (
-      <GlassSurface accessibilityLabel={accessibilityLabel} style={[{ borderRadius: metrics.radius, padding: metrics.padding }, style]}>
+      <GlassSurface accessibilityLabel={accessibilityLabel} interactive={interactive} style={[{ borderRadius: metrics.radius, padding: metrics.padding }, style]}>
         {children}
       </GlassSurface>
     )

@@ -73,9 +73,9 @@ export function ListRow({
       onPress={onPress}
       style={({ pressed }) => [styles.row, { borderBottomColor: colors.separator }, pressed && { opacity: 0.7 }]}
     >
-      <View style={[styles.dot, { backgroundColor: listIdentityColors[list.color] }]} />
+      <AppText variant="title">{list.emoji ?? '📋'}</AppText>
       <View style={styles.copy}>
-        <AppText weight="600">{list.emoji ? `${list.emoji} ` : ''}{list.title}</AppText>
+        <AppText weight="600">{list.title}</AppText>
         {subtitle ? <AppText variant="caption" tone="secondary">{subtitle}</AppText> : null}
       </View>
       {trailing}

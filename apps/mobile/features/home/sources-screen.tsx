@@ -23,6 +23,7 @@ export function SourcesScreen() {
       <Stack.Screen
         options={{
           title: 'Sources',
+          headerLargeTitleEnabled: true,
           headerRight: () => (
             <Pressable
               accessibilityRole="button"
@@ -38,7 +39,7 @@ export function SourcesScreen() {
         }}
       />
       <ScrollView
-        style={{ backgroundColor: colors.background }}
+        style={[styles.screen, { backgroundColor: colors.background }]}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}
       >
@@ -153,6 +154,7 @@ export function SourcesScreen() {
   )
 }
 const styles = StyleSheet.create({
+  screen: { flex: 1 },
   content: { padding: 20, paddingBottom: 60, gap: 18 },
   group: { borderRadius: 16, overflow: 'hidden' },
   row: {

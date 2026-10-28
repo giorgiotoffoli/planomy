@@ -17,9 +17,10 @@ import { useHomeTheme, spacing, radii } from '@/features/home/theme'
 type GlassSurfaceProps = PropsWithChildren<{
   style?: StyleProp<ViewStyle>
   accessibilityLabel?: string
+  interactive?: boolean
 }>
 
-export function GlassSurface({ children, style, accessibilityLabel }: GlassSurfaceProps) {
+export function GlassSurface({ children, style, accessibilityLabel, interactive = false }: GlassSurfaceProps) {
   const colors = useHomeTheme()
   const [reduceTransparency, setReduceTransparency] = useState(true)
 
@@ -53,7 +54,7 @@ export function GlassSurface({ children, style, accessibilityLabel }: GlassSurfa
 
   if (canUseLiquidGlass) {
     return (
-      <GlassView accessibilityLabel={accessibilityLabel} glassEffectStyle="regular" style={[styles.surface, style]}>
+      <GlassView accessibilityLabel={accessibilityLabel} isInteractive={interactive} glassEffectStyle="regular" style={[styles.surface, style]}>
         {children}
       </GlassView>
     )

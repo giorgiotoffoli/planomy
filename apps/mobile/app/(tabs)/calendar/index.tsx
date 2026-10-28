@@ -207,9 +207,9 @@ export default function CalendarScreen() {
   }, [data, selectedDate])
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ title: 'Calendar', headerLargeTitle: true, headerStyle: { backgroundColor: colors.background }, headerTintColor: colors.accent }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
+    <View collapsable={false} style={[styles.screen, { backgroundColor: colors.background }]}>
+      <Stack.Screen options={{ headerShown: true, title: 'Calendar', headerLargeTitleEnabled: true, headerTintColor: colors.accent }} />
+      <ScrollView style={styles.screen} contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
         <CalendarHeader
           title={selectedDate === day ? 'Today' : dateLabel(selectedDate)}
           trailing={selectedDate === day ? undefined : <AppButton variant="ghost" title="Today" onPress={() => selectDate(day)} />}

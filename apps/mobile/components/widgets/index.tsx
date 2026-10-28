@@ -105,6 +105,7 @@ export function UpcomingWidget({
   onTaskComplete,
   onTaskActions,
   onEventPress,
+  onSeeAll,
 }: {
   entries: UpcomingEntry[]
   categories: Category[]
@@ -119,6 +120,7 @@ export function UpcomingWidget({
   onTaskComplete?: (task: TaskWithList) => void
   onTaskActions?: (task: TaskWithList) => void
   onEventPress?: (entry: Extract<UpcomingEntry, { kind: 'event' }>) => void
+  onSeeAll?: () => void
 }) {
   const colors = useHomeTheme()
   const eventCount = entries.filter((entry) => entry.kind === 'event').length
@@ -182,6 +184,17 @@ export function UpcomingWidget({
               </View>
             )
           })}
+          {onSeeAll ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="See all deadlines"
+              onPress={onSeeAll}
+              style={styles.seeAll}
+            >
+              <AppText variant="footnote" tone="accent" weight="600">See all deadlines</AppText>
+              <AppIcon name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }} size={14} color={colors.accent} />
+            </Pressable>
+          ) : null}
         </View>
       )}
     </WidgetContainer>
@@ -280,6 +293,7 @@ const styles = StyleSheet.create({
   upcomingContent: { gap: spacing.sm },
   eventToggle: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, alignSelf: 'flex-start', paddingHorizontal: spacing.xs },
   upcomingGroup: { gap: spacing.xs },
+  seeAll: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
   groupEmpty: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   eventRow: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm },
   eventMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
