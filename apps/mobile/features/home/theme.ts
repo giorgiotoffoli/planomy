@@ -12,6 +12,11 @@ export type AppColors = {
   accent: string
   onAccent: string
   accentSubtle: string
+  homeFocusTint: string
+  homeUpcomingTint: string
+  homeUpcomingIcon: string
+  homeTasksTint: string
+  homeStashedTint: string
   danger: string
   dangerSubtle: string
   warning: string
@@ -34,6 +39,11 @@ export const lightColors: AppColors = {
   accent: '#2662D9',
   onAccent: '#FFFFFF',
   accentSubtle: '#EBF1FF',
+  homeFocusTint: '#EFF4FF',
+  homeUpcomingTint: '#FFF9E5',
+  homeUpcomingIcon: '#755900',
+  homeTasksTint: '#F5F5F6',
+  homeStashedTint: '#F0F0F2',
   danger: '#C53732',
   dangerSubtle: '#FCEDEC',
   warning: '#986500',
@@ -56,6 +66,11 @@ export const darkColors: AppColors = {
   accent: '#98B4FF',
   onAccent: '#141414',
   accentSubtle: '#1C2538',
+  homeFocusTint: '#202A3C',
+  homeUpcomingTint: '#302B1A',
+  homeUpcomingIcon: '#F2D365',
+  homeTasksTint: '#242426',
+  homeStashedTint: '#2B2B2F',
   danger: '#FF8A80',
   dangerSubtle: '#392321',
   warning: '#EBC46D',

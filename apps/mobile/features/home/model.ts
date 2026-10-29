@@ -47,6 +47,10 @@ export type HomeCommand =
   | { type: 'source'; source: HomeSource; visible: boolean }
   | { type: 'category'; id: string; visible: boolean }
   | { type: 'showAll' }
+export type HomeSourcePreferenceCommand = Extract<
+  HomeCommand,
+  { type: 'source' | 'category' | 'showAll' }
+>
 
 /** Implement only after native session storage and the E2EE protocol have been reviewed.
  * Read/execute must return the authoritative snapshot, including materialized occurrences
@@ -57,6 +61,8 @@ export interface HomeDataSource {
   mode: 'vault' | 'preview'
   read(day: string): Promise<HomeSnapshot>
   execute(command: HomeCommand): Promise<HomeSnapshot>
+  /** Persist a source choice without reloading the full Home snapshot. */
+  persistSourcePreference(command: HomeSourcePreferenceCommand): Promise<void>
   dispose(): void
 }
 
@@ -377,6 +383,9 @@ export function createPreviewSource(day: string): HomeDataSource {
     async execute(command) {
       data = projectHomeCommand(data, command)
       return data
+    },
+    async persistSourcePreference(command) {
+      data = projectHomeCommand(data, command)
     },
     dispose() {
       data = {

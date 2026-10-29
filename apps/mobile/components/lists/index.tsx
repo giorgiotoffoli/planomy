@@ -12,8 +12,8 @@ export function ListIndicator({
   compact?: boolean
 }) {
   return (
-    <View style={styles.indicator}>
-      <View style={[styles.dot, { backgroundColor: listIdentityColors[list.color] }]} />
+    <View style={[styles.indicator, compact && styles.compactIndicator]}>
+      <View style={[styles.dot, compact && styles.compactDot, { backgroundColor: listIdentityColors[list.color] }]} />
       {!compact && list.emoji ? <AppText variant="caption">{list.emoji}</AppText> : null}
       <AppText variant="caption" tone="secondary" numberOfLines={1}>
         {list.title}
@@ -25,15 +25,17 @@ export function ListIndicator({
 export function CategoryIndicator({
   category,
   color,
+  compact = false,
 }: {
   category: Pick<Category, 'title' | 'color'>
   color?: string
+  compact?: boolean
 }) {
   const colors = useHomeTheme()
   const dot = category.color ? listIdentityColors[category.color] : color ?? colors.muted
   return (
-    <View style={styles.indicator}>
-      <View style={[styles.smallDot, { backgroundColor: dot }]} />
+    <View style={[styles.indicator, compact && styles.compactIndicator]}>
+      <View style={[styles.smallDot, compact && styles.compactSmallDot, { backgroundColor: dot }]} />
       <AppText variant="caption" tone="secondary" numberOfLines={1}>{category.title}</AppText>
     </View>
   )
@@ -132,7 +134,10 @@ export function FilterChip({
 const styles = StyleSheet.create({
   indicator: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, maxWidth: '100%' },
   dot: { width: 9, height: 9, borderRadius: radii.pill },
+  compactDot: { width: 6, height: 6 },
   smallDot: { width: 7, height: 7, borderRadius: radii.pill },
+  compactSmallDot: { width: 5, height: 5 },
+  compactIndicator: { gap: spacing.xxs },
   categoryBadge: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, borderRadius: radii.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   row: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   copy: { flex: 1, gap: spacing.xxs },

@@ -1,27 +1,41 @@
+import { router, usePathname } from 'expo-router'
 import { NativeTabs } from 'expo-router/native-tabs'
-import { usePathname } from 'expo-router'
+import { useEffect, useRef } from 'react'
 import { Platform } from 'react-native'
 import { useHomeTheme } from '@/features/home/theme'
-import { rememberAddTaskReturnPath } from '@/features/navigation/add-task-navigation'
 
 export default function TabsLayout() {
-  const pathname = usePathname()
   const colors = useHomeTheme()
+  const pathname = usePathname()
+  const addTaskIsOpening = useRef(false)
   const iosMajorVersion = Platform.OS === 'ios'
     ? Number.parseInt(String(Platform.Version), 10)
     : 0
   const useProminentAction = iosMajorVersion >= 27
   const useDetachedSearchAction = iosMajorVersion === 26
 
+  useEffect(() => {
+    addTaskIsOpening.current = pathname === '/add-task'
+  }, [pathname])
+
   return (
     <NativeTabs
       tintColor={colors.accent}
+      minimizeBehavior="onScrollDown"
       unstable_nativeProps={useProminentAction
         ? { ios: { prominentScreenKey: 'compose' } }
         : undefined}
       screenListeners={({ route }) => ({
-        tabPress: () => {
-          if (route.name === 'compose') rememberAddTaskReturnPath(pathname)
+        tabPress: (event) => {
+          if (
+            route.name === 'compose' &&
+            event.data.isPrevented &&
+            !addTaskIsOpening.current &&
+            pathname !== '/add-task'
+          ) {
+            addTaskIsOpening.current = true
+            router.push('/add-task')
+          }
         },
       })}
     >
@@ -43,6 +57,7 @@ export default function TabsLayout() {
       <NativeTabs.Trigger
         name="compose"
         role={useDetachedSearchAction ? 'search' : undefined}
+        disabled
         accessibilityLabel="Create a task"
       >
         <NativeTabs.Trigger.Icon sf="plus" md="add" />

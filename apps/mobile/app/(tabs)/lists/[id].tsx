@@ -1,7 +1,7 @@
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { router, Stack, useLocalSearchParams } from 'expo-router'
 import type { TaskWithList } from '@planomy/types'
-import { AppButton, EmptyState, SectionHeader } from '@/components/ui/primitives'
+import { AppButton, EmptyState } from '@/components/ui/primitives'
 import { TaskRow } from '@/components/tasks'
 import { useHome } from '@/features/home/provider'
 import { listIdentityColors, useHomeTheme, spacing } from '@/features/home/theme'
@@ -65,7 +65,6 @@ export default function ListDetailScreen() {
           contentContainerStyle={styles.content}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={colors.accent} />}
         >
-          <SectionHeader title="Tasks" subtitle="Open tasks stay here until you complete them." count={tasks.length} />
           {tasks.length ? tasks.map((task) => (
             <TaskRow
               key={task.id}

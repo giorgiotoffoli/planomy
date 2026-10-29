@@ -25,7 +25,13 @@ import {
 } from '@planomy/lib/recurrence'
 import { addCalendarDays } from '@planomy/lib/today'
 import { isListColor } from '@planomy/lib/list-colors'
-import type { HomeCommand, HomeDataSource, HomeSnapshot, TaskDraft } from './model'
+import type {
+  HomeCommand,
+  HomeDataSource,
+  HomeSnapshot,
+  HomeSourcePreferenceCommand,
+  TaskDraft,
+} from './model'
 import { validateDraft } from './model'
 import { nativeE2EE } from '@/lib/vault/native-crypto'
 
@@ -475,9 +481,37 @@ export function createSupabaseHomeSource(
     fail(updateError)
   }
 
+  async function persistSourcePreference(
+    command: HomeSourcePreferenceCommand,
+  ) {
+    assertActive()
+    if (command.type === 'source') {
+      const { error } = command.source.type === 'unsorted'
+        ? await client.rpc('set_home_unsorted_visibility', {
+            p_show_unsorted: command.visible,
+          })
+        : await client.rpc('set_home_list_visibility', {
+            p_list_id: command.source.listId,
+            p_visible: command.visible,
+            p_clear_category_overrides: true,
+          })
+      fail(error)
+    } else if (command.type === 'category') {
+      const { error } = await client.rpc('set_home_category_visibility', {
+        p_category_id: command.id,
+        p_visible: command.visible,
+      })
+      fail(error)
+    } else {
+      const { error } = await client.rpc('show_all_home_sources', {})
+      fail(error)
+    }
+  }
+
   return {
     mode: 'vault' as const,
     read,
+    persistSourcePreference,
     async execute(command: HomeCommand) {
       assertActive()
       if (command.type === 'save') {
@@ -495,17 +529,8 @@ export function createSupabaseHomeSource(
       } else if (command.type === 'stash') {
         const { error } = await client.from('tasks').update({ stashed: command.stashed, ...(command.stashed ? { focused: false } : {}) }).eq('id', command.id).eq('user_id', userId)
         fail(error)
-      } else if (command.type === 'source') {
-        const { error } = command.source.type === 'unsorted'
-          ? await client.rpc('set_home_unsorted_visibility', { p_show_unsorted: command.visible })
-          : await client.rpc('set_home_list_visibility', { p_list_id: command.source.listId, p_visible: command.visible, p_clear_category_overrides: true })
-        fail(error)
-      } else if (command.type === 'category') {
-        const { error } = await client.rpc('set_home_category_visibility', { p_category_id: command.id, p_visible: command.visible })
-        fail(error)
       } else {
-        const { error } = await client.rpc('show_all_home_sources', {})
-        fail(error)
+        await persistSourcePreference(command)
       }
       return read(command.type === 'complete' ? command.day : currentDay)
     },

@@ -74,12 +74,14 @@ export function AppSurface({
   style,
   accessibilityLabel,
   interactive = false,
+  tintColor,
 }: {
   children: ReactNode
   variant?: 'plain' | 'card' | 'elevated' | 'glass'
   style?: StyleProp<ViewStyle>
   accessibilityLabel?: string
   interactive?: boolean
+  tintColor?: string
 }) {
   const colors = useHomeTheme()
   const metrics = surfaceVariants[variant]
@@ -92,7 +94,7 @@ export function AppSurface({
   ]
   if (variant === 'glass')
     return (
-      <GlassSurface accessibilityLabel={accessibilityLabel} interactive={interactive} style={[{ borderRadius: metrics.radius, padding: metrics.padding }, style]}>
+      <GlassSurface accessibilityLabel={accessibilityLabel} interactive={interactive} tintColor={tintColor} style={[{ borderRadius: metrics.radius, padding: metrics.padding }, style]}>
         {children}
       </GlassSurface>
     )
@@ -224,15 +226,13 @@ export function AppCheckbox({
       onPress={onPress}
       style={({ pressed }) => [styles.checkboxTarget, pressed && styles.pressed]}
     >
-      <View
-        style={[
-          styles.checkbox,
-          { borderColor: checked ? colors.accent : colors.muted },
-          checked && { backgroundColor: colors.accent },
-        ]}
-      >
-        {checked ? <AppIcon name={{ ios: 'checkmark', android: 'check', web: 'check' }} size={14} color={colors.onAccent} /> : null}
-      </View>
+      <AppIcon
+        name={checked
+          ? { ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' }
+          : { ios: 'circle', android: 'radio_button_unchecked', web: 'radio_button_unchecked' }}
+        size={25}
+        color={checked ? colors.accent : colors.muted}
+      />
     </Pressable>
   )
 }
@@ -326,8 +326,7 @@ const styles = StyleSheet.create({
   button: { minHeight: hitTargets.minimum, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radii.pill, paddingHorizontal: spacing.lg },
   buttonText: { fontSize: 15, fontWeight: '600' },
   iconButton: { minWidth: hitTargets.minimum, minHeight: hitTargets.minimum, borderRadius: radii.pill, alignItems: 'center', justifyContent: 'center' },
-  checkboxTarget: { width: 48, minHeight: hitTargets.row, alignItems: 'center', justifyContent: 'center' },
-  checkbox: { width: 23, height: 23, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  checkboxTarget: { width: 40, minHeight: hitTargets.row, alignItems: 'center', justifyContent: 'center' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   sectionCopy: { flex: 1, gap: spacing.xs },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },

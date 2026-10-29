@@ -1,17 +1,10 @@
-import { useFocusEffect } from 'expo-router'
+import { useFocusEffect, router } from 'expo-router'
 import { useCallback } from 'react'
-import { StyleSheet, View } from 'react-native'
-import { openAddTask, getAddTaskReturnHref } from '@/features/navigation/add-task-navigation'
-import { useHomeTheme } from '@/features/home/theme'
 
-export default function ComposeActionScreen() {
-  const colors = useHomeTheme()
-
+export default function ComposeActionRoute() {
   useFocusEffect(useCallback(() => {
-    openAddTask(getAddTaskReturnHref())
+    router.replace('/home')
   }, []))
 
-  return <View style={[styles.screen, { backgroundColor: colors.background }]} />
+  return null
 }
-
-const styles = StyleSheet.create({ screen: { flex: 1 } })

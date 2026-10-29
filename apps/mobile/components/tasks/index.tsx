@@ -12,6 +12,8 @@ export type TaskRowProps = {
   task: TaskWithList
   category?: Pick<Category, 'id' | 'title' | 'color'> | null
   variant?: TaskRowVariant
+  metadataAppearance?: 'default' | 'plain'
+  showDivider?: boolean
   showList?: boolean
   showCategory?: boolean
   showDeadline?: boolean
@@ -72,21 +74,22 @@ export function TaskMetadata({
   today,
   scheduledBlock,
   variant = 'compact',
+  metadataAppearance = 'default',
 }: Omit<TaskRowProps, 'onPress' | 'onToggleComplete' | 'onActions' | 'completionDisabled'>) {
   const metadata: ReactNode[] = []
   if (showList && task.list) metadata.push(<ListIndicator key="list" list={task.list} compact={variant === 'compact'} />)
-  if (showCategory && category) metadata.push(<CategoryIndicator key="category" category={category} />)
-  if (showRecurrence && task.recurrence_rule) metadata.push(<RecurrenceIndicator key="recurrence" rule={task.recurrence_rule} />)
+  if (showCategory && category) metadata.push(<CategoryIndicator key="category" category={category} compact={variant === 'compact'} />)
+  if (showRecurrence && task.recurrence_rule) metadata.push(<RecurrenceIndicator key="recurrence" rule={task.recurrence_rule} appearance={metadataAppearance} />)
   const hasDeadline = Boolean(deadlineLabel || task.due_date)
   return (
     <View style={styles.metadataBlock}>
       {metadata.length ? <View style={styles.metadataLine}>{metadata}</View> : null}
       {showDeadline && hasDeadline ? (
-        <DeadlineIndicator dueDate={task.due_date} dueTime={deadlineTime ?? task.due_time} today={today} label={deadlineLabel} />
+        <DeadlineIndicator dueDate={task.due_date} dueTime={deadlineTime ?? task.due_time} today={today} label={deadlineLabel} appearance={metadataAppearance} />
       ) : null}
       {showDeadline && occurrenceLabel ? (
         <View style={styles.metadataLine}>
-          <DatePill icon="repeat" label={`Occurrence · ${occurrenceLabel}`} />
+          <DatePill icon="repeat" label={`Occurrence · ${occurrenceLabel}`} appearance={metadataAppearance} />
           {occurrenceTime && !task.due_date ? <View style={styles.metadataLine}><AppIcon name={{ ios: 'clock', android: 'schedule', web: 'schedule' }} size={13} /><TimeLabel time={occurrenceTime} accessibilityLabel="Due time" /></View> : null}
         </View>
       ) : null}
@@ -99,6 +102,8 @@ export function TaskRow({
   task,
   category,
   variant = 'compact',
+  metadataAppearance = 'default',
+  showDivider = true,
   showList,
   showCategory,
   showDeadline,
@@ -125,36 +130,40 @@ export function TaskRow({
     task.focused ? 'In Focus' : null,
   ].filter(Boolean).join(', ')
   return (
-    <View style={[styles.row, { borderBottomColor: colors.separator }]}>
-      <TaskCompletionIndicator task={task} disabled={completionDisabled} onToggle={onToggleComplete} />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        accessibilityHint="Opens task details."
-        disabled={!onPress}
-        onPress={onPress}
-        style={({ pressed }) => [styles.body, expanded && styles.expandedBody, pressed && { opacity: 0.65 }]}
-      >
-        <AppText variant={expanded ? 'title' : 'body'} weight={task.focused ? '600' : '500'} numberOfLines={expanded ? undefined : 3}>
-          {task.title}
-        </AppText>
-        <TaskMetadata
-          task={task}
-          category={category}
-          variant={variant}
-          showList={showList}
-          showCategory={showCategory}
-          showDeadline={showDeadline}
-          showRecurrence={showRecurrence}
-          deadlineLabel={deadlineLabel}
-          deadlineTime={deadlineTime}
-          occurrenceLabel={occurrenceLabel}
-          occurrenceTime={occurrenceTime}
-          today={today}
-          scheduledBlock={scheduledBlock}
-        />
-      </Pressable>
-      {onActions ? <TaskActions task={task} onPress={onActions} disabled={completionDisabled} /> : null}
+    <View>
+      <View style={styles.row}>
+        <TaskCompletionIndicator task={task} disabled={completionDisabled} onToggle={onToggleComplete} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={label}
+          accessibilityHint="Opens task details."
+          disabled={!onPress}
+          onPress={onPress}
+          style={({ pressed }) => [styles.body, expanded && styles.expandedBody, pressed && { opacity: 0.65 }]}
+        >
+          <AppText variant={expanded ? 'title' : 'body'} weight={task.focused ? '600' : '500'}>
+            {task.title}
+          </AppText>
+          <TaskMetadata
+            task={task}
+            category={category}
+            variant={variant}
+            metadataAppearance={metadataAppearance}
+            showList={showList}
+            showCategory={showCategory}
+            showDeadline={showDeadline}
+            showRecurrence={showRecurrence}
+            deadlineLabel={deadlineLabel}
+            deadlineTime={deadlineTime}
+            occurrenceLabel={occurrenceLabel}
+            occurrenceTime={occurrenceTime}
+            today={today}
+            scheduledBlock={scheduledBlock}
+          />
+        </Pressable>
+        {onActions ? <TaskActions task={task} onPress={onActions} disabled={completionDisabled} /> : null}
+      </View>
+      {showDivider ? <View style={[styles.rowDivider, { backgroundColor: colors.separator }]} /> : null}
     </View>
   )
 }
@@ -217,7 +226,7 @@ export function TaskList<T extends { id: string }>({
 }
 
 export function TaskRowDivider() {
-  return <AppDivider inset={48} />
+  return <AppDivider inset={40} />
 }
 
 export function FocusMark() {
@@ -226,8 +235,9 @@ export function FocusMark() {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'flex-start', borderBottomWidth: StyleSheet.hairlineWidth },
-  body: { flex: 1, minHeight: 60, justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.md },
+  row: { flexDirection: 'row', alignItems: 'flex-start' },
+  rowDivider: { height: StyleSheet.hairlineWidth, marginLeft: 40 },
+  body: { flex: 1, minHeight: 52, justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.sm },
   expandedBody: { minHeight: 74, paddingVertical: spacing.lg },
   metadataBlock: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs },
   metadataLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm, maxWidth: '100%' },

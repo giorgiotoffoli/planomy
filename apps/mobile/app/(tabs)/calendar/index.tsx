@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native'
-import { router, Stack } from 'expo-router'
-import { addCalendarDays } from '@planomy/lib/today'
+import { router, Stack, useLocalSearchParams } from 'expo-router'
+import { addCalendarDays, isDateKey } from '@planomy/lib/today'
 import { generateOccurrenceDateKeys, recurringSessionTimes } from '@planomy/lib/recurrence'
 import type { CalendarEventWithList, TaskWithList } from '@planomy/types'
 import { AppButton, AppText, EmptyState } from '@/components/ui/primitives'
@@ -63,9 +63,20 @@ function localDate(value: string) {
 export default function CalendarScreen() {
   const { data, day, status, refresh } = useHome()
   const colors = useHomeTheme()
-  const [selection, setSelection] = useState({ day, date: day })
-  const selectedDate = selection.day === day ? selection.date : day
-  const selectDate = (date: string) => setSelection({ day, date })
+  const { date: dateParam } = useLocalSearchParams<{ date?: string }>()
+  const requestedDate = typeof dateParam === 'string' && isDateKey(dateParam)
+    ? dateParam
+    : null
+  const [selection, setSelection] = useState(() => ({
+    day,
+    date: requestedDate && requestedDate >= day ? requestedDate : day,
+    routeDate: requestedDate,
+  }))
+  const routeChanged = selection.routeDate !== requestedDate
+  const selectedDate = routeChanged
+    ? requestedDate && requestedDate >= day ? requestedDate : day
+    : selection.day === day ? selection.date : day
+  const selectDate = (date: string) => setSelection({ day, date, routeDate: requestedDate })
 
   const days = useMemo<CalendarPreviewDay[]>(() => {
     if (!data) return []
