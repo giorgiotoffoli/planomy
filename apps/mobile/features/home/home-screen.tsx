@@ -1,16 +1,11 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type ComponentProps,
-} from 'react'
+import { useEffect, useMemo, useState, type ComponentProps } from 'react'
 import { router, Stack } from 'expo-router'
 import {
   ActivityIndicator,
   Platform,
   Pressable,
   RefreshControl,
-  ScrollView,
+  SectionList,
   StyleSheet,
   View,
 } from 'react-native'
@@ -32,17 +27,23 @@ import {
 import type { TaskWithList } from '@planomy/types'
 import {
   AppButton,
+  AppDivider,
   AppIcon,
   AppSurface,
   AppText,
   EmptyState,
 } from '@/components/ui/primitives'
-import { TaskRow } from '@/components/tasks'
+import { TaskRow, TaskRowDivider } from '@/components/tasks'
 import { UpcomingGroupHeader } from '@/components/scheduling'
 import { useHome } from './provider'
 import { uncategorizedListIds } from './model'
 import { useHomeTheme, spacing, radii } from './theme'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import {
+  AndroidMoreHeaderButton,
+  AndroidSearchHeaderButton,
+  NativeTabToolbar,
+} from '@/features/navigation/header-actions'
 import {
   defaultHomeViewPreferences,
   loadHomeViewPreferences,
@@ -159,7 +160,7 @@ function HomeSectionHeader({
       />
       <AppText
         variant="title"
-        weight="700"
+        weight="600"
         tone="primary"
         style={styles.sectionTitle}
       >
@@ -465,6 +466,7 @@ export function HomeScreen() {
     task: TaskWithList,
     upcoming?: UpcomingTaskEntry,
     hideDeadline = false,
+    showDivider = true,
   ) {
     return (
       <TaskRow
@@ -472,7 +474,7 @@ export function HomeScreen() {
         category={data?.categories.find((item) => item.id === task.category_id)}
         today={day}
         metadataAppearance="plain"
-        showDivider={false}
+        showDivider={showDivider}
         showDeadline={hideDeadline ? false : undefined}
         deadlineLabel={
           upcoming && !task.recurrence_rule
@@ -497,168 +499,133 @@ export function HomeScreen() {
     )
   }
 
-  function renderRow(row: HomeRow) {
-    switch (row.kind) {
-      case 'task':
-        return renderTask(row.task, row.upcoming, row.hideDeadline)
-      case 'event': {
-        const { entry } = row
-        const date = displayUpcomingDate(entry)
-        const time = displayEventTime(entry)
-        const metadata = [
-          date,
-          time,
-          entry.event.list?.title ?? 'Unsorted',
-        ].join(' · ')
-        return (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Event, ${entry.event.title}, ${metadata}`}
-            accessibilityHint="Opens this date in Calendar."
-            onPress={() => openCalendarDate(entry.sortKey.slice(0, 10))}
-            style={({ pressed }) => [
-              styles.eventRow,
-              pressed && styles.rowPressed,
-            ]}
-          >
-            <AppIcon
-              name={{ ios: 'calendar', android: 'event', web: 'event' }}
-              size={18}
-              color={colors.accent}
-            />
-            <View style={styles.eventCopy}>
-              <AppText variant="body" weight="500" numberOfLines={2}>
-                {entry.event.title}
-              </AppText>
-              <AppText variant="caption" tone="secondary" numberOfLines={2}>
-                {metadata}
-              </AppText>
-            </View>
-            <AppIcon name={chevrons.collapsed} size={15} color={colors.muted} />
-          </Pressable>
-        )
-      }
-      case 'upcoming-heading':
-        return (
-          <UpcomingGroupHeader
-            title={UPCOMING_SECTION_LABELS[row.section]}
-            count={row.count}
-            overdue={row.section === 'overdue'}
-            compact
-          />
-        )
-      case 'upcoming-toggle':
-        return (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              row.expanded
-                ? 'Show fewer upcoming items'
-                : `Show ${row.hiddenCount} more upcoming items`
-            }
-            accessibilityState={{ expanded: row.expanded }}
-            onPress={toggleUpcomingItems}
-            style={styles.upcomingToggle}
-          >
-            <AppText variant="footnote" tone="accent" weight="600">
-              {row.expanded ? 'Show less' : `Show more (${row.hiddenCount})`}
-            </AppText>
-            <AppIcon
-              name={row.expanded ? chevrons.expanded : chevrons.collapsed}
-              size={15}
-              color={colors.accent}
-            />
-          </Pressable>
-        )
-      case 'see-all':
-        return (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="See all deadlines"
-            onPress={() => router.push('/home/deadlines')}
-            style={styles.seeAll}
-          >
-            <AppText variant="footnote" tone="accent" weight="600">
-              See all deadlines
-            </AppText>
-            <AppIcon
-              name={chevrons.collapsed}
-              size={15}
-              color={colors.accent}
-            />
-          </Pressable>
-        )
-      case 'empty':
-        return (
-          <AppText
-            variant="footnote"
-            tone="secondary"
-            style={styles.emptyMessage}
-          >
-            {row.text}
-          </AppText>
-        )
+  function renderRow(row: HomeRow, showDivider: boolean) {
+    if (row.kind === 'task') {
+      return renderTask(row.task, row.upcoming, row.hideDeadline, showDivider)
     }
-  }
 
-  function renderSection(section: FeedSection) {
-    const sectionCount =
-      section.key === 'focus'
-        ? `${projection?.buckets.focus.length ?? 0} of ${MAX_FOCUS_TASKS}`
-        : section.key === 'upcoming'
-          ? (projection?.upcoming.length ?? 0)
-          : section.key === 'tasks'
-            ? (projection?.buckets.tasks.length ?? 0)
-            : (projection?.buckets.stashed.length ?? 0)
-    const sectionTint = {
-      focus: colors.homeFocusTint,
-      upcoming: colors.homeUpcomingTint,
-      tasks: colors.homeTasksTint,
-      stashed: colors.homeStashedTint,
-    }[section.key]
+    const content = (() => {
+      switch (row.kind) {
+        case 'event': {
+          const { entry } = row
+          const date = displayUpcomingDate(entry)
+          const time = displayEventTime(entry)
+          const metadata = [
+            date,
+            time,
+            entry.event.list?.title ?? 'Unsorted',
+          ].join(' · ')
+          return (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Event, ${entry.event.title}, ${metadata}`}
+              accessibilityHint="Opens this date in Calendar."
+              onPress={() => openCalendarDate(entry.sortKey.slice(0, 10))}
+              style={({ pressed }) => [
+                styles.eventRow,
+                pressed && styles.rowPressed,
+              ]}
+            >
+              <AppIcon
+                name={{ ios: 'calendar', android: 'event', web: 'event' }}
+                size={18}
+                color={colors.accent}
+              />
+              <View style={styles.eventCopy}>
+                <AppText variant="body" weight="500" numberOfLines={2}>
+                  {entry.event.title}
+                </AppText>
+                <AppText variant="caption" tone="secondary" numberOfLines={2}>
+                  {metadata}
+                </AppText>
+              </View>
+              <AppIcon
+                name={chevrons.collapsed}
+                size={15}
+                color={colors.muted}
+              />
+            </Pressable>
+          )
+        }
+        case 'upcoming-heading':
+          return (
+            <UpcomingGroupHeader
+              title={UPCOMING_SECTION_LABELS[row.section]}
+              count={row.count}
+              overdue={row.section === 'overdue'}
+              compact
+            />
+          )
+        case 'upcoming-toggle':
+          return (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                row.expanded
+                  ? 'Show fewer upcoming items'
+                  : `Show ${row.hiddenCount} more upcoming items`
+              }
+              accessibilityState={{ expanded: row.expanded }}
+              onPress={toggleUpcomingItems}
+              style={styles.upcomingToggle}
+            >
+              <AppText variant="footnote" tone="accent" weight="600">
+                {row.expanded ? 'Show less' : `Show more (${row.hiddenCount})`}
+              </AppText>
+              <AppIcon
+                name={row.expanded ? chevrons.expanded : chevrons.collapsed}
+                size={15}
+                color={colors.accent}
+              />
+            </Pressable>
+          )
+        case 'see-all':
+          return (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="See all deadlines"
+              onPress={() => router.push('/home/deadlines')}
+              style={styles.seeAll}
+            >
+              <AppText variant="footnote" tone="accent" weight="600">
+                See all deadlines
+              </AppText>
+              <AppIcon
+                name={chevrons.collapsed}
+                size={15}
+                color={colors.accent}
+              />
+            </Pressable>
+          )
+        case 'empty':
+          return (
+            <AppText
+              variant="footnote"
+              tone="secondary"
+              style={styles.emptyMessage}
+            >
+              {row.text}
+            </AppText>
+          )
+      }
+    })()
 
     return (
-      <View
-        key={section.key}
-        style={[
-          styles.sectionHeading,
-          section.key === 'focus' && styles.firstSectionHeading,
-        ]}
-      >
-        <AppSurface
-          variant="glass"
-          interactive
-          tintColor={sectionTint}
-          style={[styles.sectionBubble, { borderColor: colors.separator }]}
-        >
-          <HomeSectionHeader
-            section={section.key}
-            count={sectionCount}
-            expanded={expanded[section.key]}
-            onPress={() => toggleSection(section.key)}
-          />
-          {expanded[section.key] ? (
-            <View
-              style={[styles.sectionRows, { borderTopColor: colors.separator }]}
-            >
-              {section.data.map((row, index) => (
-                <View key={row.key}>
-                  {renderRow(row)}
-                  {index < section.data.length - 1 ? (
-                    <View
-                      style={[
-                        styles.sectionRowDivider,
-                        { backgroundColor: colors.separator },
-                      ]}
-                    />
-                  ) : null}
-                </View>
-              ))}
-            </View>
-          ) : null}
-        </AppSurface>
+      <View>
+        {content}
+        {showDivider && row.kind !== 'empty' ? <TaskRowDivider /> : null}
       </View>
     )
+  }
+
+  function getSectionCount(section: FeedSection) {
+    return section.key === 'focus'
+      ? `${projection?.buckets.focus.length ?? 0} of ${MAX_FOCUS_TASKS}`
+      : section.key === 'upcoming'
+        ? (projection?.upcoming.length ?? 0)
+        : section.key === 'tasks'
+          ? (projection?.buckets.tasks.length ?? 0)
+          : (projection?.buckets.stashed.length ?? 0)
   }
 
   return (
@@ -673,21 +640,9 @@ export function HomeScreen() {
           headerLargeTitleEnabled: true,
           headerTintColor: colors.accent,
           headerLargeTitleStyle: { color: colors.accent, fontWeight: '700' },
-          headerLeft:
-            Platform.OS === 'android'
-              ? () => (
-                  <AndroidToolbarButton
-                    name={{
-                      ios: 'archivebox',
-                      android: 'inventory_2',
-                      web: 'archive',
-                    }}
-                    label="Open Archive"
-                    disabled={status !== 'ready'}
-                    onPress={() => router.push('/archive')}
-                  />
-                )
-              : undefined,
+          ...(Platform.OS === 'android'
+            ? { headerLeft: () => <AndroidSearchHeaderButton /> }
+            : {}),
           headerRight:
             Platform.OS === 'android'
               ? () => (
@@ -702,14 +657,9 @@ export function HomeScreen() {
                       disabled={status !== 'ready'}
                       onPress={() => setSourcesPresented(true)}
                     />
-                    <AndroidToolbarButton
-                      name={{
-                        ios: 'gearshape',
-                        android: 'account_circle',
-                        web: 'account_circle',
-                      }}
-                      label="Home account and privacy information"
-                      onPress={() => router.push('/settings')}
+                    <AndroidMoreHeaderButton
+                      includeArchive
+                      archiveDisabled={status !== 'ready'}
                     />
                     {mode === 'vault' ? (
                       <AndroidToolbarButton
@@ -728,42 +678,78 @@ export function HomeScreen() {
         }}
       />
 
-      {Platform.OS === 'ios' ? (
-        <Stack.Toolbar placement="right">
-          <Stack.Toolbar.Button
-            icon="line.3.horizontal.decrease"
-            accessibilityLabel="Choose Home sources"
-            disabled={status !== 'ready'}
-            onPress={() => setSourcesPresented(true)}
-          />
-          <Stack.Toolbar.Menu accessibilityLabel="Home settings and actions">
-            <Stack.Toolbar.Icon sf="ellipsis" />
-            <Stack.Toolbar.MenuAction
-              icon="archivebox"
-              disabled={status !== 'ready'}
-              onPress={() => router.push('/archive')}
-            >
-              Archive
-            </Stack.Toolbar.MenuAction>
-            <Stack.Toolbar.MenuAction
-              icon="gearshape"
-              onPress={() => router.push('/settings')}
-            >
-              Settings
-            </Stack.Toolbar.MenuAction>
-          </Stack.Toolbar.Menu>
-        </Stack.Toolbar>
-      ) : null}
+      <NativeTabToolbar
+        includeArchive
+        archiveDisabled={status !== 'ready'}
+        onChooseHomeSources={() => setSourcesPresented(true)}
+        homeSourcesDisabled={status !== 'ready'}
+      />
 
       {status === 'ready' && data && projection && !viewPreferencesReady ? (
         <View style={styles.connection}>
           <ActivityIndicator size="large" color={colors.accent} />
         </View>
       ) : status === 'ready' && data && projection ? (
-        <ScrollView
+        <SectionList<HomeRow, FeedSection>
           style={styles.screen}
           contentInsetAdjustmentBehavior="automatic"
           keyboardShouldPersistTaps="handled"
+          sections={sections}
+          keyExtractor={(row) => row.key}
+          renderSectionHeader={({ section }) => (
+            <View
+              style={[
+                styles.sectionHeading,
+                section.key === sections[0]?.key && styles.firstSectionHeading,
+              ]}
+            >
+              <HomeSectionHeader
+                section={section.key}
+                count={getSectionCount(section)}
+                expanded={expanded[section.key]}
+                onPress={() => toggleSection(section.key)}
+              />
+            </View>
+          )}
+          renderSectionFooter={({ section }) =>
+            section.key === 'stashed' ? null : (
+              <View style={styles.sectionDivider}>
+                <AppDivider />
+              </View>
+            )
+          }
+          renderItem={({ item, index, section }) =>
+            renderRow(item, index < section.data.length - 1)
+          }
+          stickySectionHeadersEnabled={false}
+          ListHeaderComponent={
+            <View style={styles.headerContent}>
+              <AppText variant="footnote" tone="secondary">
+                Showing {projection.visibleListCount}{' '}
+                {projection.visibleListCount === 1 ? 'list' : 'lists'}
+              </AppText>
+              {mode === 'preview' ? (
+                <AppSurface
+                  variant="plain"
+                  style={[styles.preview, { backgroundColor: colors.subtle }]}
+                >
+                  <View style={{ flex: 1, gap: spacing.xxs }}>
+                    <AppText variant="footnote" weight="600">
+                      Sample preview
+                    </AppText>
+                    <AppText variant="caption" tone="secondary">
+                      Changes stay here until you leave.
+                    </AppText>
+                  </View>
+                  <AppButton
+                    variant="ghost"
+                    title="Leave"
+                    onPress={endPreview}
+                  />
+                </AppSurface>
+              ) : null}
+            </View>
+          }
           contentContainerStyle={[
             styles.content,
             { paddingBottom: spacing.xxl },
@@ -775,31 +761,7 @@ export function HomeScreen() {
               tintColor={colors.accent}
             />
           }
-        >
-          <View style={styles.headerContent}>
-            <AppText variant="footnote" tone="secondary">
-              Showing {projection.visibleListCount}{' '}
-              {projection.visibleListCount === 1 ? 'list' : 'lists'}
-            </AppText>
-            {mode === 'preview' ? (
-              <AppSurface
-                variant="plain"
-                style={[styles.preview, { backgroundColor: colors.subtle }]}
-              >
-                <View style={{ flex: 1, gap: spacing.xxs }}>
-                  <AppText variant="footnote" weight="600">
-                    Sample preview
-                  </AppText>
-                  <AppText variant="caption" tone="secondary">
-                    Changes stay here until you leave.
-                  </AppText>
-                </View>
-                <AppButton variant="ghost" title="Leave" onPress={endPreview} />
-              </AppSurface>
-            ) : null}
-          </View>
-          {sections.map(renderSection)}
-        </ScrollView>
+        />
       ) : (
         <View style={styles.connection}>
           {status === 'loading' ? (
@@ -926,33 +888,19 @@ const styles = StyleSheet.create({
   },
   androidToolbarButtonPressed: { opacity: 0.72 },
   androidToolbarButtonDisabled: { opacity: 0.45 },
-  sectionHeading: { paddingTop: spacing.md, paddingBottom: spacing.xs },
-  firstSectionHeading: { paddingTop: spacing.xxs },
-  sectionBubble: {
-    borderRadius: radii.xl,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 0,
-    gap: 0,
-  },
+  sectionHeading: { paddingTop: spacing.lg, paddingBottom: spacing.xs },
+  firstSectionHeading: { paddingTop: spacing.xs },
+  sectionDivider: { paddingTop: spacing.sm, paddingBottom: spacing.xs },
   sectionToggle: {
-    minHeight: 56,
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  sectionRows: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    marginHorizontal: spacing.xs,
-    paddingBottom: spacing.xs,
-  },
-  sectionRowDivider: {
-    height: StyleSheet.hairlineWidth,
-    marginLeft: spacing.xxxl + spacing.md,
+    paddingHorizontal: spacing.xs,
   },
   sectionTitle: { flex: 1, letterSpacing: -0.3 },
   sectionPressed: { opacity: 0.68 },
-  emptyMessage: { paddingVertical: spacing.md, paddingHorizontal: spacing.xs },
+  emptyMessage: { paddingVertical: spacing.md, paddingHorizontal: 44 },
   eventRow: {
     minHeight: 52,
     flexDirection: 'row',

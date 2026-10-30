@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, View } from 'react-native'
 import { router, Stack, useLocalSearchParams } from 'expo-router'
 import { addCalendarDays, isDateKey } from '@planomy/lib/today'
 import { generateOccurrenceDateKeys, recurringSessionTimes } from '@planomy/lib/recurrence'
@@ -14,6 +14,11 @@ import {
 } from '@/components/calendar'
 import { useHome } from '@/features/home/provider'
 import { useHomeTheme, spacing } from '@/features/home/theme'
+import {
+  AndroidMoreHeaderButton,
+  AndroidSearchHeaderButton,
+  NativeTabToolbar,
+} from '@/features/navigation/header-actions'
 
 const AGENDA_DAYS = 14
 
@@ -219,7 +224,19 @@ export default function CalendarScreen() {
 
   return (
     <View collapsable={false} style={[styles.screen, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ headerShown: true, title: 'Calendar', headerLargeTitleEnabled: true, headerTintColor: colors.accent }} />
+      <Stack.Screen options={{
+        headerShown: true,
+        title: 'Calendar',
+        headerLargeTitleEnabled: true,
+        headerTintColor: colors.accent,
+        ...(Platform.OS === 'android'
+          ? {
+              headerLeft: () => <AndroidSearchHeaderButton />,
+              headerRight: () => <AndroidMoreHeaderButton />,
+            }
+          : {}),
+      }} />
+      <NativeTabToolbar />
       <ScrollView style={styles.screen} contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
         <CalendarHeader
           title={selectedDate === day ? 'Today' : dateLabel(selectedDate)}

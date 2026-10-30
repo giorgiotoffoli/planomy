@@ -1,9 +1,14 @@
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, Platform, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { router, Stack } from 'expo-router'
 import { AppBadge, AppButton, AppText, EmptyState, SectionHeader } from '@/components/ui/primitives'
 import { ListRow } from '@/components/lists'
 import { useHome } from '@/features/home/provider'
 import { useHomeTheme, spacing } from '@/features/home/theme'
+import {
+  AndroidMoreHeaderButton,
+  AndroidSearchHeaderButton,
+  NativeTabToolbar,
+} from '@/features/navigation/header-actions'
 
 function taskCountLabel(count: number) {
   return `${count} open task${count === 1 ? '' : 's'}`
@@ -16,7 +21,18 @@ export default function ListsScreen() {
 
   return (
     <View collapsable={false} style={[styles.screen, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ headerShown: true, title: 'Lists', headerLargeTitleEnabled: true }} />
+      <Stack.Screen options={{
+        headerShown: true,
+        title: 'Lists',
+        headerLargeTitleEnabled: true,
+        ...(Platform.OS === 'android'
+          ? {
+              headerLeft: () => <AndroidSearchHeaderButton />,
+              headerRight: () => <AndroidMoreHeaderButton />,
+            }
+          : {}),
+      }} />
+      <NativeTabToolbar />
       {status === 'loading' ? (
         <View style={styles.state}>
           <ActivityIndicator color={colors.accent} />

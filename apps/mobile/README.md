@@ -35,6 +35,24 @@ pnpm mobile
 Then press `i` in the Expo CLI, or run `pnpm mobile:ios` when the native project
 needs to be rebuilt. Xcode and an installed iOS Simulator runtime are required.
 
+## Face ID or Touch ID
+
+Biometric vault unlock requires a native build on an iPhone or iPad with Face ID
+or Touch ID enrolled. Expo Go cannot provide the required Face ID permission.
+Connect and trust the device, configure signing in Xcode, and rebuild with:
+
+```sh
+pnpm --dir apps/mobile ios --device
+```
+
+On the locked screen, enter your vault password and choose **Unlock and enable
+Face ID or Touch ID**. The device protects a copy of the vault key in Keychain;
+the vault password is not saved. The vault locks when an enrolled app goes into
+the background. You can remove biometric unlock from the locked screen or Vault
+security in Settings. Signing out removes the saved key. If biometrics or the
+vault keychain change, unlock with your vault password and set biometrics up
+again.
+
 ## Checks
 
 ```sh

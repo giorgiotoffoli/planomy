@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
   button: { minHeight: hitTargets.minimum, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radii.pill, paddingHorizontal: spacing.lg },
   buttonText: { fontSize: 15, fontWeight: '600' },
   iconButton: { minWidth: hitTargets.minimum, minHeight: hitTargets.minimum, borderRadius: radii.pill, alignItems: 'center', justifyContent: 'center' },
-  checkboxTarget: { width: 40, minHeight: hitTargets.row, alignItems: 'center', justifyContent: 'center' },
+  checkboxTarget: { width: hitTargets.minimum, minHeight: hitTargets.row, alignItems: 'center', justifyContent: 'center' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   sectionCopy: { flex: 1, gap: spacing.xs },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ActivityIndicator, ScrollView, StyleSheet, TextInput, View } from 'react-native'
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native'
+import Constants from 'expo-constants'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AppButton, AppSurface, AppText } from '@/components/ui/primitives'
 import { useHomeTheme, spacing } from '@/features/home/theme'
@@ -8,7 +9,7 @@ import { useAuth } from '@/lib/auth/AuthProvider'
 export default function LockedScreen() {
   const colors = useHomeTheme()
   const insets = useSafeAreaInsets()
-  const { state, notice, signOut, unlockVault } = useAuth()
+  const { state, notice, signOut, unlockVault, unlockWithBiometrics, disableBiometrics, biometricAvailable, biometricEnabled } = useAuth()
   const [busy, setBusy] = useState(false)
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -26,12 +27,30 @@ export default function LockedScreen() {
     }
   }
 
-  async function handleUnlock() {
+  async function handleUnlock(enableBiometrics = false) {
     if (busy || !password) return
     setBusy(true)
     setError(null)
-    const result = await unlockVault(password)
+    const result = await unlockVault(password, enableBiometrics)
     setPassword('')
+    setBusy(false)
+    if (!result.ok) setError(result.error)
+  }
+
+  async function handleBiometricUnlock() {
+    if (busy) return
+    setBusy(true)
+    setError(null)
+    const result = await unlockWithBiometrics()
+    setBusy(false)
+    if (!result.ok) setError(result.error)
+  }
+
+  async function handleDisableBiometrics() {
+    if (busy) return
+    setBusy(true)
+    setError(null)
+    const result = await disableBiometrics()
     setBusy(false)
     if (!result.ok) setError(result.error)
   }
@@ -75,6 +94,27 @@ export default function LockedScreen() {
         <AppButton disabled={busy || !password} onPress={() => void handleUnlock()}>
           {busy ? <ActivityIndicator color={colors.accent} /> : <AppText tone="accent" weight="700">Unlock</AppText>}
         </AppButton>
+        {biometricEnabled && biometricAvailable ? (
+          <AppButton variant="secondary" disabled={busy} onPress={() => void handleBiometricUnlock()}>
+            <AppText tone="accent" weight="700">Unlock with Face ID or Touch ID</AppText>
+          </AppButton>
+        ) : null}
+        {!biometricEnabled && biometricAvailable ? (
+          <>
+            <AppText variant="footnote" tone="secondary">
+              You can securely save your vault key on this device to unlock with Face ID or Touch ID. Your vault password remains available.
+            </AppText>
+            <AppButton variant="secondary" disabled={busy || !password} onPress={() => void handleUnlock(true)}>
+              <AppText tone="accent" weight="700">Unlock and enable Face ID or Touch ID</AppText>
+            </AppButton>
+          </>
+        ) : null}
+        {biometricEnabled ? (
+          <AppButton variant="ghost" disabled={busy} title="Remove Face ID or Touch ID" onPress={() => void handleDisableBiometrics()} />
+        ) : null}
+        {Platform.OS === 'ios' && Constants.appOwnership === 'expo' ? (
+          <AppText variant="footnote" tone="secondary">Face ID and Touch ID require a Planomy development build.</AppText>
+        ) : null}
         <AppButton variant="destructive" disabled={busy} onPress={() => void handleSignOut()}>
           {busy ? <ActivityIndicator color={colors.danger} /> : <AppText tone="danger" weight="700">Sign out and switch account</AppText>}
         </AppButton>

@@ -8,6 +8,8 @@ import { useHomeTheme, spacing, radii } from '@/features/home/theme'
 
 export type TaskRowVariant = 'compact' | 'expanded'
 
+const TASK_ROW_DIVIDER_INSET = 44
+
 export type TaskRowProps = {
   task: TaskWithList
   category?: Pick<Category, 'id' | 'title' | 'color'> | null
@@ -81,6 +83,15 @@ export function TaskMetadata({
   if (showCategory && category) metadata.push(<CategoryIndicator key="category" category={category} compact={variant === 'compact'} />)
   if (showRecurrence && task.recurrence_rule) metadata.push(<RecurrenceIndicator key="recurrence" rule={task.recurrence_rule} appearance={metadataAppearance} />)
   const hasDeadline = Boolean(deadlineLabel || task.due_date)
+  const hasOccurrence = showDeadline && Boolean(occurrenceLabel)
+  const hasMetadata =
+    metadata.length > 0 ||
+    (showDeadline && hasDeadline) ||
+    hasOccurrence ||
+    Boolean(scheduledBlock)
+
+  if (!hasMetadata) return null
+
   return (
     <View style={styles.metadataBlock}>
       {metadata.length ? <View style={styles.metadataLine}>{metadata}</View> : null}
@@ -119,7 +130,6 @@ export function TaskRow({
   onToggleComplete,
   onActions,
 }: TaskRowProps) {
-  const colors = useHomeTheme()
   const expanded = variant === 'expanded'
   const label = [
     task.title,
@@ -163,7 +173,7 @@ export function TaskRow({
         </Pressable>
         {onActions ? <TaskActions task={task} onPress={onActions} disabled={completionDisabled} /> : null}
       </View>
-      {showDivider ? <View style={[styles.rowDivider, { backgroundColor: colors.separator }]} /> : null}
+      {showDivider ? <TaskRowDivider /> : null}
     </View>
   )
 }
@@ -226,7 +236,7 @@ export function TaskList<T extends { id: string }>({
 }
 
 export function TaskRowDivider() {
-  return <AppDivider inset={40} />
+  return <AppDivider inset={TASK_ROW_DIVIDER_INSET} />
 }
 
 export function FocusMark() {
@@ -236,7 +246,6 @@ export function FocusMark() {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-start' },
-  rowDivider: { height: StyleSheet.hairlineWidth, marginLeft: 40 },
   body: { flex: 1, minHeight: 52, justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.sm },
   expandedBody: { minHeight: 74, paddingVertical: spacing.lg },
   metadataBlock: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs },

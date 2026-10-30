@@ -15,7 +15,8 @@
       [
         "expo-secure-store",
         {
-          "configureAndroidBackup": true
+          "configureAndroidBackup": true,
+          "faceIDPermission": "Allow Planomy to use Face ID to unlock your encrypted vault."
         }
       ],
       "expo-font"

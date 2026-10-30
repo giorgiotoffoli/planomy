@@ -75,6 +75,8 @@ function RootNavigator() {
           <Stack.Screen
             name="settings"
             options={{
+              presentation: 'card',
+              animation: 'slide_from_right',
               title: 'Settings',
               headerLargeTitleEnabled: true,
               headerShadowVisible: false,

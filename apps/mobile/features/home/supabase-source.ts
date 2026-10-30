@@ -223,7 +223,7 @@ function calendarRange(day: string) {
   }
 }
 
-async function fetchKeychain(client: NativeClient, userId: string): Promise<WrappedMasterKeyPayload> {
+export async function fetchNativeVaultKeychain(client: NativeClient, userId: string): Promise<WrappedMasterKeyPayload> {
   const { data, error } = await client
     .from('user_keychain')
     .select('wrapped_master_key, wrapping_key_salt, wrapping_key_iv, kdf, kdf_iterations, wrapping_algorithm, version')
@@ -243,8 +243,9 @@ async function fetchKeychain(client: NativeClient, userId: string): Promise<Wrap
 }
 
 export async function unlockNativeVault(client: NativeClient, userId: string, password: string) {
-  const payload = await fetchKeychain(client, userId)
-  return nativeE2EE.unwrapMasterKey(password, payload)
+  const payload = await fetchNativeVaultKeychain(client, userId)
+  const masterKey = await nativeE2EE.unwrapMasterKey(password, payload)
+  return { masterKey, payload }
 }
 
 export function createSupabaseHomeSource(
@@ -543,7 +544,7 @@ export function createSupabaseHomeSource(
 }
 
 export async function readNativeKeychain(client: NativeClient, userId: string) {
-  return fetchKeychain(client, userId)
+  return fetchNativeVaultKeychain(client, userId)
 }
 
 export function isValidTaskDraft(draft: TaskDraft, data: HomeSnapshot) {
