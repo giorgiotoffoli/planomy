@@ -55,5 +55,6 @@ next-env.d.ts
 # Codex skills are local development tooling, not application source.
 /.agents/skills/
 
-# ios
+# expo
+./expo
 **/Pods/
