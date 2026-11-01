@@ -56,5 +56,5 @@ next-env.d.ts
 /.agents/skills/
 
 # expo
-./expo
+/.expo
 **/Pods/
