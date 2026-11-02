@@ -245,20 +245,12 @@ export default function Page() {
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
           <a
-            href="https://www.youtube.com/@giorgiotoffoli"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Progress
-          </a>
-          <a
             href="https://github.com/giorgiotoffoli/planomy"
             target="_blank"
             rel="noreferrer"
           >
             GitHub
           </a>
-          <Link href="/auth?mode=signin">Sign in</Link>
         </div>
       </footer>
     </main>
