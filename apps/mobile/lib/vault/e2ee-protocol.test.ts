@@ -87,6 +87,31 @@ test('native protocol reads the existing Web Crypto keychain and task cipher for
   )
 })
 
+test('native protocol creates a keychain payload that Web Crypto can unlock', async () => {
+  const protocol = createE2EEProtocol(webCryptoPrimitives)
+  const password = 'planomy vault key for new account'
+  const created = await protocol.createWrappedMasterKey(password)
+
+  assert.equal(created.masterKey.byteLength, 32)
+  assert.equal(created.payload.kdf, 'PBKDF2-SHA-256')
+  assert.equal(created.payload.kdfIterations, 310_000)
+  assert.equal(created.payload.wrappingAlgorithm, 'AES-GCM')
+  assert.equal(created.payload.version, 1)
+
+  const reopened = await protocol.unwrapMasterKey(password, created.payload)
+  assert.deepEqual(reopened, created.masterKey)
+  reopened.fill(0)
+  created.masterKey.fill(0)
+})
+
+test('native vault creation enforces the web minimum key length', async () => {
+  const protocol = createE2EEProtocol(webCryptoPrimitives)
+  await assert.rejects(
+    () => protocol.createWrappedMasterKey('too-short'),
+    /at least 12 characters/,
+  )
+})
+
 test('PBKDF2-SHA-256 from the mobile KDF matches Web Crypto at the stored work factor', async () => {
   const password = new TextEncoder().encode('one existing Planomy vault password')
   const salt = Uint8Array.from({ length: 16 }, (_, index) => index * 7)

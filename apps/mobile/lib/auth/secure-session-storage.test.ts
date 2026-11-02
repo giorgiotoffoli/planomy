@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { createClient } from '@supabase/supabase-js'
 import {
   AUTH_STORAGE_KEY,
   SESSION_CHUNK_BYTES,
@@ -100,4 +101,67 @@ test('delete failures are surfaced instead of claiming sign-out cleanup succeede
   await storage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ access_token: 'a', refresh_token: 'r' }))
   nativeStore.failDelete = true
   await assert.rejects(storage.clear(), /native secure storage delete failed/)
+})
+
+test('Supabase PKCE email requests store verifiers securely without overwriting the session', async () => {
+  const nativeStore = new MemorySecureStore()
+  const storage = createSecureSessionStorage(nativeStore)
+  const session = JSON.stringify({ access_token: 'old-access', refresh_token: 'old-refresh' })
+  const client = createClient('https://example.supabase.co', 'test-publishable-key', {
+    auth: { storage, storageKey: AUTH_STORAGE_KEY, flowType: 'pkce', autoRefreshToken: false },
+    global: { fetch: async () => new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } }) },
+  })
+  await client.auth.getSession()
+  await storage.setItem(AUTH_STORAGE_KEY, session)
+  const result = await client.auth.signInWithOtp({ email: 'test@example.com', options: { shouldCreateUser: true } })
+  assert.equal(result.error, null)
+  assert.ok([...nativeStore.values.keys()].some((key) => key.endsWith('-code-verifier')))
+  assert.equal(await storage.getItem(AUTH_STORAGE_KEY), session)
+  await storage.clear()
+  assert.equal(nativeStore.values.size, 0)
+})
+
+test('interrupted verifier writes remain registered for secure cleanup', async () => {
+  const nativeStore = new MemorySecureStore()
+  const storage = createSecureSessionStorage(nativeStore)
+  const verifierKey = `${AUTH_STORAGE_KEY}-flow-12345678-code-verifier`
+  nativeStore.failOnSet = verifierKey
+  await assert.rejects(storage.setItem(verifierKey, 'verifier'), /native secure storage write failed/)
+  await storage.clear()
+  assert.equal(nativeStore.values.size, 0)
+  assert.throws(() => storage.getItem(`${AUTH_STORAGE_KEY}-unrelated`), /Unexpected Supabase Auth storage key/)
+})
+
+test('Google PKCE uses the matching verifier and persists the returned session', async () => {
+  const storage = createSecureSessionStorage(new MemorySecureStore())
+  let exchangeBody: { auth_code?: string; code_verifier?: string } | undefined
+  const session = {
+    access_token: 'test-access', refresh_token: 'test-refresh', expires_in: 3600, token_type: 'bearer',
+    user: { id: 'test-user', aud: 'authenticated', app_metadata: {}, user_metadata: {}, created_at: '2026-01-01T00:00:00Z' },
+  }
+  const client = createClient('https://example.supabase.co', 'test-publishable-key', {
+    auth: { storage, storageKey: AUTH_STORAGE_KEY, flowType: 'pkce', autoRefreshToken: false },
+    global: { fetch: async (input, init) => {
+      if (String(input).includes('/logout')) return new Response(null, { status: 204 })
+      exchangeBody = JSON.parse(String(init?.body)) as typeof exchangeBody
+      return new Response(JSON.stringify(session), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    } },
+  })
+  const { data, error } = await client.auth.signInWithOAuth({
+    provider: 'google', options: { redirectTo: 'planomy://auth/callback', skipBrowserRedirect: true },
+  })
+  assert.equal(error, null)
+  assert.ok(data.url)
+  const url = new URL(data.url)
+  assert.equal(url.searchParams.get('code_challenge_method'), 's256')
+  const redirect = new URL(url.searchParams.get('redirect_to')!)
+  assert.equal(redirect.toString(), 'planomy://auth/callback')
+  const exchange = await client.auth.exchangeCodeForSession('test-code')
+  assert.equal(exchange.error, null)
+  assert.equal(exchangeBody?.auth_code, 'test-code')
+  assert.ok(exchangeBody?.code_verifier)
+  await storage.assertSession(session)
+  const signedOut = await client.auth.signOut({ scope: 'local' })
+  assert.equal(signedOut.error, null)
+  assert.equal(await storage.getItem(AUTH_STORAGE_KEY), null)
 })

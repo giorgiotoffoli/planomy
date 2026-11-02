@@ -14,6 +14,7 @@ import {
 } from 'react-native'
 import { getHomeListState, isHomeCategoryEnabled } from '@planomy/lib/home'
 import { AppText } from '@/components/ui/primitives'
+import { unsortedIcon } from '@/components/lists'
 import {
   projectHomeCommand,
   uncategorizedListIds,
@@ -160,7 +161,7 @@ export function SourcesBottomSheet({
                 <View style={[styles.group, { backgroundColor: colors.surface }]}>
                   <View style={styles.row}>
                     <SymbolView
-                      name={{ ios: 'tray', android: 'inbox', web: 'inbox' }}
+                      name={unsortedIcon}
                       tintColor={colors.accent}
                       size={20}
                     />

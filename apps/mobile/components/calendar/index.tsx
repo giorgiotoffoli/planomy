@@ -4,7 +4,7 @@ import type { CalendarEventWithList, TaskWithList } from '@planomy/types'
 import { AppIcon, AppText } from '@/components/ui/primitives'
 import { DeadlineIndicator, DatePill, TimeLabel } from '@/components/scheduling'
 import { ListIndicator } from '@/components/lists'
-import { useHomeTheme, spacing, radii } from '@/features/home/theme'
+import { eventDisplayColor, useHomeTheme, spacing, radii } from '@/features/home/theme'
 
 export type CalendarPreviewDay = {
   date: string
@@ -78,7 +78,7 @@ export function CalendarDayCell({
       <AppText variant="body" weight={selected || today ? '700' : '500'} tone={selected ? 'primary' : today ? 'accent' : 'primary'} style={selected && { color: colors.onAccent }}>{dayNumber}</AppText>
       <View style={styles.dots}>
         {taskCount > 0 ? <View style={[styles.dot, { backgroundColor: selected ? colors.onAccent : colors.accent }]} /> : null}
-        {eventCount > 0 ? <View style={[styles.dot, { backgroundColor: selected ? '#BFD0FF' : colors.warning }]} /> : null}
+        {eventCount > 0 ? <View style={[styles.dot, { backgroundColor: selected ? colors.onAccent : colors.warning }]} /> : null}
         {count === 0 ? <View style={styles.dotPlaceholder} /> : null}
       </View>
     </Pressable>
@@ -128,9 +128,10 @@ export function CalendarEventCard({
   onPress?: () => void
 }) {
   const colors = useHomeTheme()
+  const eventColor = eventDisplayColor(event, colors.warning)
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`Event, ${event.title}${dateLabel ? `, ${dateLabel}` : ''}${timeLabel ? `, ${timeLabel}` : ', all day'}`} onPress={onPress} style={({ pressed }) => [styles.agendaRow, { borderLeftColor: colors.warning, backgroundColor: colors.surface }, pressed && { opacity: 0.7 }]}>
-      <AppIcon name={{ ios: 'calendar', android: 'event', web: 'event' }} size={17} color={colors.warning} />
+    <Pressable accessibilityRole="button" accessibilityLabel={`Event, ${event.title}${dateLabel ? `, ${dateLabel}` : ''}${timeLabel ? `, ${timeLabel}` : ', all day'}`} onPress={onPress} style={({ pressed }) => [styles.agendaRow, { borderLeftColor: eventColor, backgroundColor: colors.surface }, pressed && { opacity: 0.7 }]}>
+      <View style={styles.agendaIcon}><AppIcon name={{ ios: 'calendar', android: 'event', web: 'event' }} size={18} color={eventColor} /></View>
       <View style={styles.agendaCopy}>
         <AppText weight="600" numberOfLines={2}>{event.title}</AppText>
         <View style={styles.agendaMeta}>
@@ -162,7 +163,7 @@ export function CalendarSessionCard({
       onPress={onPress}
       style={({ pressed }) => [styles.agendaRow, { borderLeftColor: colors.accent, backgroundColor: colors.surface }, pressed && { opacity: 0.7 }]}
     >
-      <AppIcon name={{ ios: 'clock', android: 'schedule', web: 'schedule' }} size={17} color={colors.accent} />
+      <View style={styles.agendaIcon}><AppIcon name={{ ios: 'clock', android: 'schedule', web: 'schedule' }} size={18} color={colors.accent} /></View>
       <View style={styles.agendaCopy}>
         <AppText weight="600" numberOfLines={2}>{task.title}</AppText>
         <View style={styles.agendaMeta}>
@@ -194,7 +195,7 @@ export function CalendarTaskCard({
 }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Task, ${task.title}`} onPress={onPress} style={({ pressed }) => [styles.agendaRow, pressed && { opacity: 0.7 }]}>
-      <AppIcon name={{ ios: 'checkmark.circle', android: 'radio_button_unchecked', web: 'radio_button_unchecked' }} size={18} />
+      <View style={styles.agendaIcon}><AppIcon name={{ ios: 'checkmark.circle', android: 'radio_button_unchecked', web: 'radio_button_unchecked' }} size={18} /></View>
       <View style={styles.agendaCopy}>
         <AppText weight="600" numberOfLines={2}>{task.title}</AppText>
         <View style={styles.agendaMeta}>
@@ -243,6 +244,7 @@ const styles = StyleSheet.create({
   calendarPreview: { gap: spacing.md },
   days: { flexDirection: 'row', gap: spacing.xs, paddingVertical: spacing.xs },
   agendaRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, borderRadius: radii.md, borderLeftWidth: 3, paddingVertical: spacing.md, paddingHorizontal: spacing.md },
+  agendaIcon: { width: 24, height: 23, alignItems: 'center', justifyContent: 'center' },
   agendaCopy: { flex: 1, gap: spacing.xs },
   agendaMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.xs },
 })

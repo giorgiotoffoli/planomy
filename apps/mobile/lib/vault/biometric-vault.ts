@@ -15,6 +15,15 @@ const markerOptions: SecureStore.SecureStoreOptions = {
 
 function secretKey(userId: string) { return `planomy.biometric.v1.${userId}` }
 function markerKey(userId: string) { return `planomy.biometric.enabled.v1.${userId}` }
+function offerKey(userId: string) { return `planomy.biometric.offered.v1.${userId}` }
+
+export async function hasOfferedBiometric(userId: string) {
+  return (await SecureStore.getItemAsync(offerKey(userId), markerOptions)) === '1'
+}
+
+export async function markBiometricOffered(userId: string) {
+  await SecureStore.setItemAsync(offerKey(userId), '1', markerOptions)
+}
 
 export function biometricVaultAvailable() {
   if (Platform.OS !== 'ios' || Constants.appOwnership === 'expo') return false

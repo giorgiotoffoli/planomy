@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   SectionList,
@@ -8,7 +9,7 @@ import {
   View,
 } from 'react-native'
 import { router, Stack, useLocalSearchParams } from 'expo-router'
-import type { Category, TaskWithList } from '@planomy/types'
+import type { CalendarEventWithList, Category, TaskWithList } from '@planomy/types'
 import {
   AppButton,
   AppDivider,
@@ -18,14 +19,18 @@ import {
 } from '@/components/ui/primitives'
 import { TaskRow } from '@/components/tasks'
 import { useHome } from '@/features/home/provider'
-import { listIdentityColors, useHomeTheme, spacing } from '@/features/home/theme'
+import { getListEvents } from '@/features/home/list-events'
+import { eventDisplayColor, listIdentityColors, useHomeTheme, spacing } from '@/features/home/theme'
+
+type ListRowItem = { kind: 'task'; task: TaskWithList } | { kind: 'event'; event: CalendarEventWithList }
 
 type ListTaskSection = {
   key: string
   title: string
   category: Category | null
   taskCount: number
-  data: TaskWithList[]
+  data: ListRowItem[]
+  kind?: 'events'
 }
 
 const categoryChevrons = {
@@ -54,6 +59,7 @@ export default function ListDetailScreen() {
   const { data, status, busy, day, refreshing, refresh, run, animateLayout } = useHome()
   const colors = useHomeTheme()
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({})
+  const [showHiddenEvents, setShowHiddenEvents] = useState(false)
   const unsorted = id === 'unsorted'
   const list = data?.lists.find((item) => item.id === id)
   const exists = unsorted || Boolean(list)
@@ -73,10 +79,14 @@ export default function ListDetailScreen() {
     [data?.tasks, id, unsorted],
   )
   const showCategorySections = !unsorted && categories.length > 0
+  const listEvents = useMemo(() => getListEvents(data?.events ?? [], unsorted ? null : id),
+  [data?.events, id, unsorted])
+  const hiddenEventCount = listEvents.filter((event) => event.show_in_list === false).length
+  const visibleEvents = listEvents.filter((event) => event.show_in_list !== false || showHiddenEvents)
 
   const sections = useMemo<ListTaskSection[]>(() => {
     if (!showCategorySections) {
-      return [{ key: 'all', title: '', category: null, taskCount: tasks.length, data: tasks }]
+      return [{ key: 'all', title: '', category: null, taskCount: tasks.length, data: tasks.map((task) => ({ kind: 'task' as const, task })) }]
     }
 
     const tasksByCategory = new Map(
@@ -97,7 +107,7 @@ export default function ListDetailScreen() {
         title: category.title,
         category,
         taskCount: categoryTasks.length,
-        data: collapsedCategories[category.id] ? [] : categoryTasks,
+        data: collapsedCategories[category.id] ? [] : categoryTasks.map((task) => ({ kind: 'task' as const, task })),
       }
     })
     return [
@@ -107,10 +117,16 @@ export default function ListDetailScreen() {
         title: 'Uncategorized',
         category: null,
         taskCount: uncategorizedTasks.length,
-        data: collapsedCategories.uncategorized ? [] : uncategorizedTasks,
+        data: collapsedCategories.uncategorized ? [] : uncategorizedTasks.map((task) => ({ kind: 'task' as const, task })),
       },
     ]
   }, [categories, collapsedCategories, showCategorySections, tasks])
+
+  const eventSection: ListTaskSection = {
+    key: 'events', kind: 'events', title: 'Events', category: null,
+    taskCount: listEvents.length - hiddenEventCount,
+    data: collapsedCategories.events ? [] : visibleEvents.map((event) => ({ kind: 'event', event })),
+  }
 
   function completeTask(task: TaskWithList) {
     if (busy || !data || !hasCurrentOccurrence(task, data.currentOccurrences)) return
@@ -151,12 +167,23 @@ export default function ListDetailScreen() {
       ) : !exists ? (
         <EmptyState title="List not found" description="This list may have been removed." />
       ) : (
-        <SectionList<TaskWithList, ListTaskSection>
+        <SectionList<ListRowItem, ListTaskSection>
           style={styles.screen}
           contentInsetAdjustmentBehavior="automatic"
-          sections={sections}
-          keyExtractor={(task) => task.id}
+          sections={[eventSection, ...sections]}
+          keyExtractor={(item) => item.kind === 'event' ? `event-${item.event.id}` : `task-${item.task.id}`}
           renderSectionHeader={({ section }) => {
+            if (section.kind === 'events') return (
+              <View style={styles.eventHeading}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Events, ${section.taskCount}, ${collapsedCategories.events ? 'collapsed' : 'expanded'}`} accessibilityState={{ expanded: !collapsedCategories.events }} onPress={() => toggleCategory('events')} style={styles.eventHeadingButton}>
+                  <AppIcon name={{ ios: 'calendar', android: 'event', web: 'event' }} color={listHeaderColor} />
+                  <AppText variant="title" weight="600" style={styles.categoryTitle}>Events</AppText>
+                  <AppText variant="footnote" tone="secondary">{section.taskCount}</AppText>
+                  <AppIcon name={collapsedCategories.events ? categoryChevrons.collapsed : categoryChevrons.expanded} size={18} />
+                </Pressable>
+                {hiddenEventCount > 0 ? <AppButton variant="ghost" title={showHiddenEvents ? 'Hide hidden' : `Show hidden (${hiddenEventCount})`} onPress={() => setShowHiddenEvents((value) => !value)} /> : null}
+              </View>
+            )
             if (!showCategorySections) return null
             const expanded = !collapsedCategories[section.key]
             const accent = section.category?.color
@@ -185,25 +212,33 @@ export default function ListDetailScreen() {
               </Pressable>
             )
           }}
-          renderSectionFooter={({ section }) => showCategorySections && section.key !== 'uncategorized' ? (
+          renderSectionFooter={({ section }) => (section.kind === 'events' || (showCategorySections && section.key !== 'uncategorized')) ? (
             <View style={styles.categoryDivider}>
               <AppDivider />
             </View>
           ) : undefined}
-          renderItem={({ item, index, section }) => (
+          renderItem={({ item, index, section }) => item.kind === 'event' ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={`${item.event.title}, ${item.event.show_in_list === false ? 'hidden event' : 'event'}`} onPress={() => Alert.alert(item.event.title, [item.event.all_day ? `${item.event.starts_on ?? ''} · All day` : item.event.starts_at ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: item.event.time_zone }).format(new Date(item.event.starts_at)) : 'Event', item.event.recurrence_rule ? 'Repeats' : null, item.event.location, item.event.description, item.event.show_in_list === false ? 'Hidden from Lists' : null].filter(Boolean).join('\n'))} style={({ pressed }) => [styles.eventRow, pressed && styles.pressed]}>
+              <View style={styles.eventIcon}><AppIcon name={{ ios: 'calendar', android: 'event', web: 'event' }} size={20} color={eventDisplayColor(item.event, colors.accent)} /></View>
+              <View style={styles.eventCopy}>
+                <AppText weight="500" numberOfLines={2}>{item.event.title}</AppText>
+                <AppText variant="caption" tone="secondary">{item.event.all_day ? `${item.event.starts_on ?? ''} · All day` : item.event.starts_at ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: item.event.time_zone }).format(new Date(item.event.starts_at)) : 'Event'}{item.event.recurrence_rule ? ' · Repeats' : ''}{item.event.show_in_list === false ? ' · Hidden' : ''}</AppText>
+              </View>
+            </Pressable>
+          ) : (
             <TaskRow
-              task={item}
-              category={data.categories.find((category) => category.id === item.category_id)}
+              task={item.task}
+              category={data.categories.find((category) => category.id === item.task.category_id)}
               metadataAppearance="plain"
               showList={false}
               today={day}
               showDivider={index < section.data.length - 1}
-              completionDisabled={busy || !hasCurrentOccurrence(item, data.currentOccurrences)}
-              onPress={() => router.push({ pathname: '/task', params: { id: item.id } })}
-              onToggleComplete={() => completeTask(item)}
+              completionDisabled={busy || !hasCurrentOccurrence(item.task, data.currentOccurrences)}
+              onPress={() => router.push({ pathname: '/task', params: { id: item.task.id } })}
+              onToggleComplete={() => completeTask(item.task)}
             />
           )}
-          ListHeaderComponent={tasks.length === 0 ? (
+          ListFooterComponent={tasks.length === 0 ? (
             <EmptyState
               title="No open tasks"
               description="New tasks you add to this list will show up here."
@@ -244,6 +279,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     paddingTop: spacing.md,
   },
+  eventHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' },
+  eventHeadingButton: { minHeight: 52, flex: 1, minWidth: 160, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  eventRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
+  eventIcon: { width: 44, alignItems: 'center', justifyContent: 'center' },
+  eventCopy: { flex: 1, gap: spacing.xxs },
   categoryDot: { width: 9, height: 9, borderRadius: 5 },
   categoryTitle: { flex: 1 },
   categoryDivider: { paddingVertical: spacing.md },

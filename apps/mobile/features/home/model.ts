@@ -27,6 +27,8 @@ export type HomeSnapshot = {
   occurrences: TaskOccurrence[]
   /** Persisted calendar sessions; due dates remain a separate task field. */
   scheduledBlocks: AgendaBlock[]
+  /** Decrypted event series for list views; retained only while the vault is unlocked. */
+  events: CalendarEventWithList[]
   upcomingEvents: CalendarEventWithList[]
   preferences: HomeSourcePreferences
 }
@@ -68,7 +70,7 @@ export interface HomeDataSource {
 
 export function uncategorizedListIds(data: HomeSnapshot) {
   return new Set(
-    [...data.tasks, ...data.upcomingEvents]
+    [...data.tasks, ...data.events]
       .filter((item) => item.list_id && !item.category_id)
       .map((item) => item.list_id!),
   )
@@ -274,6 +276,14 @@ export function previewSnapshot(day: string): HomeSnapshot {
     notes: '',
     ...extra,
   })
+  const events: CalendarEventWithList[] = [{
+    id: 'event', user_id: 'preview', title: 'A slower afternoon',
+    list_id: 'personal', list: lists[0], all_day: true,
+    starts_on: addCalendarDays(day, 1), ends_on: addCalendarDays(day, 2),
+    starts_at: null, ends_at: null, time_zone: 'America/Chicago',
+    recurrence_rule: null, description: 'Make a little room for yourself.',
+    location: null, show_in_upcoming: true, created_at: '', updated_at: '',
+  }]
   return {
     lists,
     categories,
@@ -350,27 +360,8 @@ export function previewSnapshot(day: string): HomeSnapshot {
       },
     ],
     scheduledBlocks: [],
-    upcomingEvents: [
-      {
-        id: 'event',
-        user_id: 'preview',
-        title: 'A slower afternoon',
-        list_id: 'personal',
-        list: lists[0],
-        all_day: true,
-        starts_on: addCalendarDays(day, 1),
-        ends_on: addCalendarDays(day, 2),
-        starts_at: null,
-        ends_at: null,
-        time_zone: 'America/Chicago',
-        recurrence_rule: null,
-        description: 'Make a little room for yourself.',
-        location: null,
-        show_in_upcoming: true,
-        created_at: '',
-        updated_at: '',
-      },
-    ],
+    events,
+    upcomingEvents: events,
   }
 }
 export function createPreviewSource(day: string): HomeDataSource {
@@ -395,6 +386,7 @@ export function createPreviewSource(day: string): HomeDataSource {
         currentOccurrences: [],
         occurrences: [],
         scheduledBlocks: [],
+        events: [],
         upcomingEvents: [],
         preferences: defaultHomeSourcePreferences(),
       }

@@ -20,7 +20,9 @@ export default function TabsLayout() {
 
   return (
     <NativeTabs
-      tintColor={colors.accent}
+      tintColor={colors.text}
+      iconColor={{ default: '#929297', selected: colors.text }}
+      labelStyle={{ default: { color: '#929297' }, selected: { color: colors.text } }}
       minimizeBehavior="onScrollDown"
       unstable_nativeProps={useProminentAction
         ? { ios: { prominentScreenKey: 'compose' } }

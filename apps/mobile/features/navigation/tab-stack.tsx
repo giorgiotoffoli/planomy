@@ -10,7 +10,7 @@ export function TabStackLayout() {
         headerShown: true,
         contentStyle: { backgroundColor: colors.background },
         headerTintColor: colors.accent,
-        headerLargeTitleStyle: { color: colors.accent },
+        headerLargeTitleStyle: { color: colors.text },
         headerTitleStyle: { color: colors.text },
       }}
     />

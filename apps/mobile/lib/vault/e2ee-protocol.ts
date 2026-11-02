@@ -6,6 +6,7 @@ const MASTER_KEY_BYTES = 32
 const SALT_BYTES = 16
 const IV_BYTES = 12
 const GCM_TAG_BYTES = 16
+const DEFAULT_KDF_ITERATIONS = 310_000
 
 export type VaultCryptoPrimitives = {
   deriveWrappingKey: (
@@ -67,6 +68,56 @@ function validMasterKey(masterKey: Uint8Array) {
 
 export function createE2EEProtocol(crypto: VaultCryptoPrimitives) {
   return {
+    async createWrappedMasterKey(password: string) {
+      if (password.length < 12) {
+        throw new Error('Master password must be at least 12 characters.')
+      }
+
+      const passwordBytes = new TextEncoder().encode(password)
+      let masterKey: Uint8Array | null = null
+      let salt: Uint8Array | null = null
+      let iv: Uint8Array | null = null
+      let wrappingKey: Uint8Array | null = null
+      let wrappedMasterKey: Uint8Array | null = null
+
+      try {
+        masterKey = await crypto.randomBytes(MASTER_KEY_BYTES)
+        salt = await crypto.randomBytes(SALT_BYTES)
+        iv = await crypto.randomBytes(IV_BYTES)
+        wrappingKey = await crypto.deriveWrappingKey(
+          passwordBytes,
+          salt,
+          DEFAULT_KDF_ITERATIONS,
+        )
+        wrappedMasterKey = await crypto.aesGcmEncrypt(wrappingKey, iv, masterKey)
+        if (wrappedMasterKey.byteLength !== MASTER_KEY_BYTES + GCM_TAG_BYTES) {
+          throw new Error('Encryption did not return a valid authentication tag.')
+        }
+
+        return {
+          masterKey,
+          payload: {
+            wrappedMasterKey: fromByteArray(wrappedMasterKey),
+            wrappingKeySalt: fromByteArray(salt),
+            wrappingKeyIv: fromByteArray(iv),
+            kdf: 'PBKDF2-SHA-256' as const,
+            kdfIterations: DEFAULT_KDF_ITERATIONS,
+            wrappingAlgorithm: 'AES-GCM' as const,
+            version: 1 as const,
+          },
+        }
+      } catch (error) {
+        masterKey?.fill(0)
+        throw error
+      } finally {
+        passwordBytes.fill(0)
+        salt?.fill(0)
+        iv?.fill(0)
+        wrappingKey?.fill(0)
+        wrappedMasterKey?.fill(0)
+      }
+    },
+
     async unwrapMasterKey(password: string, payload: WrappedMasterKeyPayload) {
       if (!password) throw new Error('Enter your vault password.')
       const parts = validateKeychain(payload)

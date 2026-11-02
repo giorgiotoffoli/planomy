@@ -1,7 +1,7 @@
 import { ActivityIndicator, Platform, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { router, Stack } from 'expo-router'
-import { AppBadge, AppButton, AppText, EmptyState, SectionHeader } from '@/components/ui/primitives'
-import { ListRow } from '@/components/lists'
+import { AppButton, AppText, EmptyState, SectionHeader } from '@/components/ui/primitives'
+import { ListRow, unsortedIcon } from '@/components/lists'
 import { useHome } from '@/features/home/provider'
 import { useHomeTheme, spacing } from '@/features/home/theme'
 import {
@@ -9,10 +9,6 @@ import {
   AndroidSearchHeaderButton,
   NativeTabToolbar,
 } from '@/features/navigation/header-actions'
-
-function taskCountLabel(count: number) {
-  return `${count} open task${count === 1 ? '' : 's'}`
-}
 
 export default function ListsScreen() {
   const { data, status, refreshing, refresh } = useHome()
@@ -63,8 +59,7 @@ export default function ListsScreen() {
               <ListRow
                 key={list.id}
                 list={list}
-                subtitle={taskCountLabel(count)}
-                trailing={<AppBadge>{count}</AppBadge>}
+                taskCount={count}
                 onPress={() => router.push({ pathname: '/lists/[id]', params: { id: list.id } })}
               />
             )
@@ -72,8 +67,8 @@ export default function ListsScreen() {
           <SectionHeader title="Unsorted" subtitle="Tasks without a list" />
           <ListRow
             list={{ title: 'Unsorted', emoji: null, color: 'blue' }}
-            subtitle={taskCountLabel(unsortedCount)}
-            trailing={<AppBadge>{unsortedCount}</AppBadge>}
+            icon={unsortedIcon}
+            taskCount={unsortedCount}
             onPress={() => router.push({ pathname: '/lists/[id]', params: { id: 'unsorted' } })}
           />
           {!data.lists.length && !unsortedCount ? (

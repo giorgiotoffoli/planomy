@@ -345,6 +345,7 @@ export function createSupabaseHomeSource(
       currentOccurrences: occurrences.filter((occurrence) => occurrence.occurrence_date === day),
       occurrences,
       scheduledBlocks,
+      events,
       upcomingEvents: expandedEvents,
       preferences: homePreferences ?? defaultHomeSourcePreferences(),
     }

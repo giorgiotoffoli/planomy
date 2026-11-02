@@ -1,5 +1,6 @@
 import { useColorScheme } from 'react-native'
-import type { ListColor } from '@planomy/lib/list-colors'
+import { resolveEventColor, type ListColor } from '@planomy/lib/list-colors'
+import type { CalendarEventWithList } from '@planomy/types'
 
 export type AppColors = {
   background: string
@@ -10,6 +11,7 @@ export type AppColors = {
   muted: string
   separator: string
   accent: string
+  accentText: string
   onAccent: string
   accentSubtle: string
   homeFocusTint: string
@@ -29,56 +31,58 @@ export type AppColors = {
 }
 
 export const lightColors: AppColors = {
-  background: '#F6F6F8',
-  surface: '#FFFFFF',
+  background: '#FFFFFF',
+  surface: '#F7F7F7',
   surfaceElevated: '#FFFFFF',
-  text: '#171719',
-  secondary: '#66666E',
-  muted: '#85858D',
-  separator: '#E5E5EA',
-  accent: '#2662D9',
-  onAccent: '#FFFFFF',
-  accentSubtle: '#EBF1FF',
-  homeFocusTint: '#EFF4FF',
-  homeUpcomingTint: '#FFF9E5',
-  homeUpcomingIcon: '#755900',
-  homeTasksTint: '#F5F5F6',
-  homeStashedTint: '#F0F0F2',
-  danger: '#C53732',
+  text: '#1F1F1F',
+  secondary: '#59595C',
+  muted: '#666669',
+  separator: '#C9C9CD',
+  accent: '#007AFF',
+  accentText: '#0055D9',
+  onAccent: '#000000',
+  accentSubtle: '#E4EFFF',
+  homeFocusTint: '#F7F7F7',
+  homeUpcomingTint: '#F7F7F7',
+  homeUpcomingIcon: '#B85B00',
+  homeTasksTint: '#F7F7F7',
+  homeStashedTint: '#F1F1F1',
+  danger: '#C82020',
   dangerSubtle: '#FCEDEC',
-  warning: '#986500',
-  success: '#287346',
-  deadlineOverdue: '#C53732',
-  deadlineToday: '#2662D9',
-  deadlineUpcoming: '#66666E',
-  focus: '#EBF1FF',
-  subtle: '#EEEEF2',
+  warning: '#A65700',
+  success: '#08783A',
+  deadlineOverdue: '#C82020',
+  deadlineToday: '#0055D9',
+  deadlineUpcoming: '#717173',
+  focus: '#F1F1F1',
+  subtle: '#F1F1F1',
 }
 
 export const darkColors: AppColors = {
-  background: '#141414',
-  surface: '#1C1C1C',
-  surfaceElevated: '#242426',
-  text: '#F5F5F7',
-  secondary: '#B1B1B8',
-  muted: '#9999A2',
-  separator: '#333336',
-  accent: '#98B4FF',
-  onAccent: '#141414',
-  accentSubtle: '#1C2538',
-  homeFocusTint: '#202A3C',
-  homeUpcomingTint: '#302B1A',
-  homeUpcomingIcon: '#F2D365',
+  background: '#000000',
+  surface: '#2B2B2B',
+  surfaceElevated: '#303030',
+  text: '#F7F7F7',
+  secondary: '#DEDEE0',
+  muted: '#C1C1C4',
+  separator: '#515153',
+  accent: '#0A84FF',
+  accentText: '#F7F7F7',
+  onAccent: '#000000',
+  accentSubtle: '#10274A',
+  homeFocusTint: '#1C1C1E',
+  homeUpcomingTint: '#2B2B2B',
+  homeUpcomingIcon: '#FFC107',
   homeTasksTint: '#242426',
   homeStashedTint: '#2B2B2F',
-  danger: '#FF8A80',
-  dangerSubtle: '#392321',
-  warning: '#EBC46D',
-  success: '#8ED8A4',
-  deadlineOverdue: '#FF8A80',
-  deadlineToday: '#98B4FF',
-  deadlineUpcoming: '#B1B1B8',
-  focus: '#1C2538',
+  danger: '#FF756E',
+  dangerSubtle: '#421719',
+  warning: '#FFC107',
+  success: '#32DF7B',
+  deadlineOverdue: '#FF756E',
+  deadlineToday: '#F7F7F7',
+  deadlineUpcoming: '#DEDEE0',
+  focus: '#383838',
   subtle: '#272729',
 }
 
@@ -113,8 +117,8 @@ export const typeScale = {
   caption: { fontSize: 12, lineHeight: 17 },
   footnote: { fontSize: 13, lineHeight: 19 },
   body: { fontSize: 16, lineHeight: 23 },
-  title: { fontSize: 20, lineHeight: 26 },
-  heading: { fontSize: 24, lineHeight: 30 },
+  title: { fontSize: 20, lineHeight: 26, letterSpacing: -0.2 },
+  heading: { fontSize: 24, lineHeight: 29, letterSpacing: -0.24 },
 } as const
 
 export const borders = {
@@ -129,31 +133,30 @@ export const hitTargets = {
 
 export const elevation = {
   flat: { elevation: 0 },
-  raised: {
-    elevation: 2,
-    shadowColor: '#000000',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-  },
+  raised: { elevation: 0 },
 } as const
 
 export const listIdentityColors: Record<ListColor, string> = {
-  blue: '#4779E6',
-  indigo: '#6267D7',
-  violet: '#9457D8',
-  pink: '#D94B91',
-  red: '#D64A4A',
-  orange: '#D87932',
-  amber: '#BB8C19',
-  green: '#43875B',
-  teal: '#318A83',
-  cyan: '#318AAE',
+  blue: '#00A8FF',
+  indigo: '#9C8CFF',
+  violet: '#C882FF',
+  pink: '#FF70B9',
+  red: '#FF756E',
+  orange: '#FF9D32',
+  amber: '#FFC107',
+  green: '#32DF7B',
+  teal: '#00DBB8',
+  cyan: '#00CCFA',
+}
+
+export function eventDisplayColor(event: CalendarEventWithList, fallback: string) {
+  const color = resolveEventColor(event.color, event.category?.color, event.list?.color)
+  return color ? listIdentityColors[color] : fallback
 }
 
 export const surfaceVariants = {
   plain: { radius: radii.md, padding: spacing.lg },
-  card: { radius: radii.lg, padding: spacing.lg },
+  card: { radius: radii.xl, padding: spacing.lg },
   elevated: { radius: radii.xl, padding: spacing.xl },
   glass: { radius: radii.xl, padding: spacing.lg },
 } as const

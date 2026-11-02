@@ -57,6 +57,7 @@ function RootNavigator() {
           redirectTo="/"
         >
           <Stack.Screen name="locked" options={{ headerShown: false }} />
+          <Stack.Screen name="setup-vault" options={{ headerShown: false }} />
         </Stack.Protected>
 
         <Stack.Protected guard={state.status === 'unlocked'} redirectTo="/">
@@ -81,6 +82,16 @@ function RootNavigator() {
               headerLargeTitleEnabled: true,
               headerShadowVisible: false,
               headerBackTitle: 'Home',
+            }}
+          />
+          <Stack.Screen
+            name="delete-account"
+            options={{
+              presentation: 'card',
+              animation: 'slide_from_right',
+              title: 'Delete Account',
+              headerShadowVisible: false,
+              headerBackTitle: 'Settings',
             }}
           />
           <Stack.Screen

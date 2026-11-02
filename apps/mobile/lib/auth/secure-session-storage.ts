@@ -40,6 +40,18 @@ export interface SecureSessionStorage {
 
 const PREFIX = 'planomy.auth.session'
 const POINTER_KEY = `${PREFIX}.pointer`
+const PKCE_REGISTRY_KEY = 'planomy.auth.pkce.keys'
+const PKCE_LEGACY_KEY = `${AUTH_STORAGE_KEY}-code-verifier`
+const PKCE_INDEX_KEY = `${AUTH_STORAGE_KEY}-flows-code-verifier`
+const AUTH_USER_KEY = `${AUTH_STORAGE_KEY}-user`
+
+function isAuxiliaryKey(key: string) {
+  if (key === PKCE_LEGACY_KEY || key === PKCE_INDEX_KEY || key === AUTH_USER_KEY) return true
+  const prefix = `${AUTH_STORAGE_KEY}-flow-`
+  const suffix = '-code-verifier'
+  if (!key.startsWith(prefix) || !key.endsWith(suffix)) return false
+  return /^[A-Za-z0-9_-]{8,64}$/.test(key.slice(prefix.length, -suffix.length))
+}
 
 function chunkKey(bank: Bank, index: number) {
   return `${PREFIX}.${bank}.chunk.${index}`
@@ -109,21 +121,60 @@ export function createSecureSessionStorage(
   }
 
   function assertKey(key: string) {
-    if (key !== AUTH_STORAGE_KEY) {
+    if (key !== AUTH_STORAGE_KEY && !isAuxiliaryKey(key)) {
       throw new Error('Unexpected Supabase Auth storage key.')
     }
   }
 
-  async function clearBank(bank: Bank) {
-    for (let index = 0; index < SESSION_MAX_CHUNKS; index += 1) {
-      await store.deleteItemAsync(chunkKey(bank, index))
+  async function readPkceRegistry(): Promise<string[]> {
+    const raw = await store.getItemAsync(PKCE_REGISTRY_KEY)
+    if (raw === null) return []
+    try {
+      const keys: unknown = JSON.parse(raw)
+      if (Array.isArray(keys) && keys.every((key) => typeof key === 'string' && isAuxiliaryKey(key))) return keys
+    } catch {
+      // An invalid registry cannot safely be discarded during sign-out.
     }
+    throw new Error('Secure authentication storage metadata is invalid.')
+  }
+
+  async function writePkceValue(key: string, value: string) {
+    if (byteLength(value) > 1800) throw new Error('Authentication verifier exceeds the secure storage limit.')
+    const keys = await readPkceRegistry()
+    if (!keys.includes(key)) {
+      const next = JSON.stringify([...keys, key])
+      if (byteLength(next) > 1800) throw new Error('Too many pending sign-in attempts.')
+      // Register first, so an interrupted write can still be cleaned up.
+      await store.setItemAsync(PKCE_REGISTRY_KEY, next)
+    }
+    await store.setItemAsync(key, value)
+  }
+
+  async function removePkceValue(key: string) {
+    const keys = await readPkceRegistry()
+    await store.deleteItemAsync(key)
+    const remaining = keys.filter((item) => item !== key)
+    if (remaining.length) await store.setItemAsync(PKCE_REGISTRY_KEY, JSON.stringify(remaining))
+    else await store.deleteItemAsync(PKCE_REGISTRY_KEY)
+  }
+
+  async function clearBank(bank: Bank) {
+    const results = await Promise.allSettled(
+      Array.from({ length: SESSION_MAX_CHUNKS }, (_, index) => store.deleteItemAsync(chunkKey(bank, index))),
+    )
+    const failure = results.find((result) => result.status === 'rejected')
+    if (failure?.status === 'rejected') throw failure.reason
   }
 
   async function clearAll() {
     await store.deleteItemAsync(POINTER_KEY)
     await clearBank('a')
     await clearBank('b')
+    const keys = await readPkceRegistry()
+    for (const key of new Set([...keys, PKCE_LEGACY_KEY, PKCE_INDEX_KEY, AUTH_USER_KEY])) {
+      await store.deleteItemAsync(key)
+    }
+    await store.deleteItemAsync(PKCE_REGISTRY_KEY)
   }
 
   async function readPointer() {
@@ -226,15 +277,15 @@ export function createSecureSessionStorage(
   return {
     getItem(key) {
       assertKey(key)
-      return serialize(readValue)
+      return serialize(() => key === AUTH_STORAGE_KEY ? readValue() : store.getItemAsync(key))
     },
     setItem(key, value) {
       assertKey(key)
-      return serialize(() => writeValue(value))
+      return serialize(() => key === AUTH_STORAGE_KEY ? writeValue(value) : writePkceValue(key, value))
     },
     removeItem(key) {
       assertKey(key)
-      return serialize(clearAll)
+      return serialize(() => key === AUTH_STORAGE_KEY ? clearAll() : removePkceValue(key))
     },
     clear() {
       return serialize(clearAll)

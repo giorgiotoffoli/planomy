@@ -27,6 +27,7 @@ import {
 import type { TaskWithList } from '@planomy/types'
 import {
   AppButton,
+  AppCount,
   AppDivider,
   AppIcon,
   AppSurface,
@@ -37,7 +38,7 @@ import { TaskRow, TaskRowDivider } from '@/components/tasks'
 import { UpcomingGroupHeader } from '@/components/scheduling'
 import { useHome } from './provider'
 import { uncategorizedListIds } from './model'
-import { useHomeTheme, spacing, radii } from './theme'
+import { eventDisplayColor, useHomeTheme, spacing, radii, listIdentityColors } from './theme'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import {
   AndroidMoreHeaderButton,
@@ -137,10 +138,9 @@ function HomeSectionHeader({
   const iconColors = {
     focus: colors.accent,
     upcoming: colors.homeUpcomingIcon,
-    tasks: colors.secondary,
-    stashed: colors.muted,
+    tasks: colors.success,
+    stashed: listIdentityColors.violet,
   }
-
   return (
     <Pressable
       accessibilityRole="button"
@@ -153,19 +153,20 @@ function HomeSectionHeader({
         pressed && styles.sectionPressed,
       ]}
     >
-      <AppIcon
-        name={sectionIcons[section]}
-        size={18}
-        color={iconColors[section]}
-      />
+      <View style={styles.sectionIcon}>
+        <AppIcon name={sectionIcons[section]} size={20} color={iconColors[section]} />
+      </View>
       <AppText
-        variant="title"
-        weight="600"
+        variant="heading"
+        weight="500"
         tone="primary"
         style={styles.sectionTitle}
       >
         {sectionLabels[section]}
       </AppText>
+      <View style={styles.sectionCount}>
+        <AppCount value={count} />
+      </View>
       <AppIcon
         name={expanded ? chevrons.expanded : chevrons.collapsed}
         size={18}
@@ -322,7 +323,7 @@ export function HomeScreen() {
           {
             kind: 'empty',
             key: 'focus-empty',
-            text: 'Pick up to three tasks to keep close today.',
+            text: 'Choose up to three tasks to focus on.',
           },
         ]
 
@@ -526,11 +527,13 @@ export function HomeScreen() {
                 pressed && styles.rowPressed,
               ]}
             >
-              <AppIcon
-                name={{ ios: 'calendar', android: 'event', web: 'event' }}
-                size={18}
-                color={colors.accent}
-              />
+              <View style={styles.eventIcon}>
+                <AppIcon
+                  name={{ ios: 'calendar', android: 'event', web: 'event' }}
+                  size={18}
+                  color={eventDisplayColor(entry.event, colors.homeUpcomingIcon)}
+                />
+              </View>
               <View style={styles.eventCopy}>
                 <AppText variant="body" weight="500" numberOfLines={2}>
                   {entry.event.title}
@@ -549,12 +552,14 @@ export function HomeScreen() {
         }
         case 'upcoming-heading':
           return (
-            <UpcomingGroupHeader
-              title={UPCOMING_SECTION_LABELS[row.section]}
-              count={row.count}
-              overdue={row.section === 'overdue'}
-              compact
-            />
+            <View style={styles.upcomingGroupHeading}>
+              <UpcomingGroupHeader
+                title={UPCOMING_SECTION_LABELS[row.section]}
+                count={row.count}
+                overdue={row.section === 'overdue'}
+                compact
+              />
+            </View>
           )
         case 'upcoming-toggle':
           return (
@@ -585,15 +590,15 @@ export function HomeScreen() {
               accessibilityRole="button"
               accessibilityLabel="See all deadlines"
               onPress={() => router.push('/home/deadlines')}
-              style={styles.seeAll}
+              style={({ pressed }) => [styles.seeAll, pressed && styles.rowPressed]}
             >
-              <AppText variant="footnote" tone="accent" weight="600">
+              <AppText variant="body" weight="600">
                 See all deadlines
               </AppText>
               <AppIcon
                 name={chevrons.collapsed}
                 size={15}
-                color={colors.accent}
+                color={colors.text}
               />
             </Pressable>
           )
@@ -613,7 +618,7 @@ export function HomeScreen() {
     return (
       <View>
         {content}
-        {showDivider && row.kind !== 'empty' ? <TaskRowDivider /> : null}
+        {showDivider && row.kind !== 'empty' && row.kind !== 'upcoming-heading' ? <TaskRowDivider /> : null}
       </View>
     )
   }
@@ -639,7 +644,7 @@ export function HomeScreen() {
           title: 'Home',
           headerLargeTitleEnabled: true,
           headerTintColor: colors.accent,
-          headerLargeTitleStyle: { color: colors.accent, fontWeight: '700' },
+          headerLargeTitleStyle: { color: colors.text },
           ...(Platform.OS === 'android'
             ? { headerLeft: () => <AndroidSearchHeaderButton /> }
             : {}),
@@ -694,13 +699,12 @@ export function HomeScreen() {
           style={styles.screen}
           contentInsetAdjustmentBehavior="automatic"
           keyboardShouldPersistTaps="handled"
-          sections={sections}
+          sections={sections.filter((section) => section.key !== 'focus')}
           keyExtractor={(row) => row.key}
           renderSectionHeader={({ section }) => (
             <View
               style={[
                 styles.sectionHeading,
-                section.key === sections[0]?.key && styles.firstSectionHeading,
               ]}
             >
               <HomeSectionHeader
@@ -718,9 +722,14 @@ export function HomeScreen() {
               </View>
             )
           }
-          renderItem={({ item, index, section }) =>
-            renderRow(item, index < section.data.length - 1)
-          }
+          renderItem={({ item, index, section }) => {
+            const next = section.data[index + 1]
+            const showDivider = Boolean(next && next.kind !== 'upcoming-heading' && next.kind !== 'see-all' && next.kind !== 'upcoming-toggle')
+            const content = renderRow(item, showDivider)
+            return section.key === 'upcoming' && (item.kind === 'task' || item.kind === 'event')
+              ? <View style={styles.upcomingEntry}>{content}</View>
+              : content
+          }}
           stickySectionHeadersEnabled={false}
           ListHeaderComponent={
             <View style={styles.headerContent}>
@@ -748,6 +757,18 @@ export function HomeScreen() {
                   />
                 </AppSurface>
               ) : null}
+              <View style={styles.sectionHeading}>
+                <HomeSectionHeader
+                  section="focus"
+                  count={`${projection.buckets.focus.length} of ${MAX_FOCUS_TASKS}`}
+                  expanded={expanded.focus}
+                  onPress={() => toggleSection('focus')}
+                />
+                {sections[0]?.data.map((row, index, rows) => (
+                  <View key={row.key}>{renderRow(row, index < rows.length - 1)}</View>
+                ))}
+              </View>
+              <View style={styles.sectionDivider}><AppDivider /></View>
             </View>
           }
           contentContainerStyle={[
@@ -865,7 +886,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
-  headerContent: { gap: spacing.xs, paddingBottom: spacing.xxs },
+  headerContent: { gap: spacing.xs, paddingBottom: spacing.sm },
   preview: {
     minHeight: 64,
     flexDirection: 'row',
@@ -889,26 +910,29 @@ const styles = StyleSheet.create({
   androidToolbarButtonPressed: { opacity: 0.72 },
   androidToolbarButtonDisabled: { opacity: 0.45 },
   sectionHeading: { paddingTop: spacing.lg, paddingBottom: spacing.xs },
-  firstSectionHeading: { paddingTop: spacing.xs },
-  sectionDivider: { paddingTop: spacing.sm, paddingBottom: spacing.xs },
+  sectionDivider: { paddingTop: spacing.md, paddingBottom: spacing.xs },
   sectionToggle: {
-    minHeight: 48,
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.xs,
   },
   sectionTitle: { flex: 1, letterSpacing: -0.3 },
+  sectionIcon: { width: 24, alignItems: 'center', justifyContent: 'center' },
+  sectionCount: { minWidth: 64, alignItems: 'flex-end', justifyContent: 'center' },
   sectionPressed: { opacity: 0.68 },
   emptyMessage: { paddingVertical: spacing.md, paddingHorizontal: 44 },
   eventRow: {
     minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
     paddingVertical: spacing.sm,
   },
+  eventIcon: { width: 44, alignItems: 'center', justifyContent: 'center' },
   eventCopy: { flex: 1, gap: spacing.xxs },
+  upcomingGroupHeading: { paddingTop: spacing.md, paddingBottom: spacing.sm },
+  upcomingEntry: { paddingVertical: spacing.xs },
   rowPressed: { opacity: 0.68 },
   upcomingToggle: {
     minHeight: 42,
@@ -920,6 +944,7 @@ const styles = StyleSheet.create({
   },
   seeAll: {
     minHeight: 44,
+    marginTop: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
