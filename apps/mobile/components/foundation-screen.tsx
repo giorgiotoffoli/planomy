@@ -47,7 +47,7 @@ export function FoundationScreen({
 }
 
 const lightColors = {
-  accent: '#4169E1',
+  accent: '#007AFF',
   background: '#F6F6F3',
   primary: '#151618',
   secondary: '#606169',
@@ -55,7 +55,7 @@ const lightColors = {
 }
 
 const darkColors = {
-  accent: '#9BB4FF',
+  accent: '#0A84FF',
   background: '#101113',
   primary: '#F3F4F7',
   secondary: '#B8BAC3',

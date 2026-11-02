@@ -19,15 +19,20 @@ export function DatePill({
   date,
   label,
   icon = 'calendar',
+  appearance = 'default',
 }: {
   date?: string | null
   label?: string
   icon?: 'calendar' | 'clock' | 'repeat'
+  appearance?: 'default' | 'plain'
 }) {
   const colors = useHomeTheme()
   if (!label && !date) return null
   return (
-    <View style={[styles.pill, { backgroundColor: colors.subtle }]}>
+    <View style={[
+      appearance === 'plain' ? styles.plainPill : styles.pill,
+      appearance === 'default' && { backgroundColor: colors.subtle },
+    ]}>
       <AppIcon
         name={icon === 'clock' ? { ios: 'clock', android: 'schedule', web: 'schedule' } : icon === 'repeat' ? { ios: 'repeat', android: 'repeat', web: 'repeat' } : { ios: 'calendar', android: 'calendar_today', web: 'calendar_today' }}
         size={13}
@@ -67,11 +72,13 @@ export function DeadlineIndicator({
   dueTime,
   today,
   label,
+  appearance = 'default',
 }: {
   dueDate?: string | null
   dueTime?: string | null
   today?: string
   label?: string
+  appearance?: 'default' | 'plain'
 }) {
   const colors = useHomeTheme()
   if (!label && !dueDate) return null
@@ -80,7 +87,10 @@ export function DeadlineIndicator({
   const text = label ?? (dueDate && today ? getDeadlineLabel(dueDate, today) : dueDate ? formatLocalDate(dueDate) : '')
   const tone = overdue ? 'danger' : dueToday ? 'accent' : 'secondary'
   return (
-    <View style={[styles.deadline, { backgroundColor: overdue ? colors.dangerSubtle : dueToday ? colors.accentSubtle : colors.subtle }]}>
+    <View style={[
+      appearance === 'plain' ? styles.plainDeadline : styles.deadline,
+      appearance === 'default' && { backgroundColor: overdue ? colors.dangerSubtle : dueToday ? colors.accentSubtle : colors.subtle },
+    ]}>
       <AppIcon
         name={{ ios: overdue ? 'exclamationmark.circle' : 'calendar', android: overdue ? 'error_outline' : 'calendar_today', web: overdue ? 'error_outline' : 'calendar_today' }}
         size={13}
@@ -92,10 +102,10 @@ export function DeadlineIndicator({
   )
 }
 
-export function RecurrenceIndicator({ rule }: { rule?: Parameters<typeof recurrenceLabel>[0] | null }) {
+export function RecurrenceIndicator({ rule, appearance = 'default' }: { rule?: Parameters<typeof recurrenceLabel>[0] | null; appearance?: 'default' | 'plain' }) {
   if (!rule) return null
   const label = recurrenceLabel(rule)
-  return label ? <DatePill icon="repeat" label={label} /> : null
+  return label ? <DatePill icon="repeat" label={label} appearance={appearance} /> : null
 }
 
 /** A scheduled session is planned time, separate from a task deadline. */
@@ -114,14 +124,14 @@ export function ScheduledBlock({ block }: { block: Pick<TimeBlock, 'starts_at' |
   )
 }
 
-export function UpcomingGroupHeader({ title, count, overdue = false, subtitle }: { title: string; count?: number; overdue?: boolean; subtitle?: string }) {
+export function UpcomingGroupHeader({ title, count, overdue = false, subtitle, compact = false }: { title: string; count?: number; overdue?: boolean; subtitle?: string; compact?: boolean }) {
   const colors = useHomeTheme()
   return (
-    <View style={styles.groupHeader}>
+    <View style={[styles.groupHeader, compact && styles.compactGroupHeader]}>
       <AppText variant="footnote" weight="700" tone={overdue ? 'danger' : 'secondary'} accessibilityRole="header">{title}</AppText>
       {count !== undefined ? <AppText variant="caption" tone="muted">{count}</AppText> : null}
       {subtitle ? <AppText variant="caption" tone="secondary" style={styles.groupSubtitle}>{subtitle}</AppText> : null}
-      <View style={[styles.groupRule, { backgroundColor: overdue ? colors.dangerSubtle : colors.separator }]} />
+      {compact ? null : <View style={[styles.groupRule, { backgroundColor: overdue ? colors.dangerSubtle : colors.separator }]} />}
     </View>
   )
 }
@@ -129,9 +139,12 @@ export function UpcomingGroupHeader({ title, count, overdue = false, subtitle }:
 const styles = StyleSheet.create({
   inline: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   pill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: spacing.xs, borderRadius: radii.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  plainPill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: spacing.xxs },
   deadline: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: spacing.xs, borderRadius: radii.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  plainDeadline: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: spacing.xxs },
   scheduled: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: spacing.xs, borderRadius: radii.sm, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   groupHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.xs, paddingTop: spacing.lg, paddingBottom: spacing.xs },
+  compactGroupHeader: { paddingTop: spacing.sm, paddingBottom: spacing.xxs, gap: spacing.xs },
   groupSubtitle: { flexBasis: '100%' },
   groupRule: { height: StyleSheet.hairlineWidth, flexBasis: '100%', marginTop: spacing.xs },
 })

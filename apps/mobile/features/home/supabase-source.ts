@@ -25,7 +25,13 @@ import {
 } from '@planomy/lib/recurrence'
 import { addCalendarDays } from '@planomy/lib/today'
 import { isListColor } from '@planomy/lib/list-colors'
-import type { HomeCommand, HomeDataSource, HomeSnapshot, TaskDraft } from './model'
+import type {
+  HomeCommand,
+  HomeDataSource,
+  HomeSnapshot,
+  HomeSourcePreferenceCommand,
+  TaskDraft,
+} from './model'
 import { validateDraft } from './model'
 import { nativeE2EE } from '@/lib/vault/native-crypto'
 
@@ -217,7 +223,7 @@ function calendarRange(day: string) {
   }
 }
 
-async function fetchKeychain(client: NativeClient, userId: string): Promise<WrappedMasterKeyPayload> {
+export async function fetchNativeVaultKeychain(client: NativeClient, userId: string): Promise<WrappedMasterKeyPayload> {
   const { data, error } = await client
     .from('user_keychain')
     .select('wrapped_master_key, wrapping_key_salt, wrapping_key_iv, kdf, kdf_iterations, wrapping_algorithm, version')
@@ -237,8 +243,9 @@ async function fetchKeychain(client: NativeClient, userId: string): Promise<Wrap
 }
 
 export async function unlockNativeVault(client: NativeClient, userId: string, password: string) {
-  const payload = await fetchKeychain(client, userId)
-  return nativeE2EE.unwrapMasterKey(password, payload)
+  const payload = await fetchNativeVaultKeychain(client, userId)
+  const masterKey = await nativeE2EE.unwrapMasterKey(password, payload)
+  return { masterKey, payload }
 }
 
 export function createSupabaseHomeSource(
@@ -338,6 +345,7 @@ export function createSupabaseHomeSource(
       currentOccurrences: occurrences.filter((occurrence) => occurrence.occurrence_date === day),
       occurrences,
       scheduledBlocks,
+      events,
       upcomingEvents: expandedEvents,
       preferences: homePreferences ?? defaultHomeSourcePreferences(),
     }
@@ -475,9 +483,37 @@ export function createSupabaseHomeSource(
     fail(updateError)
   }
 
+  async function persistSourcePreference(
+    command: HomeSourcePreferenceCommand,
+  ) {
+    assertActive()
+    if (command.type === 'source') {
+      const { error } = command.source.type === 'unsorted'
+        ? await client.rpc('set_home_unsorted_visibility', {
+            p_show_unsorted: command.visible,
+          })
+        : await client.rpc('set_home_list_visibility', {
+            p_list_id: command.source.listId,
+            p_visible: command.visible,
+            p_clear_category_overrides: true,
+          })
+      fail(error)
+    } else if (command.type === 'category') {
+      const { error } = await client.rpc('set_home_category_visibility', {
+        p_category_id: command.id,
+        p_visible: command.visible,
+      })
+      fail(error)
+    } else {
+      const { error } = await client.rpc('show_all_home_sources', {})
+      fail(error)
+    }
+  }
+
   return {
     mode: 'vault' as const,
     read,
+    persistSourcePreference,
     async execute(command: HomeCommand) {
       assertActive()
       if (command.type === 'save') {
@@ -495,17 +531,8 @@ export function createSupabaseHomeSource(
       } else if (command.type === 'stash') {
         const { error } = await client.from('tasks').update({ stashed: command.stashed, ...(command.stashed ? { focused: false } : {}) }).eq('id', command.id).eq('user_id', userId)
         fail(error)
-      } else if (command.type === 'source') {
-        const { error } = command.source.type === 'unsorted'
-          ? await client.rpc('set_home_unsorted_visibility', { p_show_unsorted: command.visible })
-          : await client.rpc('set_home_list_visibility', { p_list_id: command.source.listId, p_visible: command.visible, p_clear_category_overrides: true })
-        fail(error)
-      } else if (command.type === 'category') {
-        const { error } = await client.rpc('set_home_category_visibility', { p_category_id: command.id, p_visible: command.visible })
-        fail(error)
       } else {
-        const { error } = await client.rpc('show_all_home_sources', {})
-        fail(error)
+        await persistSourcePreference(command)
       }
       return read(command.type === 'complete' ? command.day : currentDay)
     },
@@ -518,7 +545,7 @@ export function createSupabaseHomeSource(
 }
 
 export async function readNativeKeychain(client: NativeClient, userId: string) {
-  return fetchKeychain(client, userId)
+  return fetchNativeVaultKeychain(client, userId)
 }
 
 export function isValidTaskDraft(draft: TaskDraft, data: HomeSnapshot) {

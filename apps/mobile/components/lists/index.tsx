@@ -1,8 +1,11 @@
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 import type { Category, ListSummary } from '@planomy/types'
-import { AppBadge, AppIcon, AppText } from '@/components/ui/primitives'
+import { AppBadge, AppCount, AppIcon, AppText } from '@/components/ui/primitives'
+import { GlassSurface } from '@/components/glass-surface'
 import { useHomeTheme, spacing, radii, listIdentityColors } from '@/features/home/theme'
+
+export const unsortedIcon = { ios: 'tray', android: 'inbox', web: 'inbox' } as const
 
 export function ListIndicator({
   list,
@@ -12,8 +15,8 @@ export function ListIndicator({
   compact?: boolean
 }) {
   return (
-    <View style={styles.indicator}>
-      <View style={[styles.dot, { backgroundColor: listIdentityColors[list.color] }]} />
+    <View style={[styles.indicator, compact && styles.compactIndicator]}>
+      <View style={[styles.dot, compact && styles.compactDot, { backgroundColor: listIdentityColors[list.color] }]} />
       {!compact && list.emoji ? <AppText variant="caption">{list.emoji}</AppText> : null}
       <AppText variant="caption" tone="secondary" numberOfLines={1}>
         {list.title}
@@ -25,15 +28,17 @@ export function ListIndicator({
 export function CategoryIndicator({
   category,
   color,
+  compact = false,
 }: {
   category: Pick<Category, 'title' | 'color'>
   color?: string
+  compact?: boolean
 }) {
   const colors = useHomeTheme()
   const dot = category.color ? listIdentityColors[category.color] : color ?? colors.muted
   return (
-    <View style={styles.indicator}>
-      <View style={[styles.smallDot, { backgroundColor: dot }]} />
+    <View style={[styles.indicator, compact && styles.compactIndicator]}>
+      <View style={[styles.smallDot, compact && styles.compactSmallDot, { backgroundColor: dot }]} />
       <AppText variant="caption" tone="secondary" numberOfLines={1}>{category.title}</AppText>
     </View>
   )
@@ -56,29 +61,36 @@ export function CategoryBadge({ category }: { category: Pick<Category, 'title' |
 export function ListRow({
   list,
   subtitle,
+  taskCount,
   trailing,
+  icon,
   onPress,
 }: {
   list: Pick<ListSummary, 'title' | 'emoji' | 'color'>
   subtitle?: string
+  taskCount?: number
   trailing?: ReactNode
+  icon?: ComponentProps<typeof AppIcon>['name']
   onPress?: () => void
 }) {
   const colors = useHomeTheme()
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityLabel={onPress ? `${list.title}${subtitle ? `, ${subtitle}` : ''}` : undefined}
+      accessibilityLabel={onPress ? `${list.title}${subtitle ? `, ${subtitle}` : ''}${taskCount !== undefined ? `, ${taskCount} open ${taskCount === 1 ? 'task' : 'tasks'}` : ''}` : undefined}
       disabled={!onPress}
       onPress={onPress}
       style={({ pressed }) => [styles.row, { borderBottomColor: colors.separator }, pressed && { opacity: 0.7 }]}
     >
-      <View style={[styles.dot, { backgroundColor: listIdentityColors[list.color] }]} />
+      <GlassSurface style={styles.listIcon}>
+        {icon ? <AppIcon name={icon} color={listIdentityColors[list.color]} /> : list.emoji ? <AppText variant="title">{list.emoji}</AppText> : <AppIcon name={{ ios: 'list.bullet', android: 'list', web: 'list' }} color={listIdentityColors[list.color]} />}
+      </GlassSurface>
       <View style={styles.copy}>
-        <AppText weight="600">{list.emoji ? `${list.emoji} ` : ''}{list.title}</AppText>
+        <AppText weight="600">{list.title}</AppText>
         {subtitle ? <AppText variant="caption" tone="secondary">{subtitle}</AppText> : null}
       </View>
       {trailing}
+      {taskCount !== undefined ? <AppCount value={taskCount} /> : null}
     </Pressable>
   )
 }
@@ -132,9 +144,13 @@ export function FilterChip({
 const styles = StyleSheet.create({
   indicator: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, maxWidth: '100%' },
   dot: { width: 9, height: 9, borderRadius: radii.pill },
+  compactDot: { width: 6, height: 6 },
   smallDot: { width: 7, height: 7, borderRadius: radii.pill },
+  compactSmallDot: { width: 5, height: 5 },
+  compactIndicator: { gap: spacing.xxs },
   categoryBadge: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, borderRadius: radii.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
-  row: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  row: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: spacing.sm },
+  listIcon: { width: 44, height: 44, borderRadius: radii.pill, alignItems: 'center', justifyContent: 'center', padding: 0, gap: 0 },
   copy: { flex: 1, gap: spacing.xxs },
   pickerRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: spacing.md },
   filterChip: { minHeight: 36, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md, borderRadius: radii.pill },

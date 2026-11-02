@@ -41,23 +41,64 @@ function RootNavigator() {
       <Stack
         screenOptions={{
           contentStyle: { backgroundColor: colors.background },
-          headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.accent,
           headerTitleStyle: { color: colors.text },
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Protected guard={state.status === 'unauthenticated'} redirectTo="/">
+        <Stack.Protected
+          guard={state.status === 'unauthenticated'}
+          redirectTo="/"
+        >
           <Stack.Screen name="sign-in" options={{ headerShown: false }} />
         </Stack.Protected>
-        <Stack.Protected guard={state.status === 'authenticated-but-locked'} redirectTo="/">
+        <Stack.Protected
+          guard={state.status === 'authenticated-but-locked'}
+          redirectTo="/"
+        >
           <Stack.Screen name="locked" options={{ headerShown: false }} />
+          <Stack.Screen name="setup-vault" options={{ headerShown: false }} />
         </Stack.Protected>
+
         <Stack.Protected guard={state.status === 'unlocked'} redirectTo="/">
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="add-task"
+            options={{
+              presentation: 'formSheet',
+              sheetAllowedDetents: [0.85, 1],
+              sheetInitialDetentIndex: 0,
+              sheetGrabberVisible: true,
+            }}
+          />
           <Stack.Screen name="task" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="archive" options={{ presentation: 'modal', title: 'Archive' }} />
-          <Stack.Screen name="sources" options={{ presentation: 'modal' }} />
+
+          <Stack.Screen
+            name="settings"
+            options={{
+              presentation: 'card',
+              animation: 'slide_from_right',
+              title: 'Settings',
+              headerLargeTitleEnabled: true,
+              headerShadowVisible: false,
+              headerBackTitle: 'Home',
+            }}
+          />
+          <Stack.Screen
+            name="delete-account"
+            options={{
+              presentation: 'card',
+              animation: 'slide_from_right',
+              title: 'Delete Account',
+              headerShadowVisible: false,
+              headerBackTitle: 'Settings',
+            }}
+          />
+          <Stack.Screen
+            name="archive"
+            options={{ presentation: 'modal', title: 'Archive' }}
+          />
+          <Stack.Screen name="deadlines" options={{ headerShown: false }} />
         </Stack.Protected>
       </Stack>
     </>
@@ -65,7 +106,9 @@ function RootNavigator() {
 
   // Keep decrypted Home state mounted only for an explicitly unlocked vault;
   // AuthProvider disposes the key and source on lock, sign-out, or account change.
-  return state.status === 'unlocked' && homeSource
-    ? <HomeProvider source={homeSource}>{routes}</HomeProvider>
-    : routes
+  return state.status === 'unlocked' && homeSource ? (
+    <HomeProvider source={homeSource}>{routes}</HomeProvider>
+  ) : (
+    routes
+  )
 }

@@ -11,11 +11,22 @@ export default function ArchiveScreen() {
   const archived = data?.tasks.filter((task) => task.completed) ?? []
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ title: 'Archive', headerLargeTitle: true }} />
-      <View style={styles.content}>
-        <AppText tone="secondary">Completed tasks stay here until you restore them or delete them.</AppText>
-        {status === 'loading' ? (
+    <>
+      <FlatList
+        style={[styles.screen, { backgroundColor: colors.background }]}
+        contentInsetAdjustmentBehavior="automatic"
+        data={status === 'ready' ? archived : []}
+        keyExtractor={(task) => task.id}
+        contentContainerStyle={[styles.group, { backgroundColor: colors.surface }]}
+        refreshing={refreshing}
+        onRefresh={() => void refresh()}
+        progressViewOffset={spacing.md}
+        ListHeaderComponent={(
+          <AppText tone="secondary" style={styles.description}>
+            Completed tasks stay here until you restore them or delete them.
+          </AppText>
+        )}
+        ListEmptyComponent={status === 'loading' ? (
           <View style={styles.loading}>
             <ActivityIndicator color={colors.accent} />
             <AppText tone="secondary">Loading your Archive…</AppText>
@@ -27,29 +38,6 @@ export default function ArchiveScreen() {
             icon={{ ios: 'exclamationmark.arrow.trianglehead.2.clockwise.rotate.90', android: 'sync_problem', web: 'sync_problem' }}
             action={<AppButton title="Try again" onPress={() => void refresh()} />}
           />
-        ) : archived.length ? (
-          <FlatList
-            style={styles.list}
-            data={archived}
-            keyExtractor={(task) => task.id}
-            contentContainerStyle={[styles.group, { backgroundColor: colors.surface }]}
-            refreshing={refreshing}
-            onRefresh={() => void refresh()}
-            progressViewOffset={spacing.md}
-            renderItem={({ item: task }) => (
-              <TaskRow
-                task={task}
-                category={data?.categories.find((category) => category.id === task.category_id)}
-                today={day}
-                completionDisabled={busy}
-                onPress={() => router.push({ pathname: '/task', params: { id: task.id } })}
-                onToggleComplete={() => void run(
-                  { type: 'complete', id: task.id, completed: false, day },
-                  'Task restored',
-                )}
-              />
-            )}
-          />
         ) : (
           <EmptyState
             title="Nothing archived"
@@ -57,15 +45,28 @@ export default function ArchiveScreen() {
             icon={{ ios: 'archivebox', android: 'inventory_2', web: 'inventory_2' }}
           />
         )}
-      </View>
-    </View>
+        renderItem={({ item: task }) => (
+          <TaskRow
+            task={task}
+            category={data?.categories.find((category) => category.id === task.category_id)}
+            today={day}
+            completionDisabled={busy}
+            onPress={() => router.push({ pathname: '/task', params: { id: task.id } })}
+            onToggleComplete={() => void run(
+              { type: 'complete', id: task.id, completed: false, day },
+              'Task restored',
+            )}
+          />
+        )}
+      />
+      <Stack.Screen options={{ title: 'Archive', headerLargeTitleEnabled: true }} />
+    </>
   )
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { flex: 1, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.lg },
-  list: { flex: 1 },
-  group: { borderRadius: 16, overflow: 'hidden', paddingHorizontal: spacing.md },
+  group: { flexGrow: 1, borderRadius: 16, overflow: 'hidden', marginHorizontal: spacing.lg, paddingHorizontal: spacing.md, paddingBottom: spacing.xxxl },
+  description: { marginHorizontal: -spacing.md, paddingHorizontal: 0, paddingTop: spacing.lg, paddingBottom: spacing.md },
   loading: { minHeight: 180, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
 })

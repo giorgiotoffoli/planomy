@@ -15,6 +15,7 @@ import {
   projectHomeCommand,
   type HomeCommand,
   type HomeDataSource,
+  type HomeSourcePreferenceCommand,
   type HomeSnapshot,
 } from './model'
 
@@ -30,16 +31,52 @@ type HomeContextValue = {
   notice: Notice | null
   refreshing: boolean
   refresh: () => Promise<void>
+  animateLayout: () => void
   run: (
     command: HomeCommand,
     text: string,
     undo?: HomeCommand,
+  ) => Promise<boolean>
+  applySourcePreferences: (
+    commands: HomeSourcePreferenceCommand[],
   ) => Promise<boolean>
   startPreview: () => void
   endPreview: () => void
   dismissNotice: () => void
 }
 const HomeContext = createContext<HomeContextValue | null>(null)
+
+type PendingSourcePreference = {
+  source: HomeDataSource
+  generation: number
+  command: HomeSourcePreferenceCommand
+}
+
+function isSourcePreferenceCommand(
+  command: HomeCommand,
+): command is HomeSourcePreferenceCommand {
+  return (
+    command.type === 'source' ||
+    command.type === 'category' ||
+    command.type === 'showAll'
+  )
+}
+
+function sameIds(left: string[], right: string[]) {
+  return left.length === right.length && left.every((id) => right.includes(id))
+}
+
+function sameSourcePreferences(
+  left: HomeSnapshot['preferences'],
+  right: HomeSnapshot['preferences'],
+) {
+  return (
+    sameIds(left.excludedHomeListIds, right.excludedHomeListIds) &&
+    sameIds(left.excludedHomeCategoryIds, right.excludedHomeCategoryIds) &&
+    sameIds(left.includedHomeCategoryIds, right.includedHomeCategoryIds) &&
+    left.showUnsortedOnHome === right.showUnsortedOnHome
+  )
+}
 
 export function HomeProvider({
   children,
@@ -83,6 +120,9 @@ function HomeSession({
   const [refreshing, setRefreshing] = useState(false)
   const lock = useRef(false)
   const epoch = useRef(0)
+  const sourceGeneration = useRef(0)
+  const sourcePreferenceQueue = useRef<PendingSourcePreference[]>([])
+  const sourcePreferenceSyncing = useRef<number | null>(null)
   const reducedMotion = useRef(true)
   const [now, setNow] = useState(Date.now)
   const day = localDateKey(new Date(now))
@@ -94,6 +134,79 @@ function HomeSession({
     if (!reducedMotion.current)
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
   }, [])
+
+  useEffect(() => {
+    sourceGeneration.current += 1
+    return () => {
+      sourceGeneration.current += 1
+      sourcePreferenceQueue.current = []
+    }
+  }, [source])
+
+  const flushSourcePreferences = useCallback(async () => {
+    const drainGeneration = sourceGeneration.current
+    if (sourcePreferenceSyncing.current === drainGeneration) return
+    sourcePreferenceSyncing.current = drainGeneration
+    let failure: { job: PendingSourcePreference } | null = null
+
+    try {
+      while (true) {
+        if (drainGeneration !== sourceGeneration.current) return
+        while (sourcePreferenceQueue.current.length > 0) {
+          if (drainGeneration !== sourceGeneration.current) return
+          const job = sourcePreferenceQueue.current.shift()!
+          if (job.generation !== drainGeneration) continue
+
+          try {
+            await job.source.persistSourcePreference(job.command)
+          } catch {
+            if (job.generation === sourceGeneration.current) failure = { job }
+          }
+        }
+
+        if (!failure) break
+        if (drainGeneration !== sourceGeneration.current) return
+        if (failure.job.generation !== drainGeneration) {
+          failure = null
+          continue
+        }
+
+        let authoritative: HomeSnapshot
+        try {
+          authoritative = await failure.job.source.read(localDateKey())
+        } catch {
+          if (drainGeneration !== sourceGeneration.current) return
+          if (sourcePreferenceQueue.current.length > 0) continue
+          setNotice({ text: 'Some source changes weren’t saved. Try again.' })
+          void Haptics.notificationAsync(
+            Haptics.NotificationFeedbackType.Error,
+          ).catch(() => {})
+          failure = null
+          break
+        }
+
+        if (drainGeneration !== sourceGeneration.current) return
+        if (sourcePreferenceQueue.current.length > 0) continue
+        const current = dataRef.current
+        if (
+          current &&
+          !sameSourcePreferences(current.preferences, authoritative.preferences)
+        ) {
+          animate()
+          replace({ ...current, preferences: authoritative.preferences })
+          setNotice({ text: 'Some source changes weren’t saved. Try again.' })
+          void Haptics.notificationAsync(
+            Haptics.NotificationFeedbackType.Error,
+          ).catch(() => {})
+        }
+        failure = null
+        break
+      }
+    } finally {
+      if (sourcePreferenceSyncing.current === drainGeneration)
+        sourcePreferenceSyncing.current = null
+    }
+  }, [animate, replace])
 
   const refresh = useCallback(async () => {
     if (!source || lock.current) return
@@ -179,8 +292,41 @@ function HomeSession({
     return () => clearTimeout(timer)
   }, [notice])
 
+  async function applySourcePreferences(
+    commands: HomeSourcePreferenceCommand[],
+    text = 'Sources updated',
+    undo?: HomeCommand,
+  ) {
+    if (!source || !dataRef.current || commands.length === 0) return false
+
+    let optimistic = dataRef.current
+    for (const command of commands)
+      optimistic = projectHomeCommand(optimistic, command)
+    animate()
+    replace(optimistic)
+    setNotice({ text, undo })
+    void Haptics.notificationAsync(
+      Haptics.NotificationFeedbackType.Success,
+    ).catch(() => {})
+    sourcePreferenceQueue.current.push(
+      ...commands.map((command) => ({
+        source,
+        generation: sourceGeneration.current,
+        command,
+      })),
+    )
+    void flushSourcePreferences()
+    return true
+  }
+
   async function run(command: HomeCommand, text: string, undo?: HomeCommand) {
-    if (!source || !dataRef.current || lock.current) return false
+    if (!source || !dataRef.current) return false
+
+    if (isSourcePreferenceCommand(command)) {
+      return applySourcePreferences([command], text, undo)
+    }
+
+    if (lock.current) return false
     const previous = dataRef.current
     const requestEpoch = epoch.current
     try {
@@ -230,7 +376,10 @@ function HomeSession({
         notice,
         mode: source?.mode ?? null,
         refresh,
+        animateLayout: animate,
         run,
+        applySourcePreferences: (commands) =>
+          applySourcePreferences(commands),
         startPreview,
         endPreview,
         dismissNotice: () => setNotice(null),

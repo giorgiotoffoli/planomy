@@ -32,7 +32,7 @@ export function AppText({
     primary: colors.text,
     secondary: colors.secondary,
     muted: colors.muted,
-    accent: colors.accent,
+    accent: colors.accentText,
     danger: colors.danger,
     success: colors.success,
   }
@@ -73,11 +73,15 @@ export function AppSurface({
   variant = 'card',
   style,
   accessibilityLabel,
+  interactive = false,
+  tintColor,
 }: {
   children: ReactNode
   variant?: 'plain' | 'card' | 'elevated' | 'glass'
   style?: StyleProp<ViewStyle>
   accessibilityLabel?: string
+  interactive?: boolean
+  tintColor?: string
 }) {
   const colors = useHomeTheme()
   const metrics = surfaceVariants[variant]
@@ -90,7 +94,7 @@ export function AppSurface({
   ]
   if (variant === 'glass')
     return (
-      <GlassSurface accessibilityLabel={accessibilityLabel} style={[{ borderRadius: metrics.radius, padding: metrics.padding }, style]}>
+      <GlassSurface accessibilityLabel={accessibilityLabel} interactive={interactive} tintColor={tintColor} style={[{ borderRadius: metrics.radius, padding: metrics.padding }, style]}>
         {children}
       </GlassSurface>
     )
@@ -126,6 +130,14 @@ export function AppBadge({
   )
 }
 
+export function AppCount({ value }: { value: string | number }) {
+  return (
+    <GlassSurface style={styles.count}>
+      <AppText variant="caption" weight="600" style={styles.countText}>{value}</AppText>
+    </GlassSurface>
+  )
+}
+
 export function AppButton({
   title,
   children,
@@ -148,7 +160,7 @@ export function AppButton({
   const colors = useHomeTheme()
   const isPrimary = variant === 'primary'
   const isDestructive = variant === 'destructive'
-  const color = isPrimary ? colors.onAccent : isDestructive ? colors.danger : colors.accent
+  const color = isPrimary ? colors.onAccent : isDestructive ? colors.danger : colors.accentText
   return (
     <Pressable
       accessibilityRole="button"
@@ -222,15 +234,13 @@ export function AppCheckbox({
       onPress={onPress}
       style={({ pressed }) => [styles.checkboxTarget, pressed && styles.pressed]}
     >
-      <View
-        style={[
-          styles.checkbox,
-          { borderColor: checked ? colors.accent : colors.muted },
-          checked && { backgroundColor: colors.accent },
-        ]}
-      >
-        {checked ? <AppIcon name={{ ios: 'checkmark', android: 'check', web: 'check' }} size={14} color={colors.onAccent} /> : null}
-      </View>
+      <AppIcon
+        name={checked
+          ? { ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' }
+          : { ios: 'circle', android: 'radio_button_unchecked', web: 'radio_button_unchecked' }}
+        size={25}
+        color={checked ? colors.accent : colors.muted}
+      />
     </Pressable>
   )
 }
@@ -254,8 +264,8 @@ export function SectionHeader({
       <View style={styles.sectionCopy}>
         <View style={styles.sectionTitleRow}>
           {icon ? <AppIcon name={icon} size={18} color={colors.accent} /> : null}
-          <AppText variant="title" weight="700" accessibilityRole="header" style={styles.tightTitle}>{title}</AppText>
-          {count !== undefined ? <AppBadge>{count}</AppBadge> : null}
+          <AppText variant="heading" weight="500" accessibilityRole="header" style={styles.tightTitle}>{title}</AppText>
+          {count !== undefined ? <AppCount value={count} /> : null}
         </View>
         {subtitle ? <AppText variant="footnote" tone="secondary">{subtitle}</AppText> : null}
       </View>
@@ -276,7 +286,7 @@ export function ScreenHeader({
   return (
     <View style={styles.screenHeader}>
       <View style={styles.screenCopy}>
-        <AppText variant="heading" weight="700" accessibilityRole="header">{title}</AppText>
+        <AppText variant="heading" weight="500" accessibilityRole="header">{title}</AppText>
         {subtitle ? <AppText variant="footnote" tone="secondary">{subtitle}</AppText> : null}
       </View>
       {trailing}
@@ -309,7 +319,7 @@ export function EmptyState({
 function badgePalette(colors: AppColors) {
   return {
     neutral: { background: colors.subtle, text: colors.secondary },
-    accent: { background: colors.accentSubtle, text: colors.accent },
+    accent: { background: colors.accentSubtle, text: colors.accentText },
     danger: { background: colors.dangerSubtle, text: colors.danger },
     success: { background: colors.subtle, text: colors.success },
     warning: { background: colors.subtle, text: colors.warning },
@@ -321,11 +331,12 @@ const styles = StyleSheet.create({
   divider: { height: borders.hairline },
   badge: { alignSelf: 'flex-start', borderRadius: radii.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   badgeText: { fontSize: 11, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  count: { borderRadius: radii.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, gap: 0 },
+  countText: { fontVariant: ['tabular-nums'] },
   button: { minHeight: hitTargets.minimum, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radii.pill, paddingHorizontal: spacing.lg },
   buttonText: { fontSize: 15, fontWeight: '600' },
   iconButton: { minWidth: hitTargets.minimum, minHeight: hitTargets.minimum, borderRadius: radii.pill, alignItems: 'center', justifyContent: 'center' },
-  checkboxTarget: { width: 48, minHeight: hitTargets.row, alignItems: 'center', justifyContent: 'center' },
-  checkbox: { width: 23, height: 23, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  checkboxTarget: { width: hitTargets.minimum, minHeight: hitTargets.row, alignItems: 'center', justifyContent: 'center' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   sectionCopy: { flex: 1, gap: spacing.xs },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
