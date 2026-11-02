@@ -241,13 +241,12 @@ export default function Page() {
           <PlanomyIcon size={16} /> Planomy
         </div>
         <div className="flex gap-5">
-          <a href="https://www.youtube.com/@giorgiotoffoli" target="_blank">
-            Progress
-          </a>
+          <Link href="/philosophy">Philosophy</Link>
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
           <a href="https://github.com/giorgiotoffoli/planomy" target="_blank">
             GitHub
           </a>
-          <Link href="/auth?mode=signin">Sign in</Link>
         </div>
       </footer>
     </main>
