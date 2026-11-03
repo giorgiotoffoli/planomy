@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Redirect } from 'expo-router'
+import { Redirect, useRouter } from 'expo-router'
 import {
   AccessibilityInfo,
   ActivityIndicator,
@@ -25,6 +25,7 @@ import { hasOfferedBiometric, markBiometricOffered } from '@/lib/vault/biometric
 type PendingAction = 'password' | 'biometric' | 'signout' | null
 
 export default function LockedScreen() {
+  const router = useRouter()
   const colors = useHomeTheme()
   const isDark = useColorScheme() === 'dark'
   const insets = useSafeAreaInsets()
@@ -193,6 +194,9 @@ export default function LockedScreen() {
         </View>
         <Pressable accessibilityRole="button" accessibilityLabel={user?.email ? `Sign out ${user.email}` : 'Sign out'} disabled={busy} onPress={() => void handleSignOut()} style={({ pressed }) => [styles.signOut, busy && styles.disabled, pressed && styles.pressed]}>
           {pending === 'signout' ? <ActivityIndicator color={colors.secondary} /> : <AppText variant="footnote" tone="muted" weight="600">Sign out and switch account</AppText>}
+        </Pressable>
+        <Pressable accessibilityRole="button" disabled={busy} onPress={() => router.push('/delete-account')} style={({ pressed }) => [styles.signOut, busy && styles.disabled, pressed && styles.pressed]}>
+          <AppText variant="footnote" tone="muted" weight="600">Delete account</AppText>
         </Pressable>
       </View>
     </ScrollView>

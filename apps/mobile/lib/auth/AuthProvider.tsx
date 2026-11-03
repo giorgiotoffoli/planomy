@@ -31,6 +31,7 @@ import {
   nativeSessionStorage,
   nativeSupabaseClient,
   nativeSupabaseConfigurationError,
+  verifyNativeAccountPassword,
 } from '@/lib/supabase/client'
 
 WebBrowser.maybeCompleteAuthSession()
@@ -48,6 +49,7 @@ type AuthContextValue = {
   notice: string | null
   clearNotice: () => void
   signInWithPassword: (email: string, password: string) => Promise<AuthActionResult>
+  updateAccountPassword: (currentPassword: string, newPassword: string, confirmPassword: string) => Promise<AuthActionResult>
   signInWithGoogle: () => Promise<AuthActionResult>
   signInWithApple: () => Promise<AuthActionResult>
   requestEmailCode: (email: string, intent?: EmailCodeIntent) => Promise<AuthActionResult>
@@ -65,7 +67,7 @@ type AuthContextValue = {
   disableBiometrics: () => Promise<AuthActionResult>
   lockVault: () => void
   signOut: () => Promise<AuthActionResult>
-  deleteAccount: (code: string, confirmation: string) => Promise<AuthActionResult>
+  deleteAccount: (password: string, confirmation: string) => Promise<AuthActionResult>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -359,11 +361,82 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (!data.session) {
         return { ok: false, error: 'No session was returned. Check your account and try again.' } as const
       }
-      return await persistSuccessfulSession(data.session)
+      const persisted = await persistSuccessfulSession(data.session)
+      if (persisted.ok) {
+        setRequiresAccountPassword(false)
+        if (data.user.user_metadata?.account_password_set !== true) {
+          void client.auth.updateUser({ data: { account_password_set: true } }).catch(() => {})
+        }
+      }
+      return persisted
     } catch (error) {
       return { ok: false, error: authErrorMessage(error, 'password') } as const
     }
   }, [persistSuccessfulSession])
+
+  const updateAccountPassword = useCallback(async (
+    currentPassword: string,
+    newPassword: string,
+    confirmPassword: string,
+  ): Promise<AuthActionResult> => {
+    const client = nativeSupabaseClient
+    const current = stateRef.current
+    if (!client || !isAuthenticated(current)) {
+      return { ok: false, error: 'Your session expired. Sign in again.' }
+    }
+    if (!newPassword) return { ok: false, error: 'Enter a new account password.' }
+    if (newPassword !== confirmPassword) return { ok: false, error: 'New passwords do not match.' }
+
+    try {
+      const { data: userData, error: userError } = await client.auth.getUser()
+      if (userError || userData.user?.id !== current.user.id) {
+        return { ok: false, error: 'Your session expired. Sign in again.' }
+      }
+      const hasPassword = userData.user.user_metadata?.account_password_set === true
+      if (hasPassword && !currentPassword) {
+        return { ok: false, error: 'Enter your current account password.' }
+      }
+      if (hasPassword && currentPassword === newPassword) {
+        return { ok: false, error: 'Choose a new password that differs from your current password.' }
+      }
+      if (hasPassword) {
+        if (!userData.user.email) return { ok: false, error: 'The account password could not be verified. Try again.' }
+        const verification = await verifyNativeAccountPassword(userData.user.email, currentPassword, current.user.id)
+        if (verification === 'invalid') return { ok: false, error: 'The current account password is incorrect.' }
+        if (verification === 'rate-limited') return { ok: false, error: 'Too many password attempts. Wait a few minutes and try again.' }
+        if (verification !== 'verified') return { ok: false, error: 'The account password could not be verified. Try again.' }
+      }
+
+      const { error } = await client.auth.updateUser({
+        password: newPassword,
+        ...(hasPassword ? { current_password: currentPassword } : {}),
+        data: { account_password_set: true },
+      })
+      if (error) {
+        if (error.code === 'invalid_credentials') {
+          return { ok: false, error: 'The current account password is incorrect.' }
+        }
+        if (error.code === 'weak_password') {
+          return { ok: false, error: 'The new password does not meet the account password requirements.' }
+        }
+        if (error.code === 'same_password') {
+          return { ok: false, error: 'Choose a new password that differs from your current password.' }
+        }
+        return { ok: false, error: 'The account password could not be saved. Try again.' }
+      }
+
+      setRequiresAccountPassword(false)
+      try {
+        const { error: signOutError } = await client.auth.signOut({ scope: 'others' })
+        if (signOutError) throw signOutError
+        return { ok: true }
+      } catch {
+        return { ok: true, warning: 'Your account password changed, but some other sessions could not be signed out.' }
+      }
+    } catch {
+      return { ok: false, error: 'The account password could not be saved. Try again.' }
+    }
+  }, [])
 
   const signInWithGoogle = useCallback(async (): Promise<AuthActionResult> => {
     const client = nativeSupabaseClient
@@ -769,11 +842,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, [apply, clearHomeSource])
 
-  const deleteAccount = useCallback(async (code: string, confirmation: string): Promise<AuthActionResult> => {
+  const deleteAccount = useCallback(async (password: string, confirmation: string): Promise<AuthActionResult> => {
     const client = nativeSupabaseClient
     const current = stateRef.current
     if (!client || !isAuthenticated(current)) return { ok: false, error: 'Your session expired. Sign in again.' }
-    if (!/^\d{8}$/.test(code) || confirmation !== 'DELETE') return { ok: false, error: 'Enter the 8-digit code and type DELETE to confirm.' }
+    if (!password || confirmation !== 'DELETE') return { ok: false, error: 'Enter your account password and type DELETE to confirm.' }
     if (accountDeletionInProgress.current) return { ok: false, error: 'Account deletion is already in progress.' }
     accountDeletionInProgress.current = true
     const userId = current.user.id
@@ -784,10 +857,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (error || !data.session?.access_token || data.session.user.id !== userId || !isAuthenticated(stateRef.current) || stateRef.current.user.id !== userId) {
           return { ok: false, error: 'Your session expired. Sign in again.' }
         }
-        const response = await fetch('https://planomy.com/api/mobile/delete-account', {
+        const response = await fetch('https://www.planomy.com/api/mobile/delete-account', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session.access_token}` },
-          body: JSON.stringify({ code, confirmation }),
+          body: JSON.stringify({ password, confirmation }),
         })
         if (response.status === 404 || response.status === 405) {
           return { ok: false, error: 'Account deletion is currently unavailable. Please try again later.' }
@@ -852,6 +925,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     notice,
     clearNotice,
     signInWithPassword,
+    updateAccountPassword,
     signInWithGoogle,
     signInWithApple,
     requestEmailCode,
@@ -870,7 +944,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     lockVault,
     signOut,
     deleteAccount,
-  }), [state, homeSource, notice, clearNotice, signInWithPassword, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, currentVaultStatus, requiresAccountPassword, refreshVaultStatus, createVault, unlockVault, unlockWithBiometrics, enableBiometrics, disableBiometrics, biometricAvailable, biometricEnabled, signingOut, lockVault, signOut, deleteAccount])
+  }), [state, homeSource, notice, clearNotice, signInWithPassword, updateAccountPassword, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, currentVaultStatus, requiresAccountPassword, refreshVaultStatus, createVault, unlockVault, unlockWithBiometrics, enableBiometrics, disableBiometrics, biometricAvailable, biometricEnabled, signingOut, lockVault, signOut, deleteAccount])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

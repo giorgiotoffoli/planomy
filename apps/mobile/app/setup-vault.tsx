@@ -11,7 +11,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native'
-import { Redirect } from 'expo-router'
+import { Redirect, useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AppIcon, AppText } from '@/components/ui/primitives'
@@ -22,6 +22,7 @@ import { useAuth } from '@/lib/auth/AuthProvider'
 const PRIMARY_BLUE = '#2044FD'
 
 export default function SetupVaultScreen() {
+  const router = useRouter()
   const colors = useHomeTheme()
   const insets = useSafeAreaInsets()
   const { fontScale } = useWindowDimensions()
@@ -197,6 +198,9 @@ export default function SetupVaultScreen() {
               </Pressable>
               <Pressable accessibilityRole="button" disabled={busy} onPress={() => void signOut()} style={({ pressed }) => [styles.switchAccount, pressed && styles.pressed]}>
                 <AppText variant="footnote" tone="muted">Sign out and switch account</AppText>
+              </Pressable>
+              <Pressable accessibilityRole="button" disabled={busy} onPress={() => router.push('/delete-account')} style={({ pressed }) => [styles.switchAccount, pressed && styles.pressed]}>
+                <AppText variant="footnote" tone="muted">Delete account</AppText>
               </Pressable>
             </View>
           </View>

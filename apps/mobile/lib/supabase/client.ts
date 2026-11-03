@@ -46,6 +46,29 @@ export const nativeSessionStorage = createSecureSessionStorage({
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim()
 const supabasePublishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim()
 
+// A separate in-memory client keeps password verification away from the
+// device's active session and secure storage.
+export async function verifyNativeAccountPassword(email: string, password: string, userId: string): Promise<'verified' | 'invalid' | 'rate-limited' | 'unavailable'> {
+  if (!supabaseUrl || !supabasePublishableKey) return 'unavailable'
+  try {
+    const verifier = createClient<Database>(supabaseUrl, supabasePublishableKey, {
+      auth: { autoRefreshToken: false, detectSessionInUrl: false, persistSession: false, storageKey: 'planomy-password-verifier' },
+    })
+    const { data, error } = await verifier.auth.signInWithPassword({ email, password })
+    if (error) {
+      if (error.status === 429 || error.code === 'over_request_rate_limit') return 'rate-limited'
+      return error.code === 'invalid_credentials' ? 'invalid' : 'unavailable'
+    }
+    if (!data.session || !data.user) return 'unavailable'
+    const matched = data.user.id === userId
+    const { error: signOutError } = await verifier.auth.signOut({ scope: 'local' })
+    if (signOutError) return 'unavailable'
+    return matched ? 'verified' : 'invalid'
+  } catch {
+    return 'unavailable'
+  }
+}
+
 export let nativeSupabaseConfigurationError: string | null = null
 export let nativeSupabaseClient: SupabaseClient<Database> | null = null
 

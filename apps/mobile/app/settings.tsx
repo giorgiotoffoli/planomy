@@ -113,6 +113,13 @@ export default function SettingsScreen() {
         <FieldGroup.Section title="Account">
           {email ? <Text>{email}</Text> : null}
           <ListItem
+            leading={<AppIcon name={{ ios: 'key.fill', android: 'key', web: 'key' }} />}
+            trailing={<AppIcon name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }} size={14} color={colors.muted} />}
+            onPress={() => router.push('/account-password')}
+          >
+            <Text>Account password</Text>
+          </ListItem>
+          <ListItem
             leading={<AppIcon name={{ ios: 'rectangle.portrait.and.arrow.right', android: 'logout', web: 'logout' }} color={colors.danger} />}
             onPress={handleSignOut}
           >
