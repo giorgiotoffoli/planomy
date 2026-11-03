@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.planomy.mobile",
+      "bundleIdentifier": "com.planomy.app",
       "usesAppleSignIn": true
     },
     "plugins": [
