@@ -19,61 +19,38 @@ import { useAuth } from '@/lib/auth/AuthProvider'
 export default function DeleteAccountScreen() {
   const router = useRouter()
   const colors = useHomeTheme()
-  const { state, requestEmailCode, deleteAccount } = useAuth()
+  const { state, requiresAccountPassword, deleteAccount } = useAuth()
   const email = state.status === 'unlocked' || state.status === 'authenticated-but-locked'
     ? state.user.email
     : null
-  const [code, setCode] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [confirmation, setConfirmation] = useState('')
-  const [codeSent, setCodeSent] = useState(false)
-  const [busy, setBusy] = useState<'code' | 'delete' | null>(null)
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const operationInProgress = useRef(false)
-  const canDelete = /^\d{8}$/.test(code) && confirmation === 'DELETE' && busy === null
-
-  const sendCode = async () => {
-    if (!email || operationInProgress.current) return
-    operationInProgress.current = true
-    setBusy('code')
-    setError(null)
-    setMessage(null)
-    Keyboard.dismiss()
-    try {
-      const result = await requestEmailCode(email)
-      if (!result.ok) {
-        setError(result.error)
-        return
-      }
-      setCodeSent(true)
-      setCode('')
-      setConfirmation('')
-      setMessage(`An 8-digit confirmation code was sent to ${email}.`)
-    } finally {
-      operationInProgress.current = false
-      setBusy(null)
-    }
-  }
+  const canDelete = password.length > 0 && confirmation === 'DELETE' && !busy
 
   const performDeletion = async () => {
     if (!canDelete || operationInProgress.current) return
     operationInProgress.current = true
-    setBusy('delete')
+    setBusy(true)
     setError(null)
     setMessage(null)
+    Keyboard.dismiss()
     try {
-      const result = await deleteAccount(code, confirmation)
+      const result = await deleteAccount(password, confirmation)
+      setPassword('')
       if (!result.ok) {
-        setCode('')
         setError(result.error)
         return
       }
       setMessage(result.warning ?? 'Your account was deleted.')
-      // AuthProvider clears the local session after server confirmation. The
-      // protected navigator then takes the user directly to sign-in.
+      // AuthProvider clears the local session after server confirmation.
     } finally {
       operationInProgress.current = false
-      setBusy(null)
+      setBusy(false)
     }
   }
 
@@ -94,7 +71,7 @@ export default function DeleteAccountScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={[styles.screen, { backgroundColor: colors.background }]}
     >
-      <Stack.Screen options={{ title: 'Delete Account', headerBackTitle: 'Settings' }} />
+      <Stack.Screen options={{ title: 'Delete Account' }} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}
@@ -107,14 +84,14 @@ export default function DeleteAccountScreen() {
           </View>
           <AppText accessibilityRole="header" variant="heading" weight="700">Delete your account</AppText>
           <AppText tone="secondary">
-            Permanently remove your Planomy account. We’ll verify your email before anything is deleted.
+            Confirm with your Planomy account password before anything is deleted.
           </AppText>
         </View>
 
         <View style={[styles.notice, { borderColor: colors.separator }]}>
           <AppText variant="footnote" weight="700">Before you continue</AppText>
           <AppText variant="footnote" tone="secondary">
-            Account deletion cannot be undone. Your encrypted planner data is tied to this account; make sure you have anything you need before deleting it.
+            Account deletion is permanent and cannot be undone. Your encrypted planner data and encryption key will also be removed.
           </AppText>
         </View>
 
@@ -125,73 +102,80 @@ export default function DeleteAccountScreen() {
           </View>
         </View>
 
-        {!codeSent ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={!email || busy !== null}
-            onPress={() => void sendCode()}
-            style={({ pressed }) => [styles.pressable, !email && styles.disabled, pressed && styles.pressed]}
-          >
-            <View style={styles.action}>
-              {busy === 'code' ? <ActivityIndicator color={colors.accent} /> : <AppText weight="600" style={{ color: colors.accent }}>Send confirmation code</AppText>}
-            </View>
-          </Pressable>
-        ) : (
-          <>
-            <View style={styles.fieldGroup}>
-              <View style={styles.fieldHeading}>
-                <AppText variant="footnote" weight="600">8-digit email code</AppText>
-                <Pressable accessibilityRole="button" disabled={busy !== null} onPress={() => void sendCode()} hitSlop={8}>
-                  <AppText variant="footnote" weight="600" style={{ color: colors.accent }}>{busy === 'code' ? 'Sending…' : 'Send again'}</AppText>
-                </Pressable>
-              </View>
-              <TextInput
-                accessibilityLabel="8-digit email confirmation code"
-                autoComplete="one-time-code"
-                editable={busy === null}
-                keyboardType="number-pad"
-                maxLength={8}
-                onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 8))}
-                placeholder="Enter code"
-                placeholderTextColor={colors.muted}
-                returnKeyType="next"
-                style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.separator, color: colors.text }]}
-                textContentType="oneTimeCode"
-                value={code}
-              />
-            </View>
-            <View style={styles.fieldGroup}>
-              <AppText variant="footnote" weight="600">Type DELETE to confirm</AppText>
-              <TextInput
-                accessibilityLabel="Type DELETE to confirm account removal"
-                autoCapitalize="characters"
-                autoCorrect={false}
-                editable={busy === null}
-                onChangeText={setConfirmation}
-                placeholder="DELETE"
-                placeholderTextColor={colors.muted}
-                returnKeyType="done"
-                style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.separator, color: colors.text }]}
-                value={confirmation}
-              />
-            </View>
+        <View style={styles.fieldGroup}>
+          <View style={styles.fieldHeading}>
+            <AppText variant="footnote" weight="600">Account password</AppText>
             <Pressable
               accessibilityRole="button"
-              accessibilityHint="Permanently deletes your account after one more confirmation."
-              disabled={!canDelete}
-              onPress={confirmDeletion}
-              style={({ pressed }) => [styles.pressable, !canDelete && styles.disabled, pressed && styles.pressed]}
+              accessibilityLabel={showPassword ? 'Hide account password' : 'Show account password'}
+              onPress={() => setShowPassword((visible) => !visible)}
+              hitSlop={8}
             >
-              <View style={styles.action}>
-                {busy === 'delete' ? <ActivityIndicator color={colors.danger} /> : <AppText tone="danger" weight="700">Delete Account</AppText>}
-              </View>
+              <AppText variant="footnote" weight="600" style={{ color: colors.accent }}>
+                {showPassword ? 'Hide' : 'Show'}
+              </AppText>
             </Pressable>
-          </>
-        )}
+          </View>
+          <TextInput
+            accessibilityLabel="Account password"
+            autoCapitalize="none"
+            autoComplete="current-password"
+            autoCorrect={false}
+            editable={!busy}
+            onChangeText={(value) => { setPassword(value); setError(null) }}
+            placeholder="Enter your account password"
+            placeholderTextColor={colors.muted}
+            returnKeyType="next"
+            secureTextEntry={!showPassword}
+            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.separator, color: colors.text }]}
+            textContentType="password"
+            value={password}
+          />
+          {requiresAccountPassword ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={busy}
+              onPress={() => router.push('/account-password')}
+              style={({ pressed }) => [styles.createPassword, pressed && styles.pressed]}
+            >
+              <AppText variant="footnote" weight="600" style={{ color: colors.accent }}>
+                Create account password
+              </AppText>
+            </Pressable>
+          ) : null}
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <AppText variant="footnote" weight="600">Type DELETE to confirm</AppText>
+          <TextInput
+            accessibilityLabel="Type DELETE to confirm account removal"
+            autoCapitalize="characters"
+            autoCorrect={false}
+            editable={!busy}
+            onChangeText={(value) => { setConfirmation(value); setError(null) }}
+            placeholder="DELETE"
+            placeholderTextColor={colors.muted}
+            returnKeyType="done"
+            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.separator, color: colors.text }]}
+            value={confirmation}
+          />
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityHint="Permanently deletes your account after one more confirmation."
+          disabled={!canDelete}
+          onPress={confirmDeletion}
+          style={({ pressed }) => [styles.pressable, !canDelete && styles.disabled, pressed && styles.pressed]}
+        >
+          <View style={styles.action}>
+            {busy ? <ActivityIndicator color={colors.danger} /> : <AppText tone="danger" weight="700">Delete Account</AppText>}
+          </View>
+        </Pressable>
 
         {error ? <AppText accessibilityRole="alert" tone="danger" variant="footnote">{error}</AppText> : null}
         {message ? <AppText accessibilityRole="alert" tone={error ? 'danger' : 'secondary'} variant="footnote">{message}</AppText> : null}
-        <Pressable accessibilityRole="button" disabled={busy !== null} onPress={() => router.back()} style={styles.cancel}>
+        <Pressable accessibilityRole="button" disabled={busy} onPress={() => router.back()} style={styles.cancel}>
           <AppText variant="footnote" tone="secondary" weight="600">Cancel</AppText>
         </Pressable>
       </ScrollView>
@@ -210,6 +194,7 @@ const styles = StyleSheet.create({
   valueField: { minHeight: 52, justifyContent: 'center', borderRadius: radii.md, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: spacing.lg },
   valueText: { flexShrink: 1 },
   input: { minHeight: 54, borderRadius: radii.md, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: spacing.lg, fontSize: 17 },
+  createPassword: { alignSelf: 'flex-start', paddingVertical: spacing.xs },
   pressable: { borderRadius: radii.xl },
   action: { alignItems: 'center', justifyContent: 'center', minHeight: 52, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   disabled: { opacity: 0.45 },
