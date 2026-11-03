@@ -10,7 +10,8 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.planomy.app",
-      "usesAppleSignIn": true
+      "usesAppleSignIn": true,
+      "icon": "./assets/AppIcon.icon"
     },
     "plugins": [
       "expo-router",
@@ -34,6 +35,16 @@
     },
     "android": {
       "package": "com.planomy.mobile"
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "f84c808a-f397-4dbf-8671-397293081049"
+      }
     }
   }
 }
