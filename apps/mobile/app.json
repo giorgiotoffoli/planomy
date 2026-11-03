@@ -2,7 +2,7 @@
   "expo": {
     "name": "Planomy",
     "slug": "planomy-mobile",
-    "icon": "./assets/app-icon.png",
+    "icon": "./assets/AppIcon.icon",
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "planomy",
@@ -11,7 +11,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.planomy.app",
       "usesAppleSignIn": true,
-      "icon": "./assets/AppIcon.icon"
+      "icon": "./assets/AppIcon.icon",
+      "usesNonExemptEncryption": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "plugins": [
       "expo-router",
