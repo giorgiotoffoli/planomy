@@ -533,6 +533,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      consume_account_deletion_attempt: {
+        Args: { p_user_id: string }
+        Returns: { allowed: boolean; retry_after_seconds: number }[]
+      }
       delete_category: {
         Args: { p_category_id: string; p_list_id: string }
         Returns: undefined

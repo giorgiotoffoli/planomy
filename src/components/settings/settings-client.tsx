@@ -59,23 +59,29 @@ function PasswordField({
   autoComplete,
   minLength,
 }: PasswordFieldProps) {
+  const [visible, setVisible] = useState(false)
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
+      <div className="flex gap-2">
       <Input
         id={id}
-        type="password"
+        type={visible ? 'text' : 'password'}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         autoComplete={autoComplete}
         minLength={minLength}
         required
       />
+      <Button type="button" variant="outline" onClick={() => setVisible((value) => !value)} aria-label={`${visible ? 'Hide' : 'Show'} ${label.toLowerCase()}`}>
+        {visible ? 'Hide' : 'Show'}
+      </Button>
+      </div>
     </div>
   )
 }
 
-function AccountPasswordCard() {
+function AccountPasswordCard({ hasPassword, onPasswordCreated }: { hasPassword: boolean; onPasswordCreated: () => void }) {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -100,10 +106,11 @@ function AccountPasswordCard() {
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
+      onPasswordCreated()
       if (result.warning) {
         toast.warning(result.warning)
       } else {
-        toast.success('Account password changed.')
+        toast.success(hasPassword ? 'Account password changed.' : 'Account password created.')
       }
     } catch {
       toast.error('The account password could not be changed.')
@@ -113,25 +120,25 @@ function AccountPasswordCard() {
   }
 
   return (
-    <Card>
+    <Card id="account-password">
       <CardHeader>
         <div className="mb-1 flex size-9 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-primary/10 dark:text-primary">
           <KeyRound className="size-5" />
         </div>
         <CardTitle>Account password</CardTitle>
         <CardDescription>
-          Change the password used to sign in. Other devices will be signed out.
+          {hasPassword ? 'Change the password used to sign in. Other devices will be signed out.' : 'Create a password for signing in and confirming account deletion.'}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={submit} className="space-y-4">
-          <PasswordField
+          {hasPassword ? <PasswordField
             id="current-account-password"
             label="Current account password"
             value={currentPassword}
             onChange={setCurrentPassword}
             autoComplete="current-password"
-          />
+          /> : null}
           <PasswordField
             id="new-account-password"
             label="New account password"
@@ -147,7 +154,7 @@ function AccountPasswordCard() {
             autoComplete="new-password"
           />
           <Button type="submit" disabled={isBusy}>
-            {isBusy ? 'Changing…' : 'Change account password'}
+            {isBusy ? 'Saving…' : hasPassword ? 'Change account password' : 'Create account password'}
           </Button>
         </form>
       </CardContent>
@@ -269,7 +276,7 @@ function MasterPasswordCard({
   )
 }
 
-function DeleteAccountCard() {
+function DeleteAccountCard({ hasPassword }: { hasPassword: boolean }) {
   const [open, setOpen] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
@@ -348,6 +355,7 @@ function DeleteAccountCard() {
                   onChange={setCurrentPassword}
                   autoComplete="current-password"
                 />
+                {!hasPassword ? <a href="#account-password" onClick={() => changeOpen(false)} className="text-sm font-medium text-primary underline">Create account password</a> : null}
                 <div className="space-y-2">
                   <Label htmlFor="delete-account-confirmation">
                     Type DELETE to confirm
@@ -462,9 +470,12 @@ function CalendarPreferencesCard() {
 
 export default function SettingsClient({
   initialKeychain,
+  initialHasAccountPassword,
 }: {
   initialKeychain: StoredKeychain | null
+  initialHasAccountPassword: boolean
 }) {
+  const [hasAccountPassword, setHasAccountPassword] = useState(initialHasAccountPassword)
   return (
     <div className="space-y-6">
       <Card>
@@ -479,9 +490,9 @@ export default function SettingsClient({
         </CardContent>
       </Card>
       <CalendarPreferencesCard />
-      <AccountPasswordCard />
+      <AccountPasswordCard hasPassword={hasAccountPassword} onPasswordCreated={() => setHasAccountPassword(true)} />
       <MasterPasswordCard initialKeychain={initialKeychain} />
-      <DeleteAccountCard />
+      <DeleteAccountCard hasPassword={hasAccountPassword} />
     </div>
   )
 }

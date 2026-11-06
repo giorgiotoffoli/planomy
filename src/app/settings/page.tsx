@@ -8,6 +8,7 @@ import SettingsClient from '@/components/settings/settings-client'
 import { Button } from '@/components/ui/button'
 import { PlanomyIcon } from '@/icons/planomy-icon'
 import { createClient } from '@/lib/supabase/server'
+import { userHasAccountPassword } from '@/lib/account-password'
 
 export const metadata: Metadata = {
   title: 'Settings · Planomy',
@@ -51,7 +52,7 @@ export default async function SettingsPage() {
             <p className="mt-2 text-sm text-muted-foreground">{user.email}</p>
           </div>
 
-          <SettingsClient initialKeychain={keychain} />
+          <SettingsClient initialKeychain={keychain} initialHasAccountPassword={userHasAccountPassword(user)} />
         </div>
       </main>
     </E2EEProvider>

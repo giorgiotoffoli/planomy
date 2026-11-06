@@ -431,7 +431,7 @@ export function TaskDialog({
           {mode === 'create' ? 'Add task' : 'Edit task'}
         </DialogTitle>
         <DialogDescription>
-          {mode === 'create' ? 'Capture it now. Add the rest only if it helps.' : 'Keep the task, its home, and its plan together.'}
+          {mode === 'create' ? 'Add details if needed.' : 'Update task details.'}
         </DialogDescription>
       </DialogHeader>
       {loadingTimeBlock && !task?.recurrence_rule ? (

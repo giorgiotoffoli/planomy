@@ -6,6 +6,8 @@ import {
   Switch as NativeSwitch,
 } from '@expo/ui'
 import { SymbolView } from 'expo-symbols'
+import { AppIcon, AppText } from '@/components/ui/primitives'
+import { GlassSurface } from '@/components/glass-surface'
 import {
   Pressable,
   ScrollView,
@@ -13,7 +15,6 @@ import {
   View,
 } from 'react-native'
 import { getHomeListState, isHomeCategoryEnabled } from '@planomy/lib/home'
-import { AppText } from '@/components/ui/primitives'
 import { unsortedIcon } from '@/components/lists'
 import {
   projectHomeCommand,
@@ -46,6 +47,8 @@ export function SourcesBottomSheet({
   latestDataRef.current = data
   const uncategorized = data ? uncategorizedListIds(data) : new Set<string>()
   const preferences = stagedSources?.preferences ?? data?.preferences
+  const changeCount = stagedSources?.commands.length ?? 0
+  const hasChanges = changeCount > 0
 
   useEffect(() => {
     if (!isPresented) {
@@ -104,61 +107,70 @@ export function SourcesBottomSheet({
         {data ? (
           <RNHostView>
             <View style={[styles.sheet, { backgroundColor: colors.background }]}>
-              <View
-                style={[
-                  styles.sheetHeader,
-                  { borderBottomColor: colors.separator },
-                ]}
-              >
-                <View style={styles.sheetHeaderText}>
-                  <AppText variant="title" weight="700">
-                    Sources
-                  </AppText>
-                  <AppText variant="footnote" tone="secondary">
-                    Choose what appears on Home, then apply. Focus tasks always stay visible.
-                  </AppText>
-                </View>
-                <View style={styles.headerActions}>
+              <View style={styles.sheetHeader}>
+                <View style={styles.headerSide}>
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Cancel source changes"
                     onPress={cancelSourceChanges}
-                    style={styles.done}
-                  >
-                    <AppText variant="body" tone="secondary" weight="600">
-                      Cancel
-                    </AppText>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Apply ${stagedSources?.commands.length ?? 0} source changes`}
-                    accessibilityState={{
-                      disabled: (stagedSources?.commands.length ?? 0) === 0,
-                    }}
-                    disabled={(stagedSources?.commands.length ?? 0) === 0}
-                    onPress={applyStagedSourceChanges}
-                    style={[
-                      styles.done,
-                      (stagedSources?.commands.length ?? 0) === 0 &&
-                        styles.disabled,
+                    style={({ pressed }) => [
+                      styles.headerIconPressable,
+                      pressed && styles.pressed,
                     ]}
+                  >
+                    <GlassSurface
+                      interactive
+                      style={styles.headerIconSurface}
+                    >
+                      <AppIcon
+                        name={{ ios: 'xmark', android: 'close', web: 'close' }}
+                        size={19}
+                        color={colors.secondary}
+                      />
+                    </GlassSurface>
+                  </Pressable>
+                </View>
+                <AppText
+                  variant="body"
+                  weight="600"
+                  accessibilityRole="header"
+                  style={styles.sheetTitle}
+                >
+                  Sources
+                </AppText>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Apply ${changeCount} source changes`}
+                  accessibilityState={{ disabled: !hasChanges }}
+                  disabled={!hasChanges}
+                  onPress={applyStagedSourceChanges}
+                  style={({ pressed }) => [
+                    styles.applyButton,
+                    pressed && hasChanges && styles.pressed,
+                    !hasChanges && styles.disabled,
+                  ]}
+                >
+                  <GlassSurface
+                    interactive
+                    tintColor={colors.accent}
+                    style={styles.applyGlassSurface}
                   >
                     <AppText
                       variant="body"
-                      tone={stagedSources?.commands.length ? 'accent' : 'secondary'}
                       weight="600"
+                      style={[styles.applyLabel, { color: colors.text }]}
                     >
                       Apply
                     </AppText>
-                  </Pressable>
-                </View>
+                  </GlassSurface>
+                </Pressable>
               </View>
               <ScrollView
                 nestedScrollEnabled
                 style={styles.screen}
                 contentContainerStyle={styles.content}
               >
-                <View style={[styles.group, { backgroundColor: colors.surface }]}>
+                <GlassSurface style={[styles.group, styles.glassGroup]}>
                   <View style={styles.row}>
                     <SymbolView
                       name={unsortedIcon}
@@ -182,7 +194,7 @@ export function SourcesBottomSheet({
                       />
                     </Host>
                   </View>
-                </View>
+                </GlassSurface>
                 {data.lists.map((list) => {
                   const state = getHomeListState(
                     list.id,
@@ -194,109 +206,113 @@ export function SourcesBottomSheet({
                     (category) => category.list_id === list.id,
                   )
                   return (
-                    <View
+                    <GlassSurface
                       key={list.id}
-                      style={[styles.group, { backgroundColor: colors.surface }]}
+                      style={[styles.group, styles.glassGroup]}
                     >
-                      <View style={styles.listHeading}>
-                        <AppText variant="body" weight="600">
-                          {list.emoji ?? '📋'} {list.title}
-                        </AppText>
-                      </View>
-                      <View style={styles.row}>
-                        <SymbolView
-                          name={{
-                            ios: 'list.bullet',
-                            android: 'list',
-                            web: 'list',
-                          }}
-                          tintColor={colors.accent}
-                          size={20}
-                        />
-                        <Host
-                          style={styles.nativeSwitch}
-                          matchContents={{ vertical: true, horizontal: false }}
-                        >
-                          <NativeSwitch
-                            label="Whole list"
-                            value={state === 'enabled'}
-                            onValueChange={(visible) =>
-                              stageSourcePreference({
-                                type: 'source',
-                                source: { type: 'list', listId: list.id },
-                                visible,
-                              })
-                            }
+                      <View>
+                        <View style={styles.listHeading}>
+                          <AppText variant="body" weight="600">
+                            {list.emoji ?? '📋'} {list.title}
+                          </AppText>
+                        </View>
+                        <View style={styles.row}>
+                          <SymbolView
+                            name={{
+                              ios: 'list.bullet',
+                              android: 'list',
+                              web: 'list',
+                            }}
+                            tintColor={colors.accent}
+                            size={20}
                           />
-                        </Host>
-                      </View>
-                      {state === 'partial' ? (
-                        <AppText
-                          variant="caption"
-                          tone="secondary"
-                          style={styles.partialState}
-                        >
-                          Some categories shown
-                        </AppText>
-                      ) : null}
-                      {categories.map((category) => (
-                        <View
-                          key={category.id}
-                          style={[
-                            styles.row,
-                            styles.category,
-                            { borderTopColor: colors.separator },
-                          ]}
-                        >
                           <Host
                             style={styles.nativeSwitch}
                             matchContents={{ vertical: true, horizontal: false }}
                           >
                             <NativeSwitch
-                              label={category.title}
-                              value={isHomeCategoryEnabled(
-                                category,
-                                data.categories,
-                                preferences ?? data.preferences,
-                              )}
+                              label="Whole list"
+                              value={state === 'enabled'}
                               onValueChange={(visible) =>
                                 stageSourcePreference({
-                                  type: 'category',
-                                  id: category.id,
+                                  type: 'source',
+                                  source: { type: 'list', listId: list.id },
                                   visible,
                                 })
                               }
                             />
                           </Host>
                         </View>
-                      ))}
-                    </View>
+                        {state === 'partial' ? (
+                          <AppText
+                            variant="caption"
+                            tone="secondary"
+                            style={styles.partialState}
+                          >
+                            Some categories shown
+                          </AppText>
+                        ) : null}
+                        {categories.map((category) => (
+                          <View
+                            key={category.id}
+                            style={[
+                              styles.row,
+                              styles.category,
+                              { borderTopColor: colors.separator },
+                            ]}
+                          >
+                            <Host
+                              style={styles.nativeSwitch}
+                              matchContents={{ vertical: true, horizontal: false }}
+                            >
+                              <NativeSwitch
+                                label={category.title}
+                                value={isHomeCategoryEnabled(
+                                  category,
+                                  data.categories,
+                                  preferences ?? data.preferences,
+                                )}
+                                onValueChange={(visible) =>
+                                  stageSourcePreference({
+                                    type: 'category',
+                                    id: category.id,
+                                    visible,
+                                  })
+                                }
+                              />
+                            </Host>
+                          </View>
+                        ))}
+                      </View>
+                    </GlassSurface>
                   )
                 })}
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => stageSourcePreference({ type: 'showAll' })}
-                  style={[
-                    styles.group,
-                    styles.showAll,
-                    { backgroundColor: colors.surface },
-                  ]}
+                <GlassSurface
+                  interactive
+                  style={[styles.group, styles.glassGroup]}
                 >
-                  <View style={styles.showAllLabel}>
-                    <SymbolView
-                      name={{
-                        ios: 'square.grid.2x2',
-                        android: 'grid_view',
-                        web: 'grid_view',
-                      }}
-                      tintColor={colors.accent}
-                      size={20}
-                    />
-                    <AppText variant="body" tone="accent">
-                      Show all sources
-                    </AppText>
-                  </View>
-                </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Show all sources"
+                    onPress={() => stageSourcePreference({ type: 'showAll' })}
+                    style={styles.showAll}
+                  >
+                    <View style={styles.showAllLabel}>
+                      <SymbolView
+                        name={{
+                          ios: 'square.grid.2x2',
+                          android: 'grid_view',
+                          web: 'grid_view',
+                        }}
+                        tintColor={colors.accent}
+                        size={20}
+                      />
+                      <AppText variant="body" tone="accent">
+                        Show all sources
+                      </AppText>
+                    </View>
+                  </Pressable>
+                </GlassSurface>
                 <AppText variant="footnote" tone="secondary">
                   Stashing hides a task from Home. It stays in its original list.
                 </AppText>
@@ -312,20 +328,44 @@ export function SourcesBottomSheet({
 const styles = StyleSheet.create({
   sheet: { flex: 1 },
   screen: { flex: 1 },
-  content: { padding: 20, paddingBottom: 60, gap: 18 },
+  content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 60, gap: 16 },
   group: { borderRadius: 16, overflow: 'hidden' },
+  glassGroup: { padding: 0, gap: 0 },
   sheetHeader: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingTop: 4,
+    paddingBottom: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  headerSide: { width: 84, alignItems: 'flex-start' },
+  sheetTitle: { flex: 1, textAlign: 'center' },
+  headerIconPressable: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden' },
+  headerIconSurface: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    padding: 0,
+    gap: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  applyButton: { minWidth: 84, minHeight: 44, borderRadius: 22, overflow: 'hidden' },
+  applyGlassSurface: {
+    minWidth: 84,
+    minHeight: 44,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 0,
+    gap: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  applyLabel: { textAlign: 'center' },
+  pressed: { opacity: 0.72 },
+  disabled: { opacity: 0.45 },
   listHeading: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
-  sheetHeaderText: { flex: 1, gap: 4 },
   nativeSwitch: { flex: 1 },
   row: {
     padding: 16,
@@ -338,11 +378,4 @@ const styles = StyleSheet.create({
   category: { marginLeft: 20, borderTopWidth: StyleSheet.hairlineWidth },
   showAll: { padding: 18, minHeight: 56, justifyContent: 'center' },
   showAllLabel: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  done: {
-    minWidth: 44,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  disabled: { opacity: 0.45 },
 })

@@ -13,6 +13,7 @@
       "usesAppleSignIn": true,
       "icon": "./assets/AppIcon.icon",
       "usesNonExemptEncryption": false,
+      "associatedDomains": ["webcredentials:planomy.com"],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -49,6 +50,12 @@
       "eas": {
         "projectId": "f84c808a-f397-4dbf-8671-397293081049"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f84c808a-f397-4dbf-8671-397293081049"
     }
   }
 }

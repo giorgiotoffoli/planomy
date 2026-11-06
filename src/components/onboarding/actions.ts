@@ -8,6 +8,7 @@ import {
   type OnboardingState,
 } from '@/lib/onboarding'
 import { createClient } from '@/lib/supabase/server'
+import { userHasAccountPassword } from '@/lib/account-password'
 import { redirect } from 'next/navigation'
 
 type InitialOnboardingState = OnboardingState & {
@@ -36,16 +37,6 @@ async function authenticatedClient() {
   if (error || !user) redirect('/auth')
 
   return { supabase, user }
-}
-
-function userHasAccountPassword(user: {
-  app_metadata?: Record<string, unknown>
-  user_metadata?: Record<string, unknown>
-}) {
-  if (user.user_metadata?.account_password_set === true) return true
-
-  const providers = user.app_metadata?.providers
-  return Array.isArray(providers) && providers.includes('email')
 }
 
 export async function getOnboardingState(): Promise<InitialOnboardingState> {
