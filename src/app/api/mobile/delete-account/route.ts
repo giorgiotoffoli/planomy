@@ -1,6 +1,7 @@
-import { createClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { deleteAccountWithCode } from '@/lib/account-deletion'
+import { deleteAccountWithPassword } from '@/lib/account-deletion'
+import { consumeAccountDeletionAttempt } from '@/lib/account-deletion-rate-limit'
+import { verifyAccountPassword } from '@/lib/account-password-verification'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -8,7 +9,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: Request) {
   const header = request.headers.get('authorization') ?? ''
   const token = /^Bearer\s+(\S+)$/i.exec(header)?.[1] ?? ''
-  let body: { code?: unknown; confirmation?: unknown }
+  let body: { password?: unknown; confirmation?: unknown }
   try {
     const raw = await request.text()
     if (raw.length > 1024) throw new Error('Request too large')
@@ -25,22 +26,21 @@ export async function POST(request: Request) {
   }
   try {
     const admin = createAdminClient()
-    const verifier = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } })
-    const result = await deleteAccountWithCode(token, typeof body.code === 'string' ? body.code : '', typeof body.confirmation === 'string' ? body.confirmation : '', {
+    const result = await deleteAccountWithPassword(token, typeof body.password === 'string' ? body.password : '', typeof body.confirmation === 'string' ? body.confirmation : '', {
       async getUser(jwt) {
         const { data, error } = await admin.auth.getUser(jwt)
-        return error ? null : data.user
+        return error || !data.user ? null : { id: data.user.id, email: data.user.email ?? null }
       },
-      async verifyCode(email, code) {
-        const { data, error } = await verifier.auth.verifyOtp({ email, token: code, type: 'email' })
-        return error ? null : data.user
-      },
+      consumeAttempt: consumeAccountDeletionAttempt,
+      verifyPassword: verifyAccountPassword,
       async deleteUser(userId) {
         const { error } = await admin.auth.admin.deleteUser(userId, false)
         return !error
       },
     })
-    return Response.json({ ok: result.ok, message: result.message }, { status: result.status, headers: { 'Cache-Control': 'no-store' } })
+    const headers = new Headers({ 'Cache-Control': 'no-store' })
+    if (result.retryAfterSeconds) headers.set('Retry-After', String(result.retryAfterSeconds))
+    return Response.json({ ok: result.ok, message: result.message }, { status: result.status, headers })
   } catch {
     return Response.json({ ok: false, message: 'Account deletion is unavailable. Please try again later.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } })
   }

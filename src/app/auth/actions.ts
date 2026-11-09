@@ -17,6 +17,7 @@ export async function signUp(formData: FormData) {
   const { error } = await supabase.auth.signUp({
     email,
     password,
+    options: { data: { account_password_set: true } },
   })
 
   if (error) {
@@ -39,6 +40,7 @@ export async function signIn(formData: FormData) {
   if (error) {
     redirect(`/auth?mode=signin&message=${encodeURIComponent(error.message)}`)
   }
+  await supabase.auth.updateUser({ data: { account_password_set: true } }).catch(() => {})
   redirect('/home')
 }
 

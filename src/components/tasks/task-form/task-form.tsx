@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import {
   CalendarDays,
   Check,
@@ -11,7 +11,6 @@ import {
   NotebookPen,
   Repeat,
   Star,
-  Tag,
   Trash2,
   Type,
 } from 'lucide-react'
@@ -26,13 +25,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ListEmoji } from '@/components/lists/list-emoji'
 import { localDateKey } from '@/lib/today'
 import { cn } from '@/lib/utils'
 import { localTimeCandidates, MINUTE, SLOT_MINUTES, timeInput, timeLabel } from '@/lib/agenda'
 import { formatTime, type TimeFormat } from '@/lib/calendar-preferences'
 import { useCalendarPreferences } from '@/components/settings/calendar-preferences-provider'
-import { recurrenceLabel } from '@/lib/recurrence'
 
 export type PlanTimeDraft = {
   id?: string
@@ -77,6 +84,12 @@ type TaskFormProps = {
 }
 
 const durationOptions = [15, 30, 45, 60, 90, 120]
+const scheduleTimeShortcuts = [
+  { label: 'In 15 min', minutes: 15 },
+  { label: 'In 30 min', minutes: 30 },
+  { label: 'In 1 hour', minutes: 60 },
+  { label: 'In 2 hours', minutes: 120 },
+]
 const weekdayOptions = [
   { value: 1, short: 'Mon', label: 'Monday' },
   { value: 2, short: 'Tue', label: 'Tuesday' },
@@ -161,37 +174,28 @@ function MetadataRow({
   summary,
   expanded,
   description,
-  tone = 'neutral',
 }: {
   icon: React.ReactNode
   label: string
   summary: React.ReactNode
   expanded?: React.ReactNode
   description?: React.ReactNode
-  tone?: 'neutral' | 'deadline' | 'plan' | 'focus'
 }) {
-  const toneClass = {
-    neutral: 'hover:bg-muted/50',
-    deadline: 'bg-rose-50/45 hover:bg-rose-50/70 dark:bg-rose-950/10 dark:hover:bg-rose-950/20',
-    plan: 'bg-blue-50/45 hover:bg-blue-50/70 dark:bg-blue-950/10 dark:hover:bg-blue-950/20',
-    focus: 'bg-amber-50/60 hover:bg-amber-50/80 dark:bg-accent-soft dark:hover:bg-accent-soft',
-  }[tone]
-
   return (
-    <div className={cn('rounded-xl px-2.5 py-2 transition-colors', toneClass)}>
-      <div className="grid grid-cols-[24px_minmax(5.5rem,7rem)_minmax(0,1fr)_24px] items-center gap-x-3">
-        <span className="flex size-6 items-center justify-center text-muted-foreground" aria-hidden="true">
+    <div className="px-3.5 py-2.5 transition-colors hover:bg-muted/40">
+      <div className="grid grid-cols-[20px_5rem_minmax(0,1fr)] items-center gap-x-2.5">
+        <span className="flex size-5 items-center justify-center text-muted-foreground" aria-hidden="true">
           {icon}
         </span>
         <span className="min-w-0 text-sm font-medium">{label}</span>
-        <div className="col-start-3 col-end-5 min-w-0">{summary}</div>
+        <div className="min-w-0">{summary}</div>
         {expanded && (
-          <div className="col-start-2 col-end-5 mt-3 min-w-0 sm:col-start-3">
+          <div className="col-start-2 col-end-4 mt-2.5 min-w-0 sm:col-start-3">
             {expanded}
           </div>
         )}
         {description && (
-          <p className="col-start-2 col-end-5 mt-2 text-xs leading-5 text-muted-foreground sm:col-start-3">
+          <p className="col-start-2 col-end-4 mt-1.5 text-xs leading-4 text-muted-foreground sm:col-start-3">
             {description}
           </p>
         )}
@@ -225,6 +229,97 @@ function SectionToggle({
       <span className="min-w-0 truncate text-sm font-medium">{summary || `Add ${label.toLocaleLowerCase()}`}</span>
       <ChevronDown className={cn('ml-auto size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
     </Button>
+  )
+}
+
+function TaskOrganizationPicker({
+  listId,
+  categoryId,
+  lists,
+  categories,
+  disabled,
+  onChange,
+}: {
+  listId: string | null
+  categoryId: string | null
+  lists: List[]
+  categories: Category[]
+  disabled: boolean
+  onChange: (listId: string | null, categoryId: string | null) => void
+}) {
+  const selectedList = lists.find((list) => list.id === listId)
+  const selectedCategory = categories.find((category) =>
+    category.id === categoryId && category.list_id === listId,
+  )
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={disabled}
+          aria-label="Choose list and category"
+          className="h-8 w-full min-w-0 justify-between gap-2 px-0 text-sm font-normal hover:bg-transparent"
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            {selectedList ? <ListEmoji emoji={selectedList.emoji} /> : <ListX className="size-4 text-muted-foreground" />}
+            <span className="truncate">
+              {selectedList
+                ? `${selectedList.title} · ${selectedCategory?.title ?? 'Uncategorized'}`
+                : 'Unsorted'}
+            </span>
+          </span>
+          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-52">
+        <DropdownMenuItem onSelect={() => onChange(null, null)}>
+          <ListX />
+          Unsorted
+          {listId === null && <Check className="ml-auto" />}
+        </DropdownMenuItem>
+        {lists.map((list) => {
+          const listCategories = categories
+            .filter((category) => category.list_id === list.id)
+            .sort((a, b) => a.position - b.position)
+
+          if (listCategories.length === 0) {
+            return (
+              <DropdownMenuItem key={list.id} onSelect={() => onChange(list.id, null)}>
+                <ListEmoji emoji={list.emoji} />
+                {list.title}
+                {listId === list.id && <Check className="ml-auto" />}
+              </DropdownMenuItem>
+            )
+          }
+
+          return (
+            <DropdownMenuSub key={list.id}>
+              <DropdownMenuSubTrigger>
+                <ListEmoji emoji={list.emoji} />
+                {list.title}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem onSelect={() => onChange(list.id, null)}>
+                  {listId === list.id && categoryId === null && <Check />}
+                  Uncategorized
+                </DropdownMenuItem>
+                {listCategories.map((category) => (
+                  <DropdownMenuItem
+                    key={category.id}
+                    onSelect={() => onChange(list.id, category.id)}
+                  >
+                    {listId === list.id && categoryId === category.id && <Check />}
+                    {category.title}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
@@ -265,21 +360,15 @@ export function TaskForm({
   const [focused, setFocused] = useState(initialValues?.focused ?? task?.focused ?? false)
   const [repeatRule, setRepeatRule] = useState<RecurrenceRule | null>(initialValues?.repeatRule ?? task?.recurrence_rule ?? null)
 
-  const availableCategories = useMemo(
-    () => categories
-      .filter((category) => category.list_id === listId)
-      .sort((a, b) => a.position - b.position),
-    [categories, listId],
+  const selectedCategory = categories.find((category) =>
+    category.id === categoryId && category.list_id === listId,
   )
-  const selectedCategory = availableCategories.find((category) => category.id === categoryId)
   const weekdayRepeat = repeatRule?.frequency === 'weekly' || repeatRule?.frequency === 'custom'
   const customRepeat = repeatRule?.frequency === 'custom'
 
-  function changeList(value: string) {
-    const nextListId = value === 'inbox' ? null : value
+  function changeOrganization(nextListId: string | null, nextCategoryId: string | null) {
     setListId(nextListId)
-    // Categories are list-owned. Never let an old-list category linger.
-    if (nextListId !== listId) setCategoryId(null)
+    setCategoryId(nextCategoryId)
   }
 
   function openDeadline() {
@@ -329,6 +418,18 @@ export function TaskForm({
     ))
   }
 
+  function scheduleFromNow(index: number, minutes: number) {
+    const startsAt = Math.ceil(Date.now() / MINUTE) * MINUTE + minutes * MINUTE
+    const date = localDateKey(new Date(startsAt))
+    const startTime = timeInput(startsAt)
+    const candidates = localTimeCandidates(date, startTime)
+    updatePlanTime(index, {
+      date,
+      startTime,
+      occurrence: candidates.length > 1 ? String(startsAt) : '',
+    })
+  }
+
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (disabled || !title.trim()) return
@@ -352,8 +453,8 @@ export function TaskForm({
   return (
     <form onSubmit={submit} aria-busy={disabled} className="flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-        <div className="space-y-5">
-          <div className="space-y-4">
+        <div className="space-y-4">
+          <div className="space-y-3.5">
             <div className="space-y-2">
               <label htmlFor="task-title" className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 <Type className="size-4" aria-hidden="true" />
@@ -388,25 +489,24 @@ export function TaskForm({
 
         <div className="h-px bg-border" />
 
-        <div className="divide-y divide-border/60">
+        <div className="overflow-hidden rounded-2xl border border-border/70 bg-background/45 divide-y divide-border/60">
           <MetadataRow
             icon={<FolderOpen className="size-4" />}
             label="List"
             summary={
-              <Select value={listId ?? 'inbox'} onValueChange={changeList} disabled={disabled}>
-                <SelectTrigger className="h-8 w-full max-w-none border-0 bg-transparent px-0 text-sm shadow-none focus:ring-0">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="inbox" title="Tasks not assigned to a list"><ListX className="size-4" />Unsorted</SelectItem>
-                  {lists.map((list) => (
-                    <SelectItem key={list.id} value={list.id}>
-                      <ListEmoji emoji={list.emoji} />
-                      {list.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <TaskOrganizationPicker
+                listId={listId}
+                categoryId={categoryId}
+                lists={lists}
+                categories={categories}
+                disabled={disabled}
+                onChange={changeOrganization}
+              />
+            }
+            description={
+              listId && categoryId && !selectedCategory
+                ? <span className="text-destructive">Choose a category from this list.</span>
+                : undefined
             }
           />
 
@@ -456,7 +556,6 @@ export function TaskForm({
                 </SelectContent>
               </Select>
             }
-            description={repeatRule ? `${recurrenceLabel(repeatRule)} · each occurrence keeps its own completion state.` : 'Keep this task one-time, or choose a repeat pattern.'}
             expanded={repeatRule && (
               <div className="grid gap-3 rounded-xl border border-border/70 bg-background/60 p-3 sm:grid-cols-2">
                 {customRepeat && (
@@ -550,50 +649,19 @@ export function TaskForm({
           />
 
           <MetadataRow
-            icon={<Tag className="size-4" />}
-            label="Category"
-            summary={
-              <Select
-                value={categoryId ?? 'uncategorized'}
-                onValueChange={(value) => setCategoryId(value === 'uncategorized' ? null : value)}
-                disabled={disabled || !listId}
-              >
-                <SelectTrigger className="h-8 w-full max-w-none border-0 bg-transparent px-0 text-sm shadow-none focus:ring-0 disabled:opacity-60">
-                  <SelectValue placeholder={listId ? 'Uncategorized' : 'Uncategorized · choose a list first'} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="uncategorized">Uncategorized</SelectItem>
-                  {availableCategories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>{category.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            }
-            description={
-              !listId
-                ? 'Choose a list to use categories.'
-                : listId && !selectedCategory && categoryId
-                  ? <span className="text-destructive">Choose a category from this list.</span>
-                  : undefined
-            }
-          />
-
-          <MetadataRow
             icon={<CalendarDays className="size-4" />}
             label="Finish by"
-            tone="deadline"
             summary={
               <SectionToggle
                 open={deadlineOpen}
                 disabled={disabled}
                 label="finish by"
-                summary={dueDate ? `${dateLabel(dueDate)}${dueTime ? ` · ${timeValueLabel(dueTime, calendarPreferences.timeFormat)}` : ''}` : ''}
+                summary={dueDate ? `${dateLabel(dueDate)}${dueTime ? ` · ${timeValueLabel(dueTime, calendarPreferences.timeFormat)}` : ''}` : 'Optional'}
                 onClick={openDeadline}
               />
             }
-            description="Optional final target for completing the task. It does not add a scheduled session."
             expanded={deadlineOpen && (
-              <div className="rounded-xl border border-rose-200/70 bg-background/70 p-3.5 dark:border-rose-900/40 dark:bg-background/30">
+              <div className="rounded-xl border border-border/70 bg-background/60 p-3.5">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="block min-w-0 space-y-1.5 text-xs font-medium text-muted-foreground">
                     Date
@@ -606,7 +674,7 @@ export function TaskForm({
                         if (!value) setDueTime(null)
                       }}
                       disabled={disabled}
-                      className="h-10 rounded-lg border-rose-200/80 bg-background text-sm font-normal text-foreground focus-visible:border-rose-400 focus-visible:ring-rose-500/30 dark:border-rose-900/60"
+                      className="h-10 rounded-lg border-border bg-background text-sm font-normal text-foreground focus-visible:border-ring focus-visible:ring-ring/30"
                     />
                   </label>
                   <label className="block min-w-0 space-y-1.5 text-xs font-medium text-muted-foreground">
@@ -616,11 +684,11 @@ export function TaskForm({
                       value={dueTime ?? ''}
                       onChange={(event) => setDueTime(event.target.value || null)}
                       disabled={disabled || !dueDate}
-                      className="h-10 rounded-lg border-rose-200/80 bg-background text-sm font-normal text-foreground focus-visible:border-rose-400 focus-visible:ring-rose-500/30 dark:border-rose-900/60"
+                      className="h-10 rounded-lg border-border bg-background text-sm font-normal text-foreground focus-visible:border-ring focus-visible:ring-ring/30"
                     />
                   </label>
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-rose-200/60 pt-3 dark:border-rose-900/40">
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3">
                   {[
                     ['Today', 0],
                     ['Tomorrow', 1],
@@ -663,7 +731,6 @@ export function TaskForm({
           <MetadataRow
             icon={<Clock3 className="size-4" />}
             label="Schedule"
-            tone="plan"
             summary={
               <SectionToggle
                 open={planOpen}
@@ -671,17 +738,16 @@ export function TaskForm({
                 label="schedule"
                 summary={planTimes.length
                   ? `${planTimes.length} session${planTimes.length === 1 ? '' : 's'} · ${planTimes.map((plan) => timeValueLabel(plan.startTime, calendarPreferences.timeFormat)).join(', ')}`
-                  : ''}
+                  : 'Choose a time'}
                 onClick={openPlanTime}
               />
             }
-            description="When you intend to work on it. Add as many separate sessions as you need."
             expanded={planOpen && (
-              <div className="space-y-3 rounded-xl border border-blue-200/70 bg-background/70 p-3.5 dark:border-blue-900/40 dark:bg-background/30">
+              <div className="space-y-3 rounded-xl border border-border/70 bg-background/60 p-3.5">
                 {planTimes.map((planTime, index) => {
                   const candidates = localTimeCandidates(planTime.date, planTime.startTime)
                   return (
-                    <div key={planTime.id ?? `new-${index}`} className="space-y-3 rounded-lg border border-blue-200/60 p-3 dark:border-blue-900/40">
+                    <div key={planTime.id ?? `new-${index}`} className="space-y-3 rounded-lg border border-border/70 p-3">
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-xs font-semibold text-muted-foreground">Session {index + 1}</p>
                         <Button
@@ -706,7 +772,7 @@ export function TaskForm({
                               value={planTime.date}
                               onChange={(event) => updatePlanTime(index, { date: event.target.value, occurrence: '' })}
                               disabled={disabled}
-                              className="h-10 rounded-lg border-blue-200/80 bg-background text-sm font-normal text-foreground focus-visible:border-blue-400 focus-visible:ring-blue-500/30 dark:border-blue-900/60"
+                              className="h-10 rounded-lg border-border bg-background text-sm font-normal text-foreground focus-visible:border-ring focus-visible:ring-ring/30"
                             />
                           </label>
                         )}
@@ -719,10 +785,27 @@ export function TaskForm({
                             value={planTime.startTime}
                             onChange={(event) => updatePlanTime(index, { startTime: event.target.value, occurrence: '' })}
                             disabled={disabled}
-                            className="h-10 rounded-lg border-blue-200/80 bg-background text-sm font-normal text-foreground focus-visible:border-blue-400 focus-visible:ring-blue-500/30 dark:border-blue-900/60"
+                            className="h-10 rounded-lg border-border bg-background text-sm font-normal text-foreground focus-visible:border-ring focus-visible:ring-ring/30"
                           />
                         </label>
                       </div>
+                      {!repeatRule && planTime.date === localDateKey() && (
+                        <div role="group" aria-label="Quick start times" className="flex flex-wrap gap-1.5">
+                          {scheduleTimeShortcuts.map((shortcut) => (
+                            <Button
+                              key={shortcut.minutes}
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 rounded-full px-2.5 text-[11px] font-medium"
+                              onClick={() => scheduleFromNow(index, shortcut.minutes)}
+                              disabled={disabled}
+                            >
+                              {shortcut.label}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
                       <label className="block max-w-[12rem] space-y-1.5 text-xs font-medium text-muted-foreground">
                         Duration
                         <Select
@@ -730,7 +813,7 @@ export function TaskForm({
                           onValueChange={(value) => updatePlanTime(index, { duration: value === 'custom' ? planTime.duration : Number(value) })}
                           disabled={disabled}
                         >
-                          <SelectTrigger className="h-10 w-full border-blue-200/80 bg-background text-sm font-normal text-foreground dark:border-blue-900/60"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-10 w-full border-border bg-background text-sm font-normal text-foreground"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {durationOptions.map((duration) => (
                               <SelectItem key={duration} value={String(duration)}>{duration < 60 ? `${duration} min` : `${duration / 60} hour${duration === 60 ? '' : 's'}`}</SelectItem>
@@ -749,7 +832,7 @@ export function TaskForm({
                             value={planTime.duration}
                             onChange={(event) => updatePlanTime(index, { duration: Number(event.target.value) })}
                             disabled={disabled}
-                            className="h-10 rounded-lg border-blue-200/80 bg-background text-sm font-normal text-foreground focus-visible:border-blue-400 focus-visible:ring-blue-500/30 dark:border-blue-900/60"
+                            className="h-10 rounded-lg border-border bg-background text-sm font-normal text-foreground focus-visible:border-ring focus-visible:ring-ring/30"
                           />
                         </label>
                       )}
@@ -759,7 +842,7 @@ export function TaskForm({
                         <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">
                           This time occurs twice. Choose an occurrence.
                           <Select value={planTime.occurrence} onValueChange={(value) => updatePlanTime(index, { occurrence: value })} disabled={disabled}>
-                            <SelectTrigger className="h-10 border-blue-200/80 bg-background text-sm font-normal text-foreground dark:border-blue-900/60"><SelectValue placeholder="Choose an occurrence" /></SelectTrigger>
+                            <SelectTrigger className="h-10 border-border bg-background text-sm font-normal text-foreground"><SelectValue placeholder="Choose an occurrence" /></SelectTrigger>
                             <SelectContent>
                               {candidates.map((candidate, candidateIndex) => <SelectItem key={candidate} value={String(candidate)}>{candidateIndex === 0 ? 'First' : 'Second'} · {timeLabel(candidate, calendarPreferences.timeFormat)}</SelectItem>)}
                             </SelectContent>
@@ -779,9 +862,8 @@ export function TaskForm({
           />
 
           <MetadataRow
-            icon={<Star className={cn('size-4', focused && 'fill-current text-amber-500 dark:text-accent')} />}
+            icon={<Star className={cn('size-4', focused && 'fill-current')} />}
             label="Focus"
-            tone={focused ? 'focus' : 'neutral'}
             summary={
               <Button
                 type="button"
@@ -790,7 +872,7 @@ export function TaskForm({
                 aria-checked={focused}
                 onClick={() => setFocused((value) => !value)}
                 disabled={disabled}
-                className={cn('h-8 justify-start px-2 text-sm', focused && 'text-amber-600 hover:text-amber-700 dark:text-accent dark:hover:text-accent-hover')}
+                className="h-8 justify-start px-2 text-sm"
               >
                 {focused
                   ? <Check className="size-4" />
@@ -798,7 +880,6 @@ export function TaskForm({
                 {focused ? 'On' : 'Off'}
               </Button>
             }
-            description="Keep this among your three priorities on Home."
           />
         </div>
       </div>

@@ -366,7 +366,7 @@ export function createSupabaseHomeSource(
 
   async function saveTask(command: Extract<HomeCommand, { type: 'save' }>, data: HomeSnapshot) {
     const draft = command.draft
-    validateDraft(draft, data)
+    validateDraft(draft, data, command.creating)
     await validateOrganization(draft.listId, draft.categoryId)
     const title = await nativeE2EE.encryptString(draft.title.trim(), masterKey)
     const notes = await nativeE2EE.encryptString(draft.notes, masterKey)
@@ -380,14 +380,32 @@ export function createSupabaseHomeSource(
     }
 
     if (command.creating) {
-      const { error } = await client.from('tasks').insert({
+      const { data: created, error } = await client.from('tasks').insert({
         user_id: userId,
         ...fields,
         focused: false,
         stashed: false,
         recurrence_rule: null,
-      })
+      }).select('id').single()
       fail(error)
+      if (!created) throw new Error('The task could not be created.')
+      if (draft.focused) {
+        const { error: focusError } = await client.rpc('set_task_focus', {
+          p_task_id: created.id,
+          p_focused: true,
+        })
+        if (focusError) {
+          const { error: rollbackError } = await client.from('tasks')
+            .delete()
+            .eq('id', created.id)
+            .eq('user_id', userId)
+          if (rollbackError)
+            throw new Error(
+              'The task could not be added to Focus or removed after saving. Check your list before trying again.',
+            )
+          fail(focusError)
+        }
+      }
       return
     }
 

@@ -39,6 +39,7 @@ export type TaskDraft = {
   categoryId: string | null
   dueDate: string | null
   dueTime: string | null
+  focused?: boolean
 }
 export type HomeCommand =
   | { type: 'complete'; id: string; completed: boolean; day: string }
@@ -76,7 +77,11 @@ export function uncategorizedListIds(data: HomeSnapshot) {
   )
 }
 
-export function validateDraft(draft: TaskDraft, data: HomeSnapshot) {
+export function validateDraft(
+  draft: TaskDraft,
+  data: HomeSnapshot,
+  creating = false,
+) {
   if (!draft.title.trim()) throw new Error('Give your task a title.')
   if (draft.dueDate && !isDateKey(draft.dueDate))
     throw new Error('Choose a valid due date.')
@@ -96,6 +101,13 @@ export function validateDraft(draft: TaskDraft, data: HomeSnapshot) {
     )
   )
     throw new Error('Choose a category from this list.')
+  if (
+    creating &&
+    draft.focused &&
+    data.tasks.filter((item) => item.focused && !item.stashed && !item.completed)
+      .length >= MAX_FOCUS_TASKS
+  )
+    throw new Error('You can focus up to three tasks. Remove one first.')
 }
 
 /** Optimistic UI only. Live recurrence writes always belong to the authoritative adapter. */
@@ -129,7 +141,7 @@ export function projectHomeCommand(
     }
   }
   if (command.type === 'save') {
-    validateDraft(command.draft, data)
+    validateDraft(command.draft, data, command.creating)
     const { draft } = command
     const existing = data.tasks.find((task) => task.id === command.id)
     if (!command.creating && !existing)
@@ -141,12 +153,12 @@ export function projectHomeCommand(
       user_id: existing?.user_id ?? 'preview',
       id: command.id,
       completed: false,
-      focused: false,
       stashed: false,
       position: data.tasks.length,
       ...existing,
       title: draft.title.trim(),
       notes: draft.notes,
+      focused: command.creating ? Boolean(draft.focused) : existing?.focused ?? false,
       list_id: draft.listId,
       category_id: draft.categoryId,
       list,

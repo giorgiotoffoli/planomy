@@ -1,7 +1,6 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type ComponentProps } from 'react'
 import { router, Stack, useLocalSearchParams } from 'expo-router'
 import {
-  ActionSheetIOS,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -15,10 +14,14 @@ import {
 } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { localDateKey } from '@planomy/lib/today'
-import { getDeadlineLabel, getDueTimeLabel } from '@planomy/lib/home'
+import { getDeadlineLabel, getDueTimeLabel, MAX_FOCUS_TASKS } from '@planomy/lib/home'
 import { recurrenceLabel } from '@planomy/lib/recurrence'
+import { AppIcon } from '@/components/ui/primitives'
+import { GlassSurface } from '@/components/glass-surface'
 import { useHome } from './provider'
 import { useHomeTheme } from './theme'
+import { TaskFocusToggle } from './task-focus-toggle'
+import { TaskListMenu } from './task-list-menu'
 import type { TaskDraft } from './model'
 
 export function TaskScreen({ onDone }: { onDone?: () => void } = {}) {
@@ -34,6 +37,7 @@ export function TaskScreen({ onDone }: { onDone?: () => void } = {}) {
     categoryId: task?.category_id ?? null,
     dueDate: task?.due_date ?? null,
     dueTime: task?.due_time?.slice(0, 5) ?? null,
+    focused: task?.focused ?? false,
   }))
   const [picker, setPicker] = useState<'date' | 'time' | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -52,30 +56,12 @@ export function TaskScreen({ onDone }: { onDone?: () => void } = {}) {
         </Text>
       </View>
     )
-  const list = data.lists.find((item) => item.id === draft.listId)
-  const category = data.categories.find((item) => item.id === draft.categoryId)
-  const categories = data.categories.filter(
-    (item) => item.list_id === draft.listId,
-  )
-  function choose(
-    title: string,
-    options: { label: string; select: () => void }[],
-  ) {
-    if (Platform.OS === 'ios')
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          title,
-          options: [...options.map((item) => item.label), 'Cancel'],
-          cancelButtonIndex: options.length,
-        },
-        (index) => options[index]?.select(),
-      )
-    else
-      Alert.alert(title, undefined, [
-        ...options.map((item) => ({ text: item.label, onPress: item.select })),
-        { text: 'Cancel', style: 'cancel' },
-      ])
-  }
+  const focusedTaskCount = data.tasks.filter(
+    (item) => item.focused && !item.stashed && !item.completed,
+  ).length
+  const focusIsFull = focusedTaskCount >= MAX_FOCUS_TASKS
+  const focusTaskCountWithDraft =
+    focusedTaskCount + Number(Boolean(draft.focused))
   async function save() {
     if (saving.current || busy || !data) return
     saving.current = true
@@ -85,7 +71,7 @@ export function TaskScreen({ onDone }: { onDone?: () => void } = {}) {
       id ?? `native-${Date.now()}-${Math.random().toString(36).slice(2)}`
     const ok = await run(
       { type: 'save', id: taskId, draft, creating: !id },
-      id ? 'Task updated' : 'Task added',
+      id ? 'Task updated' : draft.focused ? 'Added to Focus' : 'Task added',
     )
     saving.current = false
     if (ok) close()
@@ -115,41 +101,53 @@ export function TaskScreen({ onDone }: { onDone?: () => void } = {}) {
       <Stack.Screen
         options={{
           title: id ? 'Task' : 'New task',
-          headerLargeTitleEnabled: true,
-          headerLeft: () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Cancel task editing"
-              disabled={busy}
-              onPress={close}
-              style={styles.headerButton}
-            >
-              <Text style={{ color: colors.accent, fontSize: 17 }}>Cancel</Text>
-            </Pressable>
-          ),
-          headerRight: () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={id ? 'Save task changes' : 'Add task'}
-              accessibilityState={{ disabled: busy || !draft.title.trim() }}
-              disabled={busy || !draft.title.trim()}
-              onPress={() => void save()}
-              style={styles.headerButton}
-            >
-              <Text
-                style={{
-                  color:
-                    busy || !draft.title.trim() ? colors.muted : colors.accent,
-                  fontSize: 17,
-                  fontWeight: '700',
-                }}
-              >
-                {busy ? 'Saving…' : id ? 'Save' : 'Add'}
-              </Text>
-            </Pressable>
-          ),
+          headerLargeTitleEnabled: Boolean(id),
+          headerShadowVisible: false,
+          ...(Platform.OS === 'ios'
+            ? {}
+            : {
+                headerLeft: () => (
+                  <TaskHeaderIconButton
+                    label="Cancel task editing"
+                    name={{ ios: 'xmark', android: 'close', web: 'close' }}
+                    disabled={busy}
+                    onPress={close}
+                  />
+                ),
+                headerRight: () => (
+                  <TaskHeaderIconButton
+                    label={id ? 'Save task changes' : 'Add task'}
+                    name={{ ios: 'checkmark', android: 'check', web: 'check' }}
+                    iconColor={colors.accent}
+                    disabled={busy || !draft.title.trim()}
+                    onPress={() => void save()}
+                  />
+                ),
+              }),
         }}
       />
+      {Platform.OS === 'ios' ? (
+        <>
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              icon="xmark"
+              accessibilityLabel="Cancel task editing"
+              disabled={busy}
+              tintColor={colors.secondary}
+              onPress={close}
+            />
+          </Stack.Toolbar>
+          <Stack.Toolbar placement="right">
+            <Stack.Toolbar.Button
+              icon="checkmark"
+              accessibilityLabel={id ? 'Save task changes' : 'Add task'}
+              disabled={busy || !draft.title.trim()}
+              tintColor={colors.accent}
+              onPress={() => void save()}
+            />
+          </Stack.Toolbar>
+        </>
+      ) : null}
       <KeyboardAvoidingView
         collapsable={false}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -163,7 +161,7 @@ export function TaskScreen({ onDone }: { onDone?: () => void } = {}) {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.content}
         >
-          <View style={[styles.group, { backgroundColor: colors.surface }]}>
+          <GlassSurface style={styles.group}>
             <TextInput
               accessibilityLabel="Task title"
               autoFocus={!id}
@@ -192,55 +190,25 @@ export function TaskScreen({ onDone }: { onDone?: () => void } = {}) {
                 { color: colors.secondary, borderTopColor: colors.separator },
               ]}
             />
-          </View>
-          <View style={[styles.group, { backgroundColor: colors.surface }]}>
-            {field('List', list?.title ?? 'Unsorted', () =>
-              choose('Choose a list', [
-                {
-                  label: 'Unsorted',
-                  select: () =>
-                    setDraft((current) => ({
-                      ...current,
-                      listId: null,
-                      categoryId: null,
-                    })),
-                },
-                ...data.lists.map((item) => ({
-                  label: `${item.emoji ?? ''} ${item.title}`,
-                  select: () =>
-                    setDraft((current) => ({
-                      ...current,
-                      listId: item.id,
-                      categoryId:
-                        current.listId === item.id ? current.categoryId : null,
-                    })),
-                })),
-              ]),
-            )}
-            {categories.length
-              ? field('Category', category?.title ?? 'None', () =>
-                  choose('Choose a category', [
-                    {
-                      label: 'None',
-                      select: () =>
-                        setDraft((current) => ({
-                          ...current,
-                          categoryId: null,
-                        })),
-                    },
-                    ...categories.map((item) => ({
-                      label: item.title,
-                      select: () =>
-                        setDraft((current) => ({
-                          ...current,
-                          categoryId: item.id,
-                        })),
-                    })),
-                  ]),
-                )
-              : null}
-          </View>
-          <View style={[styles.group, { backgroundColor: colors.surface }]}>
+          </GlassSurface>
+          <GlassSurface style={styles.group}>
+            <View style={[styles.field, styles.lastField]}>
+              <Text style={[styles.label, { color: colors.text }]}>List</Text>
+              <View style={styles.listMenuWrap}>
+                <TaskListMenu
+                  lists={data.lists}
+                  categories={data.categories}
+                  listId={draft.listId}
+                  categoryId={draft.categoryId}
+                  disabled={busy}
+                  onSelect={(listId, categoryId) =>
+                    setDraft((current) => ({ ...current, listId, categoryId }))
+                  }
+                />
+              </View>
+            </View>
+          </GlassSurface>
+          <GlassSurface style={styles.group}>
             <View style={styles.field}>
               <Text style={[styles.label, { color: colors.text }]}>
                 Due date
@@ -315,7 +283,25 @@ export function TaskScreen({ onDone }: { onDone?: () => void } = {}) {
                 }}
               />
             ) : null}
-          </View>
+          </GlassSurface>
+          {!id ? (
+            <GlassSurface style={[styles.group, styles.focusGroup]}>
+              <TaskFocusToggle
+                value={Boolean(draft.focused)}
+                disabled={busy || (focusIsFull && !draft.focused)}
+                accentColor={colors.accent}
+                textColor={colors.text}
+                onValueChange={(focused) =>
+                  setDraft((current) => ({ ...current, focused }))
+                }
+              />
+              <Text style={[styles.focusHint, { color: colors.secondary }]}>
+                {focusIsFull && !draft.focused
+                  ? `${focusedTaskCount}/${MAX_FOCUS_TASKS} tasks in Focus. Remove one to add another.`
+                  : `${focusTaskCountWithDraft}/${MAX_FOCUS_TASKS} tasks in Focus`}
+              </Text>
+            </GlassSurface>
+          ) : null}
           {task?.recurrence_rule ? (
             <Text style={[styles.footnote, { color: colors.secondary }]}>
               {recurrenceLabel(task.recurrence_rule)}. Completing this task
@@ -324,7 +310,7 @@ export function TaskScreen({ onDone }: { onDone?: () => void } = {}) {
             </Text>
           ) : null}
           {task ? (
-            <View style={[styles.group, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={styles.group}>
               {!task.stashed ? (
                 <View style={styles.field}>
                   <Text style={[styles.label, { color: colors.text }]}>
@@ -390,7 +376,7 @@ export function TaskScreen({ onDone }: { onDone?: () => void } = {}) {
               >
                 <Text style={{ color: colors.danger, fontSize: 16, fontWeight: '600' }}>Delete task</Text>
               </Pressable>
-            </View>
+            </GlassSurface>
           ) : null}
           {error ? (
             <Text
@@ -407,7 +393,14 @@ export function TaskScreen({ onDone }: { onDone?: () => void } = {}) {
 }
 const styles = StyleSheet.create({
   content: { flexGrow: 1, padding: 20, gap: 20, paddingBottom: 64 },
-  group: { borderRadius: 16, overflow: 'hidden' },
+  group: {
+    padding: 0,
+    gap: 0,
+    borderRadius: 18,
+    borderCurve: 'continuous',
+    overflow: 'hidden',
+  },
+  focusGroup: { gap: 8, padding: 16 },
   titleInput: {
     padding: 18,
     minHeight: 74,
@@ -417,7 +410,7 @@ const styles = StyleSheet.create({
   },
   notesInput: {
     padding: 18,
-    minHeight: 96,
+    minHeight: 84,
     fontSize: 16,
     lineHeight: 23,
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -434,9 +427,66 @@ const styles = StyleSheet.create({
     gap: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  lastField: { borderBottomWidth: 0 },
   label: { fontSize: 16, flexShrink: 1 },
   value: { fontSize: 15, flexShrink: 1 },
-  headerButton: { minHeight: 44, minWidth: 44, justifyContent: 'center' },
+  listMenuWrap: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  focusHint: { fontSize: 13, lineHeight: 19 },
+  headerIconPressable: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  headerIconSurface: {
+    width: 40,
+    height: 40,
+    padding: 0,
+    gap: 0,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   footnote: { fontSize: 13, lineHeight: 19 },
   deleteAction: { minHeight: 52, justifyContent: 'center', paddingHorizontal: 18, borderTopWidth: StyleSheet.hairlineWidth },
 })
+
+function TaskHeaderIconButton({
+  label,
+  name,
+  iconColor,
+  disabled,
+  onPress,
+}: {
+  label: string
+  name: ComponentProps<typeof AppIcon>['name']
+  iconColor?: string
+  disabled: boolean
+  onPress: () => void
+}) {
+  const colors = useHomeTheme()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.headerIconPressable,
+        pressed && !disabled && { opacity: 0.72 },
+      ]}
+    >
+      <GlassSurface
+        interactive
+        style={styles.headerIconSurface}
+      >
+        <AppIcon
+          name={name}
+          size={19}
+          color={iconColor ?? colors.secondary}
+        />
+      </GlassSurface>
+    </Pressable>
+  )
+}
