@@ -150,22 +150,27 @@ function eventToTaskValues(event: CalendarEventWithList): TaskFormInitialValues 
 
 function taskToEventValues(item: Exclude<CalendarItem, { kind: 'event' }>): EventFormInitialValues {
   const task = item.task
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const shared = {
     title: task.title,
     description: task.notes ?? '',
     location: '',
     listId: task.list_id,
     categoryId: task.category_id ?? null,
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timeZone,
     recurrenceRule: task.recurrence_rule,
   }
 
   if (item.kind === 'scheduled-task') {
+    const startsAt = localDateAndTime(item.startsAt, timeZone)
+    const endsAt = item.endsAt ? localDateAndTime(item.endsAt, timeZone) : null
     return {
       ...shared,
       allDay: false,
-      startsAt: item.startsAt,
-      endsAt: item.endsAt ?? '',
+      startsOn: startsAt.date,
+      endsOn: endsAt?.date ?? startsAt.date,
+      startsAt: startsAt.time,
+      endsAt: endsAt?.time ?? '',
     }
   }
 
@@ -325,6 +330,7 @@ export default function CalendarView({
   const [now, setNow] = useState(() => new Date())
   const suppressTaskClickRef = useRef(false)
   const initialScrollApplied = useRef(false)
+  const lastNavigatedCommandId = useRef(0)
   const creationSnapPendingRef = useRef(false)
   const itemById = useMemo(
     () => new Map(calendarItems.map((item) => [item.id, item])),
@@ -607,41 +613,54 @@ export default function CalendarView({
 
   useEffect(() => {
     if (!command) return
-    const api = calendarRef.current?.getApi()
-    if (!api) return
+    const { id, navigation } = command
+    queueMicrotask(() => {
+      if (id <= lastNavigatedCommandId.current) return
+      const api = calendarRef.current?.getApi()
+      if (!api) return
 
-    clearInteraction()
-    onTaskSelect(null)
-    if (command.navigation === 'previous') api.prev()
-    if (command.navigation === 'next') api.next()
-    if (command.navigation === 'today') api.today()
+      lastNavigatedCommandId.current = id
+      clearInteraction()
+      onTaskSelect(null)
+      if (navigation === 'previous') api.prev()
+      if (navigation === 'next') api.next()
+      if (navigation === 'today') api.today()
+    })
   }, [clearInteraction, command, onTaskSelect])
 
   useEffect(() => {
-    const api = calendarRef.current?.getApi()
-    if (api && api.view.type !== fullCalendarView[viewMode]) {
+    const nextView = fullCalendarView[viewMode]
+    queueMicrotask(() => {
+      const api = calendarRef.current?.getApi()
+      if (!api || api.view.type === nextView) return
+
       clearInteraction()
       onTaskSelect(null)
-      api.changeView(fullCalendarView[viewMode])
-    }
+      api.changeView(nextView)
+    })
   }, [clearInteraction, onTaskSelect, viewMode])
 
   useEffect(() => {
     if (!date) return
-    const api = calendarRef.current?.getApi()
-    if (api && localDateKey(api.getDate()) !== date) {
+    queueMicrotask(() => {
+      const api = calendarRef.current?.getApi()
+      if (!api || localDateKey(api.getDate()) === date) return
+
       clearInteraction()
       onTaskSelect(null)
       api.gotoDate(date)
-    }
+    })
   }, [clearInteraction, date, onTaskSelect])
 
   useEffect(() => {
-    const api = calendarRef.current?.getApi()
-    if (!api || !interactiveTimeGrid || initialScrollApplied.current) return
+    if (!interactiveTimeGrid || initialScrollApplied.current) return
+    queueMicrotask(() => {
+      const api = calendarRef.current?.getApi()
+      if (!api || initialScrollApplied.current) return
 
-    api.scrollToTime(compactGrid ? '08:00:00' : '00:00:00')
-    initialScrollApplied.current = true
+      api.scrollToTime(compactGrid ? '08:00:00' : '00:00:00')
+      initialScrollApplied.current = true
+    })
   }, [compactGrid, interactiveTimeGrid])
 
   useEffect(() => {

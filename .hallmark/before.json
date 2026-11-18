@@ -1,0 +1,43 @@
+{
+ "v": 1,
+ "at": "2026-11-10T20:02:24.332Z",
+ "scope": "page",
+ "summary": {
+  "fails": 8,
+  "reflex": 2,
+  "warns": 2
+ },
+ "files": {
+  "src/app/page.tsx": {
+   "handlers": [],
+   "links": [
+    "/",
+    "/auth",
+    "/philosophy",
+    "/privacy",
+    "/terms",
+    "https://github.com/giorgiotoffoli/planomy"
+   ],
+   "fields": [],
+   "hooks": [],
+   "ids": [],
+   "scripts": []
+  }
+ },
+ "wiring": {
+  "handlers": [],
+  "links": [
+   "/",
+   "/auth",
+   "/philosophy",
+   "/privacy",
+   "/terms",
+   "https://github.com/giorgiotoffoli/planomy"
+  ],
+  "fields": [],
+  "hooks": [],
+  "ids": []
+ },
+ "scripts": {},
+ "pages": {}
+}

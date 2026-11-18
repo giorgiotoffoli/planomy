@@ -1,0 +1,12 @@
+FAIL 26a src/app/page.tsx:1 no :focus-visible styling anywhere | fix: A focus ring at 3:1 or better, instant
+FAIL 27 src/app/page.tsx:148 motion utilities (a transition on a transform) with no motion-reduce: or motion-safe: variant anywhere | fix: Add motion-reduce: fallbacks, or put the motion behind motion-safe:
+FAIL 48 src/app/page.tsx:30 colour literal bg-[#f4f3ee] in a class on <main class="min-h-screen overflow-hidden bg…"> | fix: Lift the value into the token block (@theme or :root) and use its utility name
+FAIL 48 src/app/page.tsx:97 colour literal bg-[#faf9f4]/90 in a class on <motion class="absolute flex items-center gap-…"> | fix: Lift the value into the token block (@theme or :root) and use its utility name
+FAIL 48 src/app/page.tsx:148 colour literal shadow-[0_8px_30px_rgba(37,99,235,.24)] in a class on <Link class="group inline-flex h-12 items-ce…"> | fix: Lift the value into the token block (@theme or :root) and use its utility name
+FAIL 48 src/app/page.tsx:166 colour literal shadow-[0_35px_100px_rgba(37,99,235,.22)] in a class on <motion class="relative mx-auto mt-16 max-w-28…"> | fix: Lift the value into the token block (@theme or :root) and use its utility name
+FAIL 54 src/app/page.tsx:212 eyebrow "End-to-end encryption" before <h2> (uppercase, tracked 0.18em at 12px) | fix: Cut it; open the section another way (craft.md, Opening a section)
+FAIL 67 src/app/page.tsx:212 "End-to-end encryption" uppercase at 12px tracked 0.18em on <p class="font-mono text-xs uppercase tra…"> | fix: Sentence case in the body face, a step smaller, untracked: drop uppercase and the tracking-* class
+REFLEX 26b src/app/page.tsx:1 no :active styling anywhere | fix: All eight states; guard: not a form control, no aria-disabled anywhere
+REFLEX 64 src/app/page.tsx:212 font-mono on "End-to-end encryption" at 12px (<p class="font-mono text-xs uppercase tra…">) | fix: Labels in the body face at a smaller size and normal case; font-mono only for code and figures
+WARN 29 src/app/page.tsx:39 glass: backdrop-blur over bg-white/55 on <a class="flex items-center gap-2 rounded…"> | fix: Solid or grained surface; elevation by lightness, shadows with offset and blur
+WARN 74 src/app/page.tsx:209 default palette instead of theme tokens: 10 distinct palette classes (bg-blue-200 text-blue-600 text-slate-500 text-sla… | fix: Extend the Tailwind theme with the Hallmark tokens and use those names

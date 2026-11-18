@@ -106,11 +106,15 @@ export default function EventDialog({
   const open = controlledOpen ?? internalOpen
   const isEdit = Boolean(event)
 
-  function setOpen(next: boolean) {
-    if (submitting.current) return
+  function updateOpen(next: boolean) {
     setError(null)
     if (controlledOpen === undefined) setInternalOpen(next)
     controlledOnOpenChange?.(next)
+  }
+
+  function setOpen(next: boolean) {
+    if (submitting.current) return
+    updateOpen(next)
   }
 
   async function persist(values: EventFormValues, scope: RecurrenceScope = 'this') {
@@ -160,7 +164,7 @@ export default function EventDialog({
       }
       notifyEventsChanged()
       if (!suppressSuccessToast) toast.success(isEdit ? 'Event updated' : 'Event added')
-      setOpen(false)
+      updateOpen(false)
       onSaved?.()
       return true
     } catch (cause) {
@@ -213,7 +217,7 @@ export default function EventDialog({
       }
       notifyEventsChanged()
       toast.success(event.occurrence_key ? 'Event occurrence deleted' : 'Event deleted')
-      setOpen(false)
+      updateOpen(false)
       return true
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Event could not be deleted.')
