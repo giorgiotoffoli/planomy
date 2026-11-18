@@ -12,6 +12,7 @@ import type {
 } from '@planomy/types'
 import type { Database, Json, Tables } from '@planomy/lib/supabase/database-types'
 import type { WrappedMasterKeyPayload } from '@planomy/lib/crypto/e2ee'
+import * as Crypto from 'expo-crypto'
 import {
   defaultHomeSourcePreferences,
   normalizeHomeSourcePreferences,
@@ -33,6 +34,7 @@ import type {
   TaskDraft,
 } from './model'
 import { validateDraft } from './model'
+import { createVerifiedEncryptedTask } from './verified-task-write'
 import { nativeE2EE } from '@/lib/vault/native-crypto'
 
 type NativeClient = SupabaseClient<Database>
@@ -364,42 +366,64 @@ export function createSupabaseHomeSource(
     if (!data) throw new Error('This category does not belong to the selected list.')
   }
 
+  async function removeTask(id: string) {
+    const { data, error } = await client.from('tasks')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select('id')
+      .maybeSingle()
+    if (error) return false
+    if (data?.id === id) return true
+
+    const { data: remaining, error: verifyError } = await client.from('tasks')
+      .select('id')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .maybeSingle()
+    return !verifyError && !remaining
+  }
+
   async function saveTask(command: Extract<HomeCommand, { type: 'save' }>, data: HomeSnapshot) {
     const draft = command.draft
     validateDraft(draft, data, command.creating)
-    await validateOrganization(draft.listId, draft.categoryId)
-    const title = await nativeE2EE.encryptString(draft.title.trim(), masterKey)
-    const notes = await nativeE2EE.encryptString(draft.notes, masterKey)
-    const fields = {
-      title,
-      notes,
-      list_id: draft.listId,
-      category_id: draft.categoryId,
-      due_date: draft.dueDate || null,
-      due_time: draft.dueDate ? draft.dueTime : null,
-    }
 
     if (command.creating) {
-      const { data: created, error } = await client.from('tasks').insert({
-        user_id: userId,
-        ...fields,
-        focused: false,
-        stashed: false,
-        recurrence_rule: null,
-      }).select('id').single()
-      fail(error)
-      if (!created) throw new Error('The task could not be created.')
+      const createdId = await createVerifiedEncryptedTask({
+        id: Crypto.randomUUID(),
+        masterKey,
+        title: draft.title,
+        notes: draft.notes,
+        crypto: nativeE2EE,
+        assertActive,
+        validate: () => validateOrganization(draft.listId, draft.categoryId),
+        async insert(id, fields) {
+          const { data: created, error } = await client.from('tasks').insert({
+            id,
+            user_id: userId,
+            ...fields,
+            list_id: draft.listId,
+            category_id: draft.categoryId,
+            due_date: draft.dueDate || null,
+            due_time: draft.dueDate ? draft.dueTime : null,
+            focused: false,
+            stashed: false,
+            recurrence_rule: null,
+          }).select('id,title,notes').single()
+          fail(error)
+          if (!created) throw new Error('The task could not be created.')
+          return created
+        },
+        remove: removeTask,
+      })
+
       if (draft.focused) {
         const { error: focusError } = await client.rpc('set_task_focus', {
-          p_task_id: created.id,
+          p_task_id: createdId,
           p_focused: true,
         })
         if (focusError) {
-          const { error: rollbackError } = await client.from('tasks')
-            .delete()
-            .eq('id', created.id)
-            .eq('user_id', userId)
-          if (rollbackError)
+          if (!(await removeTask(createdId)))
             throw new Error(
               'The task could not be added to Focus or removed after saving. Check your list before trying again.',
             )
@@ -409,14 +433,32 @@ export function createSupabaseHomeSource(
       return
     }
 
-    const { data: saved, error } = await client.from('tasks')
-      .update(fields)
-      .eq('id', command.id)
-      .eq('user_id', userId)
-      .select('id')
-      .maybeSingle()
-    fail(error)
-    if (!saved) throw new Error('This task is no longer available.')
+    assertActive()
+    const operationKey = masterKey.slice()
+    try {
+      await validateOrganization(draft.listId, draft.categoryId)
+      assertActive()
+      const title = await nativeE2EE.encryptString(draft.title.trim(), operationKey)
+      const notes = await nativeE2EE.encryptString(draft.notes, operationKey)
+      assertActive()
+      const { data: saved, error } = await client.from('tasks')
+        .update({
+          title,
+          notes,
+          list_id: draft.listId,
+          category_id: draft.categoryId,
+          due_date: draft.dueDate || null,
+          due_time: draft.dueDate ? draft.dueTime : null,
+        })
+        .eq('id', command.id)
+        .eq('user_id', userId)
+        .select('id')
+        .maybeSingle()
+      fail(error)
+      if (!saved) throw new Error('This task is no longer available.')
+    } finally {
+      operationKey.fill(0)
+    }
   }
 
   async function completeTask(command: Extract<HomeCommand, { type: 'complete' }>) {
