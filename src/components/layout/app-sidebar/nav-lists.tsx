@@ -24,11 +24,17 @@ import { ListEmoji } from '@/components/lists/list-emoji'
 import { ListColorMenu } from '@/components/lists/list-color-menu'
 import { LISTS_CHANGED, listMutationFromEvent } from '@/components/lists/mutations'
 import { applyListMutationToList } from '@/lib/live-mutations'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export function NavLists({ lists }: { lists: List[] }) {
   const { masterKey } = useE2EE()
   const pathname = usePathname()
-  const [localLists, setLocalLists] = useState(lists)
+  const [decryptedState, setDecryptedState] = useState<{
+    source: List[]
+    lists: List[]
+  } | null>(null)
+  const isReady = decryptedState?.source === lists
+  const localLists = isReady ? decryptedState.lists : []
 
   useEffect(() => {
     if (!masterKey) return
@@ -47,7 +53,7 @@ export function NavLists({ lists }: { lists: List[] }) {
         })),
       )
       if (!isCancelled) {
-        setLocalLists(decryptedLists)
+        setDecryptedState({ source: lists, lists: decryptedLists })
       }
     }
 
@@ -64,9 +70,12 @@ export function NavLists({ lists }: { lists: List[] }) {
     const handleListsChanged = (event: Event) => {
       const change = listMutationFromEvent(event)
       if (!change) return
-      setLocalLists((current) =>
-        current.map((list) => applyListMutationToList(list, change)),
-      )
+      setDecryptedState((current) => current
+        ? {
+            ...current,
+            lists: current.lists.map((list) => applyListMutationToList(list, change)),
+          }
+        : current)
     }
 
     window.addEventListener(LISTS_CHANGED, handleListsChanged)
@@ -74,8 +83,18 @@ export function NavLists({ lists }: { lists: List[] }) {
   }, [])
 
   return (
-    <SidebarMenu>
-      {localLists.map((list) => {
+    <SidebarMenu aria-label={isReady ? 'Lists' : 'Loading lists'} aria-busy={!isReady}>
+      {!isReady
+        ? lists.map((list) => (
+            <SidebarMenuItem key={list.id}>
+              <SidebarMenuButton disabled>
+                <Skeleton className="size-5 rounded-full" />
+                <Skeleton className="h-4 w-28 max-w-full" />
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))
+        : null}
+      {isReady && localLists.map((list) => {
         return (
           <SidebarMenuItem key={list.id}>
             <SidebarMenuButton
@@ -105,11 +124,14 @@ export function NavLists({ lists }: { lists: List[] }) {
                   listId={list.id}
                   color={list.color}
                   onChange={(color) =>
-                    setLocalLists((current) =>
-                      current.map((item) =>
-                        item.id === list.id ? { ...item, color } : item,
-                      ),
-                    )
+                    setDecryptedState((current) => current
+                      ? {
+                          ...current,
+                          lists: current.lists.map((item) =>
+                            item.id === list.id ? { ...item, color } : item,
+                          ),
+                        }
+                      : current)
                   }
                 />
                 <RenameListButton list={list} />

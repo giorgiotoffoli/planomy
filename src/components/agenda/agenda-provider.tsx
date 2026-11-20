@@ -6,13 +6,13 @@ import { usePathname, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useE2EE } from '@/components/e2ee/e2ee-provider'
 import { decryptString, encryptString } from '@/lib/crypto/e2ee'
-import { dayBounds, dragIntent, MINUTE, shiftDay, SLOT_MINUTES, snapInstant, timeLabel } from '@/lib/agenda'
+import { AGENDA_SLOT_MINUTES, dayBounds, dragIntent, MINUTE, shiftDay, SLOT_MINUTES, snapInstant, timeLabel } from '@/lib/agenda'
 import {
+  CALENDAR_SNAP_MINUTES,
   isSingleDayTimedRange,
   TASK_DRAG_DISTANCE,
   TASK_TOUCH_DELAY,
   TASK_TOUCH_TOLERANCE,
-  taskDisplayEnd,
 } from '@/lib/calendar-interactions'
 import { localDateKey } from '@/lib/today'
 import { applyTaskOrganizationChange } from '@/lib/tasks'
@@ -60,6 +60,14 @@ import { applyTaskOccurrenceOverride } from '@/lib/task-occurrence-overrides'
 
 function blockKey(block: Pick<AgendaBlock, 'id' | 'task_id' | 'starts_at'>) {
   return block.id ?? `${block.task_id}:${block.starts_at}`
+}
+
+function dragPointerY(event: Event) {
+  if (event instanceof MouseEvent) return event.clientY
+  if (typeof TouchEvent !== 'undefined' && event instanceof TouchEvent) {
+    return event.touches[0]?.clientY ?? event.changedTouches[0]?.clientY ?? null
+  }
+  return null
 }
 
 export type AgendaDrag = {
@@ -236,9 +244,40 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
   }, [])
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      try { setOpenState(localStorage.getItem('planomy:agenda:open') === 'true') } catch { /* Use collapsed default. */ }
+      try {
+        const wideEnoughForDockedAgenda = window.matchMedia('(min-width: 1280px)').matches
+        const saved = localStorage.getItem('planomy:agenda:open')
+        setOpenState(
+          wideEnoughForDockedAgenda && (
+            saved === null ? pathname === '/home' : saved === 'true'
+          ),
+        )
+      } catch {
+        setOpenState(pathname === '/home' && window.matchMedia('(min-width: 1280px)').matches)
+      }
     }, 0)
     return () => clearTimeout(timeout)
+  }, [pathname])
+  useEffect(() => {
+    const breakpoint = window.matchMedia('(min-width: 1280px)')
+    const syncAgendaLayout = () => {
+      if (!breakpoint.matches) {
+        // Keep the narrow Home workspace available for starting a task drag.
+        // The Agenda opens again from DndContext once a Home task is picked up.
+        setOpenState(false)
+        return
+      }
+
+      try {
+        if (localStorage.getItem('planomy:agenda:open') === 'true') {
+          setOpenState(true)
+        }
+      } catch {
+        // Keep the current in-memory state when storage is unavailable.
+      }
+    }
+    breakpoint.addEventListener('change', syncAgendaLayout)
+    return () => breakpoint.removeEventListener('change', syncAgendaLayout)
   }, [])
 
   const reload = useCallback(async () => {
@@ -458,7 +497,7 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function save(task: TaskWithList, start: number, end: number | null, sessionId?: string) {
-    const normalizedEnd = end ?? start + SLOT_MINUTES * MINUTE
+    const normalizedEnd = end ?? start + AGENDA_SLOT_MINUTES * MINUTE
     if (
       !Number.isFinite(start) ||
       !Number.isFinite(normalizedEnd) ||
@@ -639,7 +678,7 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
     }
   }
   async function create(input: QuickCreateInput) {
-    const endsAt = taskDisplayEnd(input.startsAt, input.endsAt)
+    const endsAt = input.endsAt ?? new Date(input.startsAt.getTime() + AGENDA_SLOT_MINUTES * MINUTE)
     if (
       !masterKey ||
       loaded.day !== day ||
@@ -767,16 +806,33 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
     const source = event.active.data.current as AgendaDrag | undefined
     const target = event.over?.data.current
     if (!source || dragIntent(source, target) !== 'schedule') return null
-    const instant = snapInstant(day, (Number(target!.instant) - dayBounds(day).start) / MINUTE)
+    const slotStart = Number(target!.instant)
+    const persistedDuration = source.block?.ends_at
+      ? Date.parse(source.block.ends_at) - Date.parse(source.block.starts_at)
+      : null
+    const durationForClamp = source.kind === 'agenda-resize'
+      ? SLOT_MINUTES
+      : persistedDuration === null
+        ? AGENDA_SLOT_MINUTES
+        : Math.max(SLOT_MINUTES, Math.ceil(persistedDuration / MINUTE))
+    const initialPointerY = dragPointerY(event.activatorEvent)
+    const overRect = event.over?.rect
+    const laneMinutes = AGENDA_SLOT_MINUTES
+    const laneOffset = initialPointerY !== null && overRect && overRect.height > 0
+      ? Math.max(0, Math.min(laneMinutes, ((initialPointerY + event.delta.y - overRect.top) / overRect.height) * laneMinutes))
+      : 0
+    const instant = snapInstant(
+      day,
+      (slotStart - dayBounds(day).start) / MINUTE + laneOffset,
+      CALENDAR_SNAP_MINUTES,
+      durationForClamp,
+    )
     if (source.kind === 'agenda-resize' && source.block) {
       const start = Date.parse(source.block.starts_at)
       const end = Math.max(start + 15 * MINUTE, instant + 15 * MINUTE)
       return { task: source.task, sessionId: source.block.id, start, end, persistedEnd: end }
     }
-    const persistedDuration = source.block?.ends_at
-      ? Date.parse(source.block.ends_at) - Date.parse(source.block.starts_at)
-      : null
-    const displayDuration = persistedDuration ?? SLOT_MINUTES * MINUTE
+    const displayDuration = persistedDuration ?? AGENDA_SLOT_MINUTES * MINUTE
     return {
       task: source.task,
       sessionId: source.block?.id,
@@ -809,12 +865,16 @@ export default function AgendaProvider({ children }: { children: ReactNode }) {
       // Pointer drags must actually enter a target; keyboard drags use nearest target.
       const candidates = args.droppableContainers.filter(container => dragIntent(args.active.data.current ?? {}, container.data.current) !== 'none')
       return args.pointerCoordinates ? pointerWithin({ ...args, droppableContainers: candidates }) : closestCenter({ ...args, droppableContainers: candidates })
-    }} onDragStart={event => setDrag(event.active.data.current as AgendaDrag)} onDragOver={event => setPreview(proposal(event))} onDragEnd={finishDrag} onDragCancel={() => { setDrag(null); setPreview(null) }}>
+    }} onDragStart={event => {
+      const source = event.active.data.current as AgendaDrag
+      setDrag(source)
+      if (source.kind === 'task' && source.scope === 'home') setOpen(true)
+    }} onDragOver={event => setPreview(proposal(event))} onDragEnd={finishDrag} onDragCancel={() => { setDrag(null); setPreview(null) }}>
       <div className="flex h-dvh min-w-0 overflow-hidden">
         <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background selection:bg-primary selection:text-primary-foreground">{children}</main>
         {plannerAvailable ? <AgendaPanel /> : null}
       </div>
-      <DragOverlay dropAnimation={null}>{drag && <div className="max-w-60 rounded-lg border bg-background p-3 text-sm shadow-lg"><p className="truncate font-medium">{drag.task.title}</p>{preview && <p className="text-xs text-muted-foreground">{timeLabel(preview.start, calendarPreferences.timeFormat)} – {timeLabel(preview.end, calendarPreferences.timeFormat)}</p>}</div>}</DragOverlay>
+      <DragOverlay dropAnimation={null}>{drag && <div className="max-w-60 rounded-lg border bg-background p-3 text-sm shadow-lg"><p className="truncate font-medium">{drag.task.title}</p>{preview ? <p className="text-xs text-muted-foreground">{timeLabel(preview.start, calendarPreferences.timeFormat)} – {timeLabel(preview.end, calendarPreferences.timeFormat)}</p> : drag.kind === 'task' ? <p className="text-xs text-muted-foreground">Drop on a time slot to schedule</p> : null}</div>}</DragOverlay>
     </DndContext>
   </AgendaContext.Provider>
 }

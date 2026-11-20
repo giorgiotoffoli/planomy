@@ -6,6 +6,8 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react'
 import { format } from 'date-fns'
@@ -17,6 +19,7 @@ import {
   ChevronDown,
   Clock3,
   ListTodo,
+  Plus,
   Repeat,
   Search,
   Star,
@@ -84,7 +87,7 @@ import {
 import HomeSourcesPicker from './home-sources-picker'
 import { updateTaskCompleted as updateTaskCompletedAction } from '@/components/tasks/actions'
 import { updateTaskOccurrenceSkipped } from '@/components/tasks/recurrence-actions'
-import { eventColorStyle, inheritedColorStyle } from '@/lib/list-colors'
+import { eventColorStyle } from '@/lib/list-colors'
 import { ListEmoji } from '@/components/lists/list-emoji'
 import { skipTimeBlock } from '@/components/agenda/actions'
 import {
@@ -115,14 +118,12 @@ import {
 import CreateTaskAction from '@/components/tasks/create-task/create-task-action'
 import CollapsiblePageHeader from '@/components/layout/header/collapsible-page-header'
 import AgendaToggle from '@/components/agenda/agenda-toggle'
+import { useAgenda } from '@/components/agenda/agenda-provider'
+import { setHomeAgendaTarget } from '@/components/agenda/home-agenda-target'
 import {
   TaskItem,
   waitForTaskExit,
 } from '@/components/tasks/task-item/task-item'
-import { TaskCheckbox } from '@/components/tasks/task-item/task-checkbox'
-import { TaskTitle } from '@/components/tasks/task-item/task-title'
-import TaskDetail from '@/components/tasks/task-item/task-details'
-import { TaskEditDropdown } from '@/components/tasks/task-item/task-edit/task-edit-dropdown'
 import type { TaskOccurrenceContext } from '@/components/tasks/task-form/task-occurrence-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -134,8 +135,31 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
 
 type HomeData = Awaited<ReturnType<typeof getHomeData>>
+type HomeTaskDragSource = 'focus' | 'upcoming' | 'tasks'
+type HomeRightPanel = 'focus' | 'upcoming' | 'agenda'
+
+const HOME_RIGHT_PANELS: HomeRightPanel[] = ['focus', 'upcoming', 'agenda']
+const AGENDA_DOCKED_QUERY = '(min-width: 1280px)'
+
+function subscribeToAgendaDocked(listener: () => void) {
+  const query = window.matchMedia(AGENDA_DOCKED_QUERY)
+  query.addEventListener('change', listener)
+  return () => query.removeEventListener('change', listener)
+}
+
+function getAgendaDockedSnapshot() {
+  return window.matchMedia(AGENDA_DOCKED_QUERY).matches
+}
 
 const HOME_SORT_STORAGE_KEY = 'planomy:home-sort'
 
@@ -235,6 +259,30 @@ function getUpcomingPillClassName(section: UpcomingSectionKey) {
   )
 }
 
+const HOME_WIDGET_STATUS_PILL_CLASS =
+  'inline-flex max-w-28 truncate rounded-full border px-2 py-0.5 text-[10px] font-medium tabular-nums sm:max-w-none sm:text-[11px]'
+
+const HOME_WIDGET_CARD_CLASS =
+  'overflow-hidden rounded-xl border border-yellow-100/80 bg-yellow-50/65 p-2.5 dark:border-border dark:bg-surface'
+
+const HOME_NEEDS_ATTENTION_CARD_CLASS =
+  'overflow-hidden rounded-xl border border-amber-300/80 border-l-4 border-l-amber-500 bg-amber-50/90 p-2.5 shadow-sm shadow-amber-950/5 dark:border-amber-400/25 dark:border-l-amber-300/80 dark:bg-amber-500/10 dark:shadow-none'
+
+const HOME_NEEDS_ATTENTION_COUNT_CLASS =
+  'flex min-h-5 min-w-5 shrink-0 items-center justify-center rounded-full border border-amber-300/70 bg-amber-200/70 px-1.5 text-[10px] font-semibold tabular-nums text-amber-900 dark:border-amber-300/20 dark:bg-amber-300/15 dark:text-amber-100'
+
+const HOME_WIDGET_HEADER_CLASS =
+  'group flex min-w-0 items-center gap-2 px-0.5 py-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40'
+
+const HOME_WIDGET_COUNT_CLASS =
+  'flex min-h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-slate-900/[0.06] px-1.5 text-[10px] font-semibold tabular-nums text-slate-600 dark:border dark:border-border-subtle dark:bg-surface-hover dark:text-text-secondary'
+
+const HOME_WIDGET_CHEVRON_CLASS =
+  'ml-auto size-4 shrink-0 text-slate-400 transition-transform duration-200 dark:text-muted-foreground motion-reduce:transition-none'
+
+const HOME_WIDGET_EMPTY_CLASS =
+  'rounded-lg border border-dashed border-slate-300/70 bg-white/55 px-4 py-4 text-center text-sm text-slate-500 dark:border-border dark:bg-surface/60 dark:text-muted-foreground'
+
 type HomeTaskRowProps = {
   task: TaskWithList
   lists: List[]
@@ -249,6 +297,8 @@ type HomeTaskRowProps = {
   onFocus: (taskId: string, focused: boolean) => void
   onStash: (taskId: string, stashed: boolean) => void
   isExiting: boolean
+  dragSource?: HomeTaskDragSource
+  isAgendaBusy: boolean
 }
 
 function HomeTaskRow({
@@ -265,6 +315,8 @@ function HomeTaskRow({
   onFocus,
   onStash,
   isExiting,
+  dragSource,
+  isAgendaBusy,
 }: HomeTaskRowProps) {
   return (
     <TaskItem
@@ -276,6 +328,11 @@ function HomeTaskRow({
       shouldHideCompleted
       isInbox={false}
       canReorder={false}
+      homeWidgetStyle
+      wholeRowDraggable={Boolean(dragSource)}
+      dragId={dragSource ? `home-agenda:${dragSource}:${task.id}` : undefined}
+      dragScope={dragSource ? 'home' : undefined}
+      dragDisabled={task.completed || isExiting || isAgendaBusy}
       showAddToList
       isExiting={isExiting}
       handleOnComplete={onComplete}
@@ -288,11 +345,12 @@ function HomeTaskRow({
       showDueDate={false}
       showCategory
       compact
+      dense
       trailingActions={
         <div className="flex items-center gap-1.5">
           {deadlineLabel && (
             <span
-              className={`inline-flex max-w-28 truncate rounded-full border px-2.5 py-1 text-[11px] font-medium sm:max-w-none sm:text-xs ${getDeadlineBadgeClassName(deadlineLabel)}`}
+              className={`${HOME_WIDGET_STATUS_PILL_CLASS} ${getDeadlineBadgeClassName(deadlineLabel)}`}
             >
               {deadlineLabel}
               {deadlineTime ? ` · ${deadlineTime}` : ''}
@@ -307,10 +365,10 @@ function HomeTaskRow({
               aria-label={task.focused ? 'Remove from Focus' : 'Add to Focus'}
               aria-pressed={task.focused}
               onClick={() => onFocus(task.id, !task.focused)}
-              className={
+          className={
                 task.focused
-                  ? 'text-yellow-400 hover:text-yellow-500 dark:text-kanban-board-circle-yellow dark:hover:text-yellow-300'
-                  : 'text-slate-400 dark:text-muted-foreground'
+              ? 'h-7 w-7 shrink-0 cursor-pointer text-yellow-400 hover:text-yellow-500 dark:text-kanban-board-circle-yellow dark:hover:text-yellow-300'
+              : 'h-7 w-7 shrink-0 cursor-pointer text-slate-400 dark:text-muted-foreground'
               }
             >
               <Star className={task.focused ? 'fill-current' : undefined} />
@@ -334,6 +392,7 @@ function UpcomingTaskRow({
   onFocus,
   onStash,
   isExiting,
+  showRescheduleAction = false,
 }: {
   entry: UpcomingTaskEntry
   lists: List[]
@@ -346,97 +405,93 @@ function UpcomingTaskRow({
   onFocus: (taskId: string, focused: boolean) => void
   onStash: (taskId: string, stashed: boolean) => void
   isExiting: boolean
+  showRescheduleAction?: boolean
 }) {
   const displayTask = isExiting ? { ...entry.task, completed: true } : entry.task
+  const { busy } = useAgenda()
+  const taskBusy = busy.has(entry.task.id)
   const status = entry.section === 'overdue'
     ? entry.label
-    : `${entry.label}${entry.time ? ` · ${entry.time}` : ''}`
+    : entry.section === 'today'
+      ? entry.time ?? ''
+      : `${entry.label}${entry.time ? ` · ${entry.time}` : ''}`
 
   return (
-    <li
-      className="group"
-      style={inheritedColorStyle(entry.task.category?.color, entry.task.list?.color)}
-    >
-      <div
-        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${isExiting ? 'pointer-events-none grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'}`}
-      >
-        <div className="min-h-0 overflow-hidden">
-          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 px-0 py-2.5">
-            <div className="flex h-7 items-center pt-0.5">
-              <TaskCheckbox
-                task={displayTask}
-                handleOnComplete={onComplete}
-              />
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-medium leading-tight">
-                <TaskTitle task={displayTask} handleOnRename={onRename} />
-              </div>
-              <div className="upcoming-task-detail [&>div]:text-xs">
-                <TaskDetail
-                  task={displayTask}
-                  currentListId={null}
-                  lists={lists}
-                  isInbox={false}
-                  showDueDate={false}
-                  showAddToList
-                  categories={categories}
-                  showCategory
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 pt-0.5">
-              <span
-                className={`inline-flex max-w-28 truncate rounded-full border px-2.5 py-1 text-[11px] font-medium tabular-nums sm:max-w-none sm:text-xs ${getUpcomingPillClassName(entry.section)}`}
+    <TaskItem
+      task={displayTask}
+      lists={lists}
+      categories={categories}
+      currentListId={null}
+      highlighted={false}
+      shouldHideCompleted
+      isInbox={false}
+      canReorder={false}
+      wholeRowDraggable
+      dragId={`home-agenda:upcoming:${entry.task.id}`}
+      dragScope="home"
+      dragDisabled={displayTask.completed || isExiting || taskBusy}
+      homeWidgetStyle
+      showDueDate={false}
+      showAddToList
+      showCategory
+      isExiting={isExiting}
+      dense
+      handleOnComplete={onComplete}
+      handleOnRename={onRename}
+      handleOnDueDateChange={onDueDateChange}
+      handleOnNotesChange={onNotesChange}
+      handleOnDelete={onDelete}
+      handleOnFocus={onFocus}
+      handleOnStash={onStash}
+      trailingActions={
+        <div className="flex items-center gap-1.5">
+          {showRescheduleAction ? (
+            <TaskEditDialog
+              task={displayTask}
+              lists={lists}
+              categories={categories}
+              currentListId={displayTask.list_id}
+            >
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 shrink-0 rounded-lg px-2 text-[11px]"
+                aria-label={`Reschedule ${entry.task.title}`}
+                disabled={taskBusy || isExiting}
               >
-                {status}
-              </span>
-              {!entry.task.stashed && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  title={entry.task.focused ? 'Remove from Focus' : 'Add to Focus'}
-                  aria-label={entry.task.focused ? 'Remove from Focus' : 'Add to Focus'}
-                  aria-pressed={entry.task.focused}
-                  onClick={() => onFocus(entry.task.id, !entry.task.focused)}
-                  className={
-                    entry.task.focused
-                      ? 'h-7 w-7 shrink-0 cursor-pointer text-yellow-400 hover:text-yellow-500 dark:text-kanban-board-circle-yellow dark:hover:text-yellow-300'
-                      : 'h-7 w-7 shrink-0 cursor-pointer text-slate-400 dark:text-muted-foreground'
-                  }
-                >
-                  <Star className={entry.task.focused ? 'fill-current' : undefined} />
-                </Button>
-              )}
-              <TaskEditDropdown
-                task={displayTask}
-                lists={lists}
-                currentListId={null}
-                handleOnDueDateChange={onDueDateChange}
-                handleOnNotesChange={onNotesChange}
-                handleOnDelete={onDelete}
-                handleOnRename={onRename}
-                handleOnFocus={onFocus}
-                handleOnStash={onStash}
-                categories={categories}
-              >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  title={`Actions for ${entry.task.title}`}
-                  aria-label={`Actions for ${entry.task.title}`}
-                  className="h-7 w-7 shrink-0 cursor-pointer"
-                >
-                  ⋯
-                </Button>
-              </TaskEditDropdown>
-            </div>
-          </div>
+                Reschedule
+              </Button>
+            </TaskEditDialog>
+          ) : null}
+          {status ? (
+            <span
+              className={`${HOME_WIDGET_STATUS_PILL_CLASS} ${getUpcomingPillClassName(entry.section)}`}
+            >
+              {status}
+            </span>
+          ) : null}
+          {!displayTask.stashed && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              title={displayTask.focused ? 'Remove from Focus' : 'Add to Focus'}
+              aria-label={displayTask.focused ? 'Remove from Focus' : 'Add to Focus'}
+              aria-pressed={displayTask.focused}
+              onClick={() => onFocus(displayTask.id, !displayTask.focused)}
+              className={
+                displayTask.focused
+                  ? 'h-7 w-7 shrink-0 cursor-pointer text-yellow-400 hover:text-yellow-500 dark:text-kanban-board-circle-yellow dark:hover:text-yellow-300'
+                  : 'h-7 w-7 shrink-0 cursor-pointer text-slate-400 dark:text-muted-foreground'
+              }
+            >
+              <Star className={displayTask.focused ? 'fill-current' : undefined} />
+            </Button>
+          )}
         </div>
-      </div>
-    </li>
+      }
+    />
   )
 }
 
@@ -461,7 +516,7 @@ function UpcomingEventRow({
       className="group"
       style={eventColorStyle(entry.event.color, entry.event.category?.color, entry.event.list?.color)}
     >
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 px-0 py-2.5">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 px-0 py-1.5">
         <button
           type="button"
           className="flex h-7 items-center pt-0.5 text-(--list-color) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
@@ -498,7 +553,7 @@ function UpcomingEventRow({
           ) : null}
         </button>
         <div className="flex items-center gap-1.5 pt-0.5">
-          <span className={`inline-flex max-w-28 truncate rounded-full border px-2.5 py-1 text-[11px] font-medium tabular-nums sm:max-w-none sm:text-xs ${getUpcomingPillClassName(entry.section)}`}>
+          <span className={`${HOME_WIDGET_STATUS_PILL_CLASS} ${getUpcomingPillClassName(entry.section)}`}>
             {status}
           </span>
           <Button
@@ -520,8 +575,6 @@ function UpcomingEventRow({
 
 function UpcomingSection({
   entries,
-  expanded,
-  onExpandedChange,
   lists,
   categories,
   onComplete,
@@ -535,8 +588,6 @@ function UpcomingSection({
   onOpenEvent,
 }: {
   entries: UpcomingEntry[]
-  expanded: boolean
-  onExpandedChange: (expanded: boolean) => void
   lists: List[]
   categories: Category[]
   onComplete: (taskId: string, completed: boolean) => void
@@ -553,12 +604,11 @@ function UpcomingSection({
 
   if (!entries.length) return null
 
-  const visibleEntries = expanded ? entries : entries.slice(0, 6)
   const groups = (Object.keys(UPCOMING_SECTION_LABELS) as UpcomingSectionKey[])
     .map((key) => ({
       key,
       title: UPCOMING_SECTION_LABELS[key],
-      entries: visibleEntries.filter((entry) => entry.section === key),
+      entries: entries.filter((entry) => entry.section === key),
     }))
     .filter((group) => group.entries.length > 0)
 
@@ -566,21 +616,21 @@ function UpcomingSection({
     <Collapsible
       open={open}
       onOpenChange={setOpen}
-      className="upcoming-panel overflow-hidden rounded-2xl border border-yellow-100/80 bg-yellow-50/75 p-3 shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:border-border dark:bg-surface dark:shadow-none sm:p-3.5"
+      className={`upcoming-panel ${HOME_WIDGET_CARD_CLASS}`}
     >
       <CollapsibleTrigger asChild>
         <button
           type="button"
-          className="group flex w-full items-center gap-2.5 px-1 py-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          className={`${HOME_WIDGET_HEADER_CLASS} w-full`}
           aria-label={`${open ? 'Collapse' : 'Expand'} Upcoming`}
         >
-          <Clock3 className="size-5 shrink-0 text-yellow-600 dark:text-yellow-200" strokeWidth={1.8} aria-hidden="true" />
-          <span className="font-heading text-base font-semibold tracking-[-0.02em] sm:text-lg">Upcoming</span>
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-slate-900/[0.06] text-[11px] font-semibold text-slate-600 dark:border dark:border-border-subtle dark:bg-surface-hover dark:text-text-secondary">
+          <Clock3 className="size-4.5 shrink-0 text-yellow-600 dark:text-yellow-200" strokeWidth={1.8} aria-hidden="true" />
+          <span className="min-w-0 truncate font-heading text-sm font-semibold tracking-[-0.01em]">Upcoming</span>
+          <span className={HOME_WIDGET_COUNT_CLASS}>
             {entries.length}
           </span>
           <ChevronDown
-            className={`ml-auto size-4 text-slate-400 transition-transform duration-200 dark:text-muted-foreground motion-reduce:transition-none ${open ? 'rotate-180' : ''}`}
+            className={`${HOME_WIDGET_CHEVRON_CLASS} ${open ? 'rotate-180' : ''}`}
             aria-hidden="true"
           />
         </button>
@@ -590,12 +640,12 @@ function UpcomingSection({
           {groups.map((group, groupIndex) => (
             <section
               key={group.key}
-              className={groupIndex > 0 ? 'border-t border-border/70 pt-4' : 'pt-2'}
+              className={groupIndex > 0 ? 'border-t border-border/70 pt-2' : 'pt-1.5'}
             >
-              <h2 className="text-sm font-medium uppercase leading-5 text-muted-foreground">
+              <h2 className={`text-[11px] font-medium uppercase leading-4 tracking-[0.04em] ${group.key === 'today' ? 'font-semibold text-foreground' : group.key === 'overdue' ? 'text-rose-700 dark:text-rose-300' : 'text-muted-foreground'}`}>
                 {group.title}
               </h2>
-              <ul className="mt-1">
+              <ul className="mt-0.5 divide-y divide-border/65">
                 {group.entries.map((entry) => entry.kind === 'task' ? (
                   <UpcomingTaskRow
                     key={entry.task.id}
@@ -623,20 +673,6 @@ function UpcomingSection({
             </section>
           ))}
         </div>
-        {entries.length > 6 ? (
-          <div className="border-t border-border/70 px-1 pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="mx-auto flex h-7 gap-2 px-2 text-xs font-normal text-muted-foreground hover:text-foreground"
-              onClick={() => onExpandedChange(!expanded)}
-            >
-              {expanded ? 'Show less' : `Show ${entries.length - 6} more`}
-              <ChevronDown className={`size-4 transition-transform motion-reduce:transition-none ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
-            </Button>
-          </div>
-        ) : null}
       </CollapsibleContent>
     </Collapsible>
   )
@@ -645,106 +681,81 @@ function UpcomingSection({
 type SectionShellProps = {
   title: string
   count: number
+  countLabel?: ReactNode
   icon: ReactNode
-  tone: 'focus' | 'due' | 'tasks'
+  iconClassName?: string
   children: ReactNode
-  leadingContent?: ReactNode
   empty: ReactNode
   compactWhenEmpty?: boolean
   compactEmptyLabel?: string
+  headerAction?: ReactNode
   footerContent?: ReactNode
 }
 
 function SectionShell({
   title,
   count,
+  countLabel,
   icon,
-  tone,
+  iconClassName = 'text-blue-700 dark:text-text-secondary',
   children,
-  leadingContent,
   empty,
   compactWhenEmpty = false,
   compactEmptyLabel,
+  headerAction,
   footerContent,
 }: SectionShellProps) {
   const [open, setOpen] = useState(true)
-  const toneClasses = {
-    focus: 'border-blue-100/80 bg-[#eef3ff] dark:border-border dark:bg-surface',
-    due: 'border-yellow-100/80 bg-yellow-50/75 dark:border-border dark:bg-surface',
-    tasks: 'border-slate-200/80 bg-white/80 dark:border-border dark:bg-surface',
-  }
   const compactEmpty = count === 0 && compactWhenEmpty
-  const attentionWidget = tone === 'focus' || tone === 'due'
-  const paddingClasses = compactEmpty
-    ? attentionWidget
-      ? 'px-3 py-2.5 sm:px-3.5 sm:py-3'
-      : 'px-2.5 py-2 sm:px-3 sm:py-2.5'
-    : attentionWidget
-      ? 'p-3 sm:p-3.5'
-      : 'p-2.5 sm:p-3'
 
   return (
     <Collapsible
       open={open}
       onOpenChange={setOpen}
-      className={`rounded-2xl border shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:shadow-none ${paddingClasses} ${toneClasses[tone]}`}
+      className={HOME_WIDGET_CARD_CLASS}
     >
-      <h2
-        className={`${compactEmpty ? '' : 'mb-1.5'} flex items-center px-1 py-0.5`}
-      >
+      <h2 className="mb-1 flex min-w-0 items-center gap-2 px-0.5 py-0.5">
         <CollapsibleTrigger asChild>
           <button
             type="button"
             aria-label={`${open ? 'Collapse' : 'Expand'} ${title}`}
-            className="group flex w-full items-center gap-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className={`${HOME_WIDGET_HEADER_CLASS} flex-1`}
           >
-            <span
-              className={
-                tone === 'focus'
-                  ? 'text-blue-600 dark:text-accent'
-                  : tone === 'due'
-                    ? 'text-yellow-600 dark:text-yellow-200'
-                    : 'text-blue-700 dark:text-text-secondary'
-              }
-            >
+            <span className={`shrink-0 ${iconClassName}`}>
               {icon}
             </span>
-            <span className="font-heading text-base font-semibold tracking-[-0.02em] text-foreground sm:text-lg">
+            <span className="min-w-0 truncate font-heading text-sm font-semibold tracking-[-0.01em] text-foreground">
               {title}
             </span>
-            <span className="flex size-6 items-center justify-center rounded-full bg-slate-900/[0.06] text-[11px] font-semibold text-slate-600 dark:border dark:border-border-subtle dark:bg-surface-hover dark:text-text-secondary">
-              {count}
+            <span className={HOME_WIDGET_COUNT_CLASS}>
+              {countLabel ?? count}
             </span>
-            {compactEmpty && (
+            {compactEmpty ? (
               <span
-                className="ml-auto min-w-0 truncate text-right text-xs text-slate-500 dark:text-muted-foreground"
+                className="min-w-0 flex-1 truncate text-xs font-normal text-slate-500 dark:text-muted-foreground"
                 title={compactEmptyLabel}
               >
                 {compactEmptyLabel}
               </span>
-            )}
+            ) : null}
             <ChevronDown
               aria-hidden="true"
-              className={`${compactEmpty ? '' : 'ml-auto'} size-4 text-slate-400 transition-transform duration-200 dark:text-muted-foreground ${open ? 'rotate-180' : ''}`}
+              className={`${HOME_WIDGET_CHEVRON_CLASS} ${open ? 'rotate-180' : ''}`}
             />
           </button>
         </CollapsibleTrigger>
+        {headerAction}
       </h2>
       <CollapsibleContent>
-        {leadingContent}
         {count > 0 ? (
           <>
-            <ul className="divide-y divide-slate-200/70 dark:divide-border/70">
+            <ul className="mt-0.5 divide-y divide-border/65">
               {children}
             </ul>
             {footerContent}
           </>
-        ) : compactEmpty ? (
-          <p className="hidden px-1.5 pt-0.5 text-xs leading-5 text-slate-500 dark:text-muted-foreground lg:block">
-            {empty}
-          </p>
-        ) : (
-          <div className="rounded-xl border border-dashed border-slate-300/70 bg-white/55 px-4 py-5 text-center text-sm text-slate-500 dark:border-border dark:bg-surface/60 dark:text-muted-foreground">
+        ) : compactEmpty ? null : (
+          <div className={HOME_WIDGET_EMPTY_CLASS}>
             {empty}
           </div>
         )}
@@ -785,8 +796,13 @@ function attentionOccurrence(item: NeedsAttentionItem): TaskOccurrenceContext | 
   return undefined
 }
 
+type NeedsAttentionRow =
+  | { kind: 'overdue-task'; entry: UpcomingTaskEntry }
+  | { kind: 'missed-item'; item: NeedsAttentionItem }
+
 function NeedsAttentionSection({
   items,
+  overdueTasks,
   lists,
   categories,
   onComplete,
@@ -798,8 +814,10 @@ function NeedsAttentionSection({
   onStash,
   onSkipSession,
   onSkipOccurrence,
+  exitingTaskIds,
 }: {
   items: NeedsAttentionItem[]
+  overdueTasks: UpcomingTaskEntry[]
   lists: List[]
   categories: Category[]
   onComplete: (taskId: string, completed: boolean) => void
@@ -811,108 +829,158 @@ function NeedsAttentionSection({
   onStash: (taskId: string, stashed: boolean) => void
   onSkipSession: (item: NeedsAttentionItem) => Promise<void>
   onSkipOccurrence: (occurrence: TaskOccurrence) => Promise<void>
+  exitingTaskIds: Set<string>
 }) {
   const [open, setOpen] = useState(true)
   const [showAll, setShowAll] = useState(false)
+  const overdueTasksById = new Map(
+    overdueTasks.map((entry) => [entry.task.id, entry]),
+  )
+  const attentionTaskIds = new Set(items.map((item) => item.task.id))
+  const additionalOverdueTasks = overdueTasks.filter(
+    (entry) => !attentionTaskIds.has(entry.task.id),
+  )
+  const rows: NeedsAttentionRow[] = [
+    ...additionalOverdueTasks.map((entry) => ({ kind: 'overdue-task' as const, entry })),
+    ...items.map((item) => ({ kind: 'missed-item' as const, item })),
+  ]
   const unresolvedCount = items.reduce(
     (count, item) => count + (item.kind === 'missed-session' ? 1 : item.occurrences.length),
-    0,
+    additionalOverdueTasks.length,
   )
-  const visibleItems = showAll ? items : items.slice(0, 4)
+  const visibleRows = showAll ? rows : rows.slice(0, 4)
 
-  if (!items.length) return null
+  if (!rows.length) return null
 
   return (
     <Collapsible
       open={open}
       onOpenChange={setOpen}
-      className="mb-3 rounded-xl border border-amber-200/80 border-l-2 border-l-amber-400/80 bg-amber-50/55 px-2.5 py-2.5 dark:border-amber-400/20 dark:border-l-amber-300/70 dark:bg-amber-500/8"
+      className={HOME_NEEDS_ATTENTION_CARD_CLASS}
     >
       <CollapsibleTrigger asChild>
         <button
           type="button"
-          className="flex w-full items-center gap-2.5 px-1 py-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          className={`${HOME_WIDGET_HEADER_CLASS} w-full`}
           aria-label={`${open ? 'Collapse' : 'Expand'} Needs Attention`}
         >
-          <AlertTriangle className="size-5 text-amber-600 dark:text-amber-300" />
-          <span className="font-heading text-base font-semibold tracking-[-0.02em]">
+          <AlertTriangle className="size-4.5 shrink-0 text-amber-600 dark:text-amber-300" />
+          <span className="min-w-0 truncate font-heading text-sm font-semibold tracking-[-0.01em]">
             Needs Attention
           </span>
-          <span className="flex size-6 items-center justify-center rounded-full bg-amber-200/70 text-[11px] font-semibold text-amber-900 dark:bg-amber-300/15 dark:text-amber-100">
+          <span className={HOME_NEEDS_ATTENTION_COUNT_CLASS}>
             {unresolvedCount}
           </span>
-          <ChevronDown className={`ml-auto size-4 text-amber-700/70 transition-transform dark:text-amber-200/70 ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`ml-auto size-4 shrink-0 text-amber-700/80 transition-transform duration-200 dark:text-amber-200/80 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />
         </button>
       </CollapsibleTrigger>
-      <CollapsibleContent>
-        <ul className="mt-2 divide-y divide-amber-200/70 overflow-hidden rounded-xl border border-amber-200/70 bg-white/55 dark:divide-amber-300/10 dark:border-amber-300/10 dark:bg-surface/50">
-          {visibleItems.map((item) => (
-            <TaskItem
-              key={item.id}
-              task={item.task}
-              lists={lists}
-              categories={categories}
-              currentListId={null}
-              highlighted={false}
-              shouldHideCompleted
-              isInbox={false}
-              canReorder={false}
-              showDueDate={false}
-              showAddToList
-              compact
-              handleOnComplete={onComplete}
-              handleOnRename={onRename}
-              handleOnDueDateChange={onDueDateChange}
-              handleOnNotesChange={onNotesChange}
-              handleOnDelete={onDelete}
-              handleOnFocus={onFocus}
-              handleOnStash={onStash}
-              leadingBadge={
-                <span className="mb-1 inline-flex items-center gap-1.5 text-xs font-medium text-amber-700/80 dark:text-amber-200/80">
-                  {item.kind === 'missed-occurrence' ? <Repeat className="size-3.5 shrink-0" /> : <Clock3 className="size-3.5 shrink-0" />}
-                  {attentionDateLabel(item)}
-                </span>
-              }
-              trailingActions={
-                <div className="flex flex-wrap items-center justify-end gap-1.5">
-                  <TaskEditDialog
-                    task={item.task}
-                    lists={lists}
-                    categories={categories}
-                    currentListId={item.task.list_id}
-                    focusPlanTime={item.kind === 'missed-session'}
-                    occurrence={attentionOccurrence(item)}
-                  >
-                    <Button type="button" size="sm" variant="outline" className="rounded-lg">
-                      {item.kind === 'missed-session' ? 'Reschedule' : 'Review'}
-                    </Button>
-                  </TaskEditDialog>
-                  {item.kind === 'missed-occurrence' && item.occurrences.length > 1
-                    ? item.occurrences.map((occurrence) => (
-                        <Button
-                          key={occurrence.id}
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 rounded-full px-2 text-[11px] text-muted-foreground"
-                          onClick={() => void onSkipOccurrence(occurrence)}
-                        >
-                          Skip {format(new Date(`${occurrence.occurrence_date}T12:00:00`), 'MMM d')}
-                        </Button>
-                      ))
-                    : item.kind === 'missed-session' && item.session
-                      ? <Button type="button" size="sm" variant="ghost" className="rounded-lg" onClick={() => void onSkipSession(item)}>Skip</Button>
-                      : item.occurrences.length === 1
-                        ? <Button type="button" size="sm" variant="ghost" className="rounded-lg" onClick={() => void onSkipOccurrence(item.occurrences[0])}>Skip</Button>
-                        : null}
-                </div>
-              }
-            />
-          ))}
+      <CollapsibleContent className="pt-1.5">
+        <ul className="divide-y divide-amber-300/50 dark:divide-amber-300/10">
+          {visibleRows.map((row) => {
+            if (row.kind === 'overdue-task') {
+              return (
+                <UpcomingTaskRow
+                  key={`overdue:${row.entry.task.id}`}
+                  entry={row.entry}
+                  lists={lists}
+                  categories={categories}
+                  onComplete={onComplete}
+                  onRename={onRename}
+                  onDueDateChange={onDueDateChange}
+                  onNotesChange={onNotesChange}
+                  onDelete={onDelete}
+                  onFocus={onFocus}
+                  onStash={onStash}
+                  isExiting={exitingTaskIds.has(row.entry.task.id)}
+                  showRescheduleAction
+                />
+              )
+            }
+
+            const item = row.item
+            return (
+              <TaskItem
+                key={item.id}
+                task={item.task}
+                lists={lists}
+                categories={categories}
+                currentListId={null}
+                highlighted={false}
+                shouldHideCompleted
+                isInbox={false}
+                canReorder={false}
+                homeWidgetStyle
+                showDueDate={false}
+                showAddToList
+                compact
+                dense
+                handleOnComplete={onComplete}
+                handleOnRename={onRename}
+                handleOnDueDateChange={onDueDateChange}
+                handleOnNotesChange={onNotesChange}
+                handleOnDelete={onDelete}
+                handleOnFocus={onFocus}
+                handleOnStash={onStash}
+                leadingBadge={
+                  <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700/80 dark:text-amber-200/80">
+                      {item.kind === 'missed-occurrence' ? <Repeat className="size-3.5 shrink-0" /> : <Clock3 className="size-3.5 shrink-0" />}
+                      {attentionDateLabel(item)}
+                    </span>
+                    {overdueTasksById.has(item.task.id) ? (
+                      <span className={`${HOME_WIDGET_STATUS_PILL_CLASS} border-destructive/20 bg-destructive/8 text-destructive`}>
+                        Overdue
+                      </span>
+                    ) : null}
+                  </div>
+                }
+                trailingActions={
+                  <div className="flex flex-wrap items-center justify-end gap-1.5">
+                    <TaskEditDialog
+                      task={item.task}
+                      lists={lists}
+                      categories={categories}
+                      currentListId={item.task.list_id}
+                      focusPlanTime
+                      occurrence={attentionOccurrence(item)}
+                    >
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="rounded-lg"
+                        aria-label={`Reschedule ${item.task.title}`}
+                      >
+                        Reschedule
+                      </Button>
+                    </TaskEditDialog>
+                    {item.kind === 'missed-occurrence' && item.occurrences.length > 1
+                      ? item.occurrences.map((occurrence) => (
+                          <Button
+                            key={occurrence.id}
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 rounded-full px-2 text-[11px] text-muted-foreground"
+                            onClick={() => void onSkipOccurrence(occurrence)}
+                          >
+                            Skip {format(new Date(`${occurrence.occurrence_date}T12:00:00`), 'MMM d')}
+                          </Button>
+                        ))
+                      : item.kind === 'missed-session' && item.session
+                        ? <Button type="button" size="sm" variant="ghost" className="rounded-lg" onClick={() => void onSkipSession(item)}>Skip</Button>
+                        : item.occurrences.length === 1
+                          ? <Button type="button" size="sm" variant="ghost" className="rounded-lg" onClick={() => void onSkipOccurrence(item.occurrences[0])}>Skip</Button>
+                          : null}
+                  </div>
+                }
+              />
+            )
+          })}
         </ul>
-        {items.length > 4 ? (
+        {rows.length > 4 ? (
           <Button type="button" variant="ghost" size="sm" className="mt-1.5 h-7 px-1.5 text-xs text-muted-foreground" onClick={() => setShowAll((value) => !value)}>
-            {showAll ? 'Show less' : `Show ${items.length - 4} more`}
+            {showAll ? 'Show less' : `Show ${rows.length - 4} more`}
           </Button>
         ) : null}
       </CollapsibleContent>
@@ -926,13 +994,27 @@ export default function HomePlanner({
   initialData: HomeData
 }) {
   const { masterKey } = useE2EE()
+  const {
+    busy: agendaBusy,
+    open: agendaOpen,
+    setOpen: setAgendaOpen,
+  } = useAgenda()
+  const agendaDocked = useSyncExternalStore(
+    subscribeToAgendaDocked,
+    getAgendaDockedSnapshot,
+    () => false,
+  )
+  const [selectedRightPanel, setSelectedRightPanel] = useState<HomeRightPanel>('focus')
+  const activeRightPanel = agendaOpen ? 'agenda' : selectedRightPanel === 'agenda' ? 'focus' : selectedRightPanel
+  const compactView = agendaOpen ? 'agenda' : 'tasks'
   const [day, setDay] = useState(() => localDateKey())
   const dayRef = useRef(day)
   const [tasks, setTasks] = useState<TaskWithList[] | null>(null)
-  const [currentOccurrences, setCurrentOccurrences] = useState<TaskOccurrence[]>(initialData.currentOccurrences)
-  const [attention, setAttention] = useState<NeedsAttentionItem[]>(initialData.attention)
+  const [currentOccurrences, setCurrentOccurrences] = useState<TaskOccurrence[]>([])
+  const [attention, setAttention] = useState<NeedsAttentionItem[]>([])
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEventWithList[]>([])
   const [editingEvent, setEditingEvent] = useState<CalendarEventWithList | null>(null)
+  const [focusPickerOpen, setFocusPickerOpen] = useState(false)
   const [lists, setLists] = useState<List[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [homePreferences, setHomePreferences] = useState<HomeSourcePreferences>(
@@ -941,7 +1023,6 @@ export default function HomePlanner({
   const [currentTime, setCurrentTime] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortOption, setSortOption] = useState<TaskSortOption>('manual')
-  const [upcomingExpanded, setUpcomingExpanded] = useState(false)
   const [exitingTaskIds, setExitingTaskIds] = useState<Set<string>>(
     () => new Set(),
   )
@@ -951,6 +1032,38 @@ export default function HomePlanner({
   const loadVersion = useRef(0)
   const homePreferenceSaveQueue = useRef(Promise.resolve())
   const homePreferenceChangeVersion = useRef(0)
+
+  function selectRightPanel(panel: HomeRightPanel) {
+    if (panel === 'agenda') {
+      setAgendaOpen(true)
+      return
+    }
+
+    setSelectedRightPanel(panel)
+    setAgendaOpen(false)
+  }
+
+  function handleRightPanelKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const focusedTab = event.target instanceof Element
+      ? event.target.closest<HTMLButtonElement>('[role="tab"]')
+      : null
+    const focusedPanel = HOME_RIGHT_PANELS.find(
+      (panel) => focusedTab?.id === `home-right-tab-${panel}`,
+    )
+    const currentIndex = HOME_RIGHT_PANELS.indexOf(focusedPanel ?? activeRightPanel)
+    let nextIndex = currentIndex
+
+    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % HOME_RIGHT_PANELS.length
+    else if (event.key === 'ArrowLeft') nextIndex = (currentIndex + HOME_RIGHT_PANELS.length - 1) % HOME_RIGHT_PANELS.length
+    else if (event.key === 'Home') nextIndex = 0
+    else if (event.key === 'End') nextIndex = HOME_RIGHT_PANELS.length - 1
+    else return
+
+    event.preventDefault()
+    const nextPanel = HOME_RIGHT_PANELS[nextIndex]
+    selectRightPanel(nextPanel)
+    document.getElementById(`home-right-tab-${nextPanel}`)?.focus()
+  }
 
   const applyData = useCallback(
     async (
@@ -1211,6 +1324,10 @@ export default function HomePlanner({
     () => homeTasks.filter((task) => matchesTaskSearch(task, searchQuery)),
     [homeTasks, searchQuery],
   )
+  const focusCandidates = useMemo(
+    () => filteredTasks.filter((task) => !task.completed && !task.stashed && !task.focused),
+    [filteredTasks],
+  )
   const creationView: TaskCreationView = {
     type: 'home', preferences: homePreferences, categories, searchQuery,
   }
@@ -1238,6 +1355,26 @@ export default function HomePlanner({
       currentTime,
     })
   }, [categories, currentOccurrences, currentTime, day, filteredDefinitions, homePreferences, sortOption, upcomingEvents])
+  const overdueTaskEntries = useMemo(
+    () => upcoming.filter(
+      (entry): entry is UpcomingTaskEntry =>
+        entry.kind === 'task' && entry.section === 'overdue',
+    ),
+    [upcoming],
+  )
+  const todayEntries = useMemo(
+    () => upcoming.filter((entry) => entry.section === 'today'),
+    [upcoming],
+  )
+  const otherUpcomingEntries = useMemo(
+    () => upcoming.filter(
+      (entry) =>
+        entry.section !== 'today' &&
+        !(entry.kind === 'task' && entry.section === 'overdue'),
+    ),
+    [upcoming],
+  )
+  const hasNeedsAttention = attention.length > 0 || overdueTaskEntries.length > 0
 
   const hasVisibleHomeTasks = Object.values(buckets).some((bucket) => bucket.length > 0) || upcoming.length > 0 || attention.length > 0
 
@@ -1533,7 +1670,12 @@ export default function HomePlanner({
     }
   }
 
-  function renderTask(task: TaskWithList, deadlineLabel?: string | null, deadlineTime?: string | null) {
+  function renderTask(
+    task: TaskWithList,
+    deadlineLabel?: string | null,
+    deadlineTime?: string | null,
+    dragSource?: HomeTaskDragSource,
+  ) {
     return (
       <HomeTaskRow
         key={task.id}
@@ -1550,6 +1692,8 @@ export default function HomePlanner({
         onFocus={handleFocus}
         onStash={handleStash}
         isExiting={exitingTaskIds.has(task.id)}
+        dragSource={dragSource}
+        isAgendaBusy={agendaBusy.has(task.id)}
       />
     )
   }
@@ -1579,7 +1723,7 @@ export default function HomePlanner({
           )}
         >
           <div className="home-workspace-container mx-auto w-full max-w-360">
-            <div className="home-large-header mb-3 flex min-w-0 flex-col gap-3 pb-1 pt-2 sm:pb-2 sm:pt-3">
+            <div className="home-large-header mb-2 flex min-w-0 flex-col gap-3 pt-2 sm:pt-3">
               <div className="home-title-row flex min-w-0 items-start justify-between gap-4">
                 <div className="flex min-w-0 items-start gap-1">
                   <SidebarTrigger className="mt-1 md:hidden" />
@@ -1587,7 +1731,9 @@ export default function HomePlanner({
                     {formattedDay}
                   </h1>
                 </div>
-                <AgendaToggle />
+                <div className="home-agenda-toggle">
+                  <AgendaToggle />
+                </div>
               </div>
               <div className="home-header-meta flex min-w-0 flex-col gap-4">
                 <p className="home-header-message max-w-[42rem] text-base text-slate-500 dark:text-muted-foreground sm:text-lg">
@@ -1681,48 +1827,132 @@ export default function HomePlanner({
                   </Button>
                 </div>
               ) : (
-                <div className="home-task-layout">
-                  <aside aria-label="Attention" className="home-attention-rail">
-                    <SectionShell
-                      title="Focus"
-                      count={buckets.focus.length}
-                      icon={<Star className="size-5" />}
-                      tone="focus"
-                      empty="Pick up to three tasks to keep close today."
-                      compactWhenEmpty
-                      compactEmptyLabel="Pick tasks"
+                <div className="home-task-layout" data-compact-view={compactView}>
+                  {hasNeedsAttention ? (
+                    <div className="home-needs-attention">
+                      <NeedsAttentionSection
+                        items={attention}
+                        overdueTasks={overdueTaskEntries}
+                        lists={lists}
+                        categories={categories}
+                        onComplete={handleComplete}
+                        onRename={handleRename}
+                        onDueDateChange={handleDueDateChange}
+                        onNotesChange={handleNotesChange}
+                        onDelete={handleDelete}
+                        onFocus={handleFocus}
+                        onStash={handleStash}
+                        onSkipSession={handleSkipAttentionSession}
+                        onSkipOccurrence={handleSkipAttentionOccurrence}
+                        exitingTaskIds={exitingTaskIds}
+                      />
+                    </div>
+                  ) : null}
+                  <div
+                    role="group"
+                    aria-label="Home view"
+                    className="home-compact-view-toggle"
+                  >
+                    <button
+                      type="button"
+                      className="home-compact-view-button"
+                      aria-pressed={!agendaOpen}
+                      aria-controls="home-task-main"
+                      onClick={() => setAgendaOpen(false)}
                     >
-                      {buckets.focus.map((task) => renderTask(task))}
-                    </SectionShell>
+                      <ListTodo aria-hidden="true" className="size-4" />
+                      <span>Tasks</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="home-compact-view-button"
+                      data-agenda-toggle
+                      aria-pressed={agendaOpen}
+                      aria-controls="home-right-panel-agenda"
+                      onClick={() => setAgendaOpen(true)}
+                    >
+                      <CalendarFold aria-hidden="true" className="size-4" />
+                      <span>Agenda</span>
+                    </button>
+                  </div>
+                  <aside aria-label="Home panels" className="home-attention-rail">
+                    <div
+                      role="tablist"
+                      aria-label="Home widgets"
+                      className="home-right-tabs"
+                      hidden={agendaDocked}
+                      onKeyDown={handleRightPanelKeyDown}
+                    >
+                      {HOME_RIGHT_PANELS.map((panel) => {
+                        const selected = activeRightPanel === panel
+                        const label = panel === 'focus' ? 'Focus' : panel === 'upcoming' ? 'Upcoming' : 'Agenda'
+                        const Icon = panel === 'focus' ? Star : panel === 'upcoming' ? Clock3 : CalendarFold
 
-                    <UpcomingSection
-                      entries={upcoming}
-                      expanded={upcomingExpanded}
-                      onExpandedChange={setUpcomingExpanded}
-                      lists={lists}
-                      categories={categories}
-                      onComplete={handleComplete}
-                      onRename={handleRename}
-                      onDueDateChange={handleDueDateChange}
-                      onNotesChange={handleNotesChange}
-                      onDelete={handleDelete}
-                      onFocus={handleFocus}
-                      onStash={handleStash}
-                      exitingTaskIds={exitingTaskIds}
-                      onOpenEvent={setEditingEvent}
-                    />
+                        return (
+                          <button
+                            key={panel}
+                            id={`home-right-tab-${panel}`}
+                            type="button"
+                            role="tab"
+                            data-agenda-toggle={panel === 'agenda' ? true : undefined}
+                            aria-selected={selected}
+                            aria-controls={`home-right-panel-${panel}`}
+                            tabIndex={selected ? 0 : -1}
+                            className="home-right-tab"
+                            onClick={() => selectRightPanel(panel)}
+                          >
+                            <Icon aria-hidden="true" className="size-4 shrink-0" />
+                            <span>{label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
 
-                  </aside>
+                    <div className="home-right-panes">
+                      <div
+                        id="home-right-panel-focus"
+                        role={agendaDocked ? undefined : 'tabpanel'}
+                        aria-labelledby={agendaDocked ? undefined : 'home-right-tab-focus'}
+                        tabIndex={agendaDocked ? undefined : 0}
+                        data-home-right-pane="focus"
+                        hidden={!agendaDocked && activeRightPanel !== 'focus'}
+                      >
+                        <SectionShell
+                          title="Focus"
+                          count={buckets.focus.length}
+                          countLabel={`${buckets.focus.length}/${MAX_FOCUS_TASKS}`}
+                          icon={<Star className="size-4.5" />}
+                          iconClassName="text-blue-600 dark:text-accent"
+                          empty="Pick up to three tasks to keep close today."
+                          compactWhenEmpty
+                          compactEmptyLabel="Choose up to 3 tasks to focus on"
+                          headerAction={buckets.focus.length < MAX_FOCUS_TASKS ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 shrink-0 gap-1 rounded-lg px-2 text-xs"
+                              onClick={() => setFocusPickerOpen(true)}
+                            >
+                              <Plus aria-hidden="true" />
+                              Add
+                            </Button>
+                          ) : null}
+                        >
+                          {buckets.focus.map((task) => renderTask(task, undefined, undefined, 'focus'))}
+                        </SectionShell>
+                      </div>
 
-                  <div className="home-task-main">
-                    <SectionShell
-                      title="Tasks"
-                      count={buckets.tasks.length}
-                      icon={<ListTodo className="size-5" />}
-                      tone="tasks"
-                      leadingContent={
-                        <NeedsAttentionSection
-                          items={attention}
+                      <div
+                        id="home-right-panel-upcoming"
+                        role={agendaDocked ? undefined : 'tabpanel'}
+                        aria-labelledby={agendaDocked ? undefined : 'home-right-tab-upcoming'}
+                        tabIndex={agendaDocked ? undefined : 0}
+                        data-home-right-pane="upcoming"
+                        hidden={!agendaDocked && activeRightPanel !== 'upcoming'}
+                      >
+                        <UpcomingSection
+                          entries={otherUpcomingEntries}
                           lists={lists}
                           categories={categories}
                           onComplete={handleComplete}
@@ -1732,53 +1962,118 @@ export default function HomePlanner({
                           onDelete={handleDelete}
                           onFocus={handleFocus}
                           onStash={handleStash}
-                          onSkipSession={handleSkipAttentionSession}
-                          onSkipOccurrence={handleSkipAttentionOccurrence}
+                          exitingTaskIds={exitingTaskIds}
+                          onOpenEvent={setEditingEvent}
                         />
-                      }
+                      </div>
+
+                      <div
+                        id="home-right-panel-agenda"
+                        role={agendaDocked ? undefined : 'tabpanel'}
+                        aria-labelledby={agendaDocked ? undefined : 'home-right-tab-agenda'}
+                        tabIndex={agendaDocked ? undefined : 0}
+                        data-home-right-pane="agenda"
+                        hidden={agendaDocked || activeRightPanel !== 'agenda'}
+                      >
+                        <div
+                          ref={setHomeAgendaTarget}
+                          id="home-agenda-tab-target"
+                          className="home-agenda-tab-target"
+                        />
+                      </div>
+                    </div>
+                  </aside>
+
+                  <div className="home-task-main" id="home-task-main">
+                    <SectionShell
+                      title="Tasks"
+                      count={buckets.tasks.length + todayEntries.length}
+                      icon={<ListTodo className="size-4.5" />}
+                      iconClassName="text-blue-700 dark:text-text-secondary"
                       empty={
                         searchQuery
                           ? 'No tasks match that search.'
                           : 'Everything is captured. Enjoy the clear space.'
                       }
                     >
-                      {buckets.tasks.map((task) => renderTask(task))}
+                      {todayEntries.length > 0 ? (
+                        <li className="list-none px-0.5 py-1">
+                          <section aria-label="Today">
+                            <h3 className="font-heading text-sm font-semibold leading-5 tracking-[-0.01em] text-foreground">
+                              Today
+                            </h3>
+                            <ul className="mt-1 divide-y divide-border/65">
+                              {todayEntries.map((entry) => entry.kind === 'task' ? (
+                                <UpcomingTaskRow
+                                  key={entry.task.id}
+                                  entry={entry}
+                                  lists={lists}
+                                  categories={categories}
+                                  onComplete={handleComplete}
+                                  onRename={handleRename}
+                                  onDueDateChange={handleDueDateChange}
+                                  onNotesChange={handleNotesChange}
+                                  onDelete={handleDelete}
+                                  onFocus={handleFocus}
+                                  onStash={handleStash}
+                                  isExiting={exitingTaskIds.has(entry.task.id)}
+                                />
+                              ) : (
+                                <UpcomingEventRow
+                                  key={entry.event.id}
+                                  entry={entry}
+                                  categories={categories}
+                                  onOpen={() => setEditingEvent(entry.event)}
+                                />
+                              ))}
+                            </ul>
+                          </section>
+                        </li>
+                      ) : null}
+                      {todayEntries.length > 0 && buckets.tasks.length > 0 ? (
+                        <li className="list-none px-0.5 py-2">
+                          <h3 className="text-[11px] font-semibold uppercase leading-4 tracking-[0.04em] text-muted-foreground">
+                            Other tasks
+                          </h3>
+                        </li>
+                      ) : null}
+                      {buckets.tasks.map((task) => renderTask(task, undefined, undefined, 'tasks'))}
                     </SectionShell>
 
                     <Collapsible
                       open={stashedOpen}
                       onOpenChange={setStashedOpen}
-                      className="mt-3 overflow-hidden rounded-2xl border border-slate-300/70 bg-slate-100/70 shadow-[0_6px_18px_rgba(62,84,120,0.04)] dark:border-border dark:bg-surface dark:shadow-none"
+                      className={`mt-3 ${HOME_WIDGET_CARD_CLASS}`}
                     >
                       <CollapsibleTrigger asChild>
                         <button
                           type="button"
-                          className="flex w-full items-center gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                          className={`${HOME_WIDGET_HEADER_CLASS} w-full`}
                         >
                           {stashedOpen ? (
-                            <PackageOpen className="size-5 text-slate-600 dark:text-text-tertiary" />
+                            <PackageOpen className="size-4.5 shrink-0 text-slate-600 dark:text-text-tertiary" />
                           ) : (
-                            <Package className="size-5 text-slate-600 dark:text-text-tertiary" />
+                            <Package className="size-4.5 shrink-0 text-slate-600 dark:text-text-tertiary" />
                           )}
-                          <span className="font-semibold text-slate-700 dark:text-slate-200">
+                          <span className="min-w-0 truncate font-heading text-sm font-semibold tracking-[-0.01em] text-foreground">
                             Stashed
                           </span>
-                          <span className="flex size-6 items-center justify-center rounded-full bg-slate-200/80 text-[11px] font-semibold text-slate-600 dark:bg-white/8 dark:text-slate-300">
+                          <span className={HOME_WIDGET_COUNT_CLASS}>
                             {buckets.stashed.length}
                           </span>
                           <ChevronDown
-                            className={`ml-auto size-4 text-slate-500 transition-transform dark:text-text-tertiary ${stashedOpen ? 'rotate-180' : ''}`}
+                            className={`${HOME_WIDGET_CHEVRON_CLASS} ${stashedOpen ? 'rotate-180' : ''}`}
                             aria-hidden="true"
                           />
                         </button>
                       </CollapsibleTrigger>
-                      <CollapsibleContent className="px-3 pb-3 sm:px-4 sm:pb-4">
+                      <CollapsibleContent className="pt-1.5">
                         {buckets.stashed.length > 0 ? (
-                          <ul className="overflow-hidden rounded-[15px] border border-slate-200/80 bg-white/90 divide-y divide-slate-200/80 dark:border-border dark:bg-surface-elevated dark:divide-border/80">
+                          <ul className="divide-y divide-border/65">
                             {buckets.stashed.map((task) => renderTask(task))}
                           </ul>
                         ) : (
-                          <div className="rounded-[15px] border border-dashed border-slate-300/70 bg-white/55 px-5 py-6 text-center text-sm text-slate-500 dark:border-border dark:bg-surface/60 dark:text-muted-foreground">
+                          <div className={HOME_WIDGET_EMPTY_CLASS}>
                             Nothing is stashed right now.
                           </div>
                         )}
@@ -1793,6 +2088,37 @@ export default function HomePlanner({
       </div>
     </div>
     {editingEvent ? <EventDialog lists={lists} categories={categories} event={editingEvent} open onOpenChange={(open) => { if (!open) setEditingEvent(null) }} /> : null}
+    <CommandDialog
+      open={focusPickerOpen}
+      onOpenChange={setFocusPickerOpen}
+      title="Add a task to Focus"
+      description="Choose an incomplete task to keep close on Home."
+    >
+      <CommandInput placeholder="Search tasks or plans…" autoFocus />
+      <CommandList>
+        <CommandEmpty>No matching tasks available to focus.</CommandEmpty>
+        <CommandGroup heading="Tasks">
+          {focusCandidates.map((task) => (
+            <CommandItem
+              key={task.id}
+              value={`${task.title} ${task.list?.title ?? 'Unsorted'}`}
+              onSelect={() => {
+                void handleFocus(task.id, true)
+                setFocusPickerOpen(false)
+              }}
+            >
+              <div className="min-w-0">
+                <p className="truncate">{task.title}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {task.list?.title ?? 'Unsorted'}{task.due_date ? ` · Due ${task.due_date}` : ''}
+                </p>
+              </div>
+              <span className="ml-auto text-xs text-muted-foreground">Add to Focus</span>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </CommandList>
+    </CommandDialog>
     </>
   )
 }

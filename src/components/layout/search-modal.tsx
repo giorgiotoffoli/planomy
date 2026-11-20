@@ -20,6 +20,7 @@ import Link from 'next/link'
 import { Dispatch, SetStateAction, useEffect, useMemo, useState } from 'react'
 import { ListEmoji } from '@/components/lists/list-emoji'
 import { CalendarDays } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface SearchModalProps {
   setOpen: Dispatch<SetStateAction<boolean>>
@@ -33,6 +34,7 @@ export default function SearchModal({ setOpen }: SearchModalProps) {
   const [categories, setCategories] = useState<Category[]>([])
   const [editingEvent, setEditingEvent] = useState<CalendarEventWithList | null>(null)
   const [query, setQuery] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
 
   const normalizedQuery = query.trim().toLocaleLowerCase()
 
@@ -40,6 +42,7 @@ export default function SearchModal({ setOpen }: SearchModalProps) {
     if (!masterKey) return
 
     const unlockedMasterKey = masterKey
+    let isCancelled = false
 
     async function loadAndDecryptTasks() {
       const [tasks, events, lists, categories] = await Promise.all([getTasks('all'), getAllEvents(), getUserLists(), getUserCategories()])
@@ -75,15 +78,26 @@ export default function SearchModal({ setOpen }: SearchModalProps) {
         })),
       )
 
+      const decryptedLists = await Promise.all(lists.map(async (list) => ({ ...list, title: await decryptString(list.title, unlockedMasterKey), emoji: list.emoji ? await decryptString(list.emoji, unlockedMasterKey) : list.emoji, user_id: list.user_id })))
+      const decryptedCategories = await Promise.all(categories.map(async (category) => ({ ...category, title: await decryptString(category.title, unlockedMasterKey) })))
+      if (isCancelled) return
       setLocalTasks(decryptedTasks)
       setLocalEvents(decryptedEvents)
-      setLists(await Promise.all(lists.map(async (list) => ({ ...list, title: await decryptString(list.title, unlockedMasterKey), emoji: list.emoji ? await decryptString(list.emoji, unlockedMasterKey) : list.emoji, user_id: list.user_id }))))
-      setCategories(await Promise.all(categories.map(async (category) => ({ ...category, title: await decryptString(category.title, unlockedMasterKey) }))))
+      setLists(decryptedLists)
+      setCategories(decryptedCategories)
+      setIsLoading(false)
     }
 
     loadAndDecryptTasks().catch((error) => {
-      console.error('Failed to load or decrypt tasks', error)
+      if (!isCancelled) {
+        console.error('Failed to load or decrypt tasks', error)
+        setIsLoading(false)
+      }
     })
+
+    return () => {
+      isCancelled = true
+    }
   }, [masterKey])
 
   const filteredTasks = useMemo(() => {
@@ -110,7 +124,16 @@ export default function SearchModal({ setOpen }: SearchModalProps) {
         onValueChange={setQuery}
       />
       <CommandList>
-        <CommandEmpty>No tasks or events found.</CommandEmpty>
+        {isLoading ? (
+          <div role="status" aria-label="Loading encrypted search results" aria-busy="true" className="space-y-3 p-3">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-10 w-full rounded-lg" />
+            <Skeleton className="h-10 w-full rounded-lg" />
+            <Skeleton className="h-10 w-4/5 rounded-lg" />
+          </div>
+        ) : (
+          <>
+            <CommandEmpty>No tasks or events found.</CommandEmpty>
 
         <CommandGroup heading={filteredTasks.length !== 0 ? 'Tasks' : undefined}>
           {filteredTasks.map((task) => (
@@ -152,6 +175,8 @@ export default function SearchModal({ setOpen }: SearchModalProps) {
             </CommandItem>
           ))}
         </CommandGroup>
+          </>
+        )}
       </CommandList>
       {editingEvent ? <EventDialog lists={lists} categories={categories} event={editingEvent} open onOpenChange={(open) => { if (!open) setEditingEvent(null) }} /> : null}
     </Command>

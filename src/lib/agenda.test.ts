@@ -1,6 +1,20 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { dragIntent } from './agenda.ts'
+import { dayBounds, dragIntent, MINUTE, snapInstant } from './agenda.ts'
+
+test('Agenda drop snapping can use the Calendar five-minute interval', () => {
+  const day = '2026-11-18'
+  const snapped = snapInstant(day, 11, 5)
+
+  assert.equal((snapped - dayBounds(day).start) / MINUTE, 10)
+})
+
+test('Agenda keeps its existing fifteen-minute default snap interval', () => {
+  const day = '2026-11-18'
+  const snapped = snapInstant(day, 11)
+
+  assert.equal((snapped - dayBounds(day).start) / MINUTE, 15)
+})
 
 test('task drops over a category target are categorized', () => {
   assert.equal(

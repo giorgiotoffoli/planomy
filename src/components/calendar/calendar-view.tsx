@@ -29,9 +29,11 @@ import {
   snapCreationStart,
   TASK_DRAG_DISTANCE,
   TASK_TOUCH_DELAY,
+  CALENDAR_SNAP_MINUTES,
   taskDisplayEnd,
 } from '@/lib/calendar-interactions'
 import { localDateKey } from '@/lib/today'
+import { MINUTE, SLOT_MINUTES } from '@/lib/agenda'
 import type { CalendarEventWithList, Category, List, TaskWithList } from '@/types'
 import { addCalendarDays } from '@/lib/today'
 import {
@@ -87,7 +89,7 @@ const fullCalendarView: Record<CalendarViewMode, string> = {
   week: 'timeGridWeek',
   month: 'dayGridMonth',
 }
-const calendarSnapDuration = '00:05:00'
+const calendarSnapDuration = `00:${String(CALENDAR_SNAP_MINUTES).padStart(2, '0')}:00`
 const calendarCreationStartSnapDuration = '00:15:00'
 
 function isRecurringCalendarItem(item: CalendarItem) {
@@ -266,6 +268,9 @@ export default function CalendarView({
   date,
   showDayHeader = true,
   compactGrid = false,
+  initialScrollTime,
+  slotDuration = '00:30:00',
+  defaultSlotMinutes = SLOT_MINUTES,
   renderSlotLaneContent,
 }: {
   viewMode: CalendarViewMode
@@ -286,6 +291,9 @@ export default function CalendarView({
   date?: string
   showDayHeader?: boolean
   compactGrid?: boolean
+  initialScrollTime?: string
+  slotDuration?: string
+  defaultSlotMinutes?: number
   renderSlotLaneContent?: (date: Date) => ReactNode
 }) {
   const { preferences: calendarPreferences } = useCalendarPreferences()
@@ -658,10 +666,10 @@ export default function CalendarView({
       const api = calendarRef.current?.getApi()
       if (!api || initialScrollApplied.current) return
 
-      api.scrollToTime(compactGrid ? '08:00:00' : '00:00:00')
+      api.scrollToTime(initialScrollTime ?? (compactGrid ? '08:00:00' : '00:00:00'))
       initialScrollApplied.current = true
     })
-  }, [compactGrid, interactiveTimeGrid])
+  }, [compactGrid, initialScrollTime, interactiveTimeGrid])
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -760,9 +768,9 @@ export default function CalendarView({
           slotMaxTime="24:00:00"
           scrollTime={compactGrid ? '08:00:00' : '00:00:00'}
           scrollTimeReset={false}
-          slotDuration="00:30:00"
+          slotDuration={slotDuration}
           snapDuration={calendarSnapDuration}
-          defaultTimedEventDuration="00:15:00"
+          defaultTimedEventDuration={`00:${String(defaultSlotMinutes).padStart(2, '0')}:00`}
           forceEventDuration={false}
           slotLabelInterval="01:00:00"
           slotLabelFormat={{
@@ -848,7 +856,7 @@ export default function CalendarView({
             onTaskSelect(null)
             setDraft({
               startsAt: info.date,
-              endsAt: null,
+              endsAt: new Date(info.date.getTime() + defaultSlotMinutes * MINUTE),
               anchor: anchorFromEvent(info.jsEvent, rootRef.current),
               title: '',
               listId: null,

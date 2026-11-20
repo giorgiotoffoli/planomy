@@ -5,6 +5,7 @@ import { localDateKey } from './today.ts'
 export const TASK_DRAG_DISTANCE = 6
 export const TASK_TOUCH_DELAY = 250
 export const TASK_TOUCH_TOLERANCE = 8
+export const CALENDAR_SNAP_MINUTES = 5
 
 export const DEFAULT_TASK_DISPLAY_MINUTES = SLOT_MINUTES
 

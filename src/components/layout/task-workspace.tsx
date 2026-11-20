@@ -95,6 +95,50 @@ interface TaskWorkspaceProps {
   events?: CalendarEventWithList[]
 }
 
+const EMPTY_CALENDAR_EVENTS: CalendarEventWithList[] = []
+
+function TaskWorkspaceSkeleton({
+  usesPageHeader,
+  error,
+}: {
+  usesPageHeader: boolean
+  error: boolean
+}) {
+  return (
+    <div
+      role={error ? 'alert' : 'status'}
+      aria-label={error ? undefined : 'Loading encrypted tasks'}
+      aria-busy={!error}
+      className="flex min-h-0 flex-1 flex-col bg-background"
+    >
+      {usesPageHeader ? (
+        <div className="mx-auto w-full max-w-360 px-4 pt-6 sm:px-6 lg:px-8">
+          <div className="mb-5 flex flex-col gap-4">
+            <Skeleton className="h-12 w-56 max-w-full" />
+            <Skeleton className="h-9 w-72 max-w-full rounded-xl" />
+          </div>
+        </div>
+      ) : (
+        <div className="flex h-12 items-center justify-between px-4">
+          <Skeleton className="h-7 w-36" />
+          <Skeleton className="size-9 rounded-xl" />
+        </div>
+      )}
+      <div className="mx-auto flex w-full max-w-360 flex-1 flex-col gap-3 px-4 pb-6 sm:px-6 lg:px-8">
+        {error ? (
+          <p className="text-sm text-destructive">
+            Encrypted content could not be loaded. Reload the page to try again.
+          </p>
+        ) : null}
+        <Skeleton className="h-14 w-full rounded-xl" />
+        <Skeleton className="h-14 w-full rounded-xl" />
+        <Skeleton className="h-14 w-full rounded-xl" />
+        <Skeleton className="h-14 w-4/5 rounded-xl" />
+      </div>
+    </div>
+  )
+}
+
 async function decryptTasks(tasks: TaskWithList[], masterKey: Uint8Array) {
   return Promise.all(
     tasks.map(async (task) => ({
@@ -162,23 +206,34 @@ export default function TaskWorkspace({
   currentView,
   headerTitle,
   headerEmoji,
-  events = [],
+  events,
 }: TaskWorkspaceProps) {
+  const workspaceEvents = events ?? EMPTY_CALENDAR_EVENTS
   const [localView, setLocalView] = useState(currentView)
-  const [localTasks, setLocalTasks] = useState(tasks)
-  const [localLists, setLocalLists] = useState(lists)
+  const [localTasks, setLocalTasks] = useState<TaskWithList[]>([])
+  const [localLists, setLocalLists] = useState<List[]>([])
   const [localCategories, setLocalCategories] = useState<Category[]>([])
-  const [localEvents, setLocalEvents] = useState<CalendarEventWithList[]>(events)
-  const [localHeaderTitle, setLocalHeaderTitle] = useState(headerTitle)
+  const [localEvents, setLocalEvents] = useState<CalendarEventWithList[]>([])
+  const [localHeaderTitle, setLocalHeaderTitle] = useState('')
   // Keep encrypted emoji ciphertext out of the first render until the vault
   // has decrypted the list data on the client.
   const [localHeaderEmoji, setLocalHeaderEmoji] = useState<string | null>(null)
+  const [decryptedSource, setDecryptedSource] = useState<{
+    tasks: TaskWithList[]
+    lists: List[]
+    categories?: Category[]
+    events: CalendarEventWithList[]
+    headerTitle: string
+    headerEmoji?: string | null
+  } | null>(null)
+  const [decryptFailed, setDecryptFailed] = useState(false)
   const [sortOption, setSortOption] = useState<TaskSortOption>('manual')
 
   const { masterKey } = useE2EE()
   const pathName = usePathname()
   const sortStorageKey = listId ? `planomy:list-sort:${listId}` : null
   const taskLoadVersion = useRef(0)
+  const dataDecryptVersion = useRef(0)
   const listScrollRootRef = useRef<HTMLDivElement>(null)
   const taskView = pathName === '/completed' ? 'completed' : 'all'
   const creationView: TaskCreationView = listId
@@ -336,7 +391,7 @@ export default function TaskWorkspace({
 
     const unlockedMasterKey = masterKey
     let isCancelled = false
-    const request = ++taskLoadVersion.current
+    const request = ++dataDecryptVersion.current
 
     async function decryptLoadedData() {
       const [decryptedTasks, decryptedLists, decryptedCategories, decryptedEvents] =
@@ -344,7 +399,7 @@ export default function TaskWorkspace({
           decryptTasks(tasks, unlockedMasterKey),
           decryptLists(lists, unlockedMasterKey),
           decryptCategories(categories ?? [], unlockedMasterKey),
-          decryptEvents(events, unlockedMasterKey),
+          decryptEvents(workspaceEvents, unlockedMasterKey),
         ])
 
       const decryptedHeaderTitle = await decryptString(headerTitle, unlockedMasterKey)
@@ -352,24 +407,36 @@ export default function TaskWorkspace({
         ? await decryptString(headerEmoji, unlockedMasterKey)
         : null
 
-      if (!isCancelled && request === taskLoadVersion.current) {
+      if (!isCancelled && request === dataDecryptVersion.current) {
         setLocalTasks(decryptedTasks)
         setLocalLists(decryptedLists)
         setLocalCategories(decryptedCategories)
         setLocalEvents(decryptedEvents)
         setLocalHeaderTitle(decryptedHeaderTitle)
         setLocalHeaderEmoji(decryptedHeaderEmoji)
+        setDecryptedSource({
+          tasks,
+          lists,
+          categories,
+          events: workspaceEvents,
+          headerTitle,
+          headerEmoji,
+        })
+        setDecryptFailed(false)
       }
     }
 
     decryptLoadedData().catch((error) => {
-      console.error('Failed to decrypt loaded data', error)
+      if (!isCancelled && request === dataDecryptVersion.current) {
+        console.error('Failed to decrypt loaded data', error)
+        setDecryptFailed(true)
+      }
     })
 
     return () => {
       isCancelled = true
     }
-  }, [events, masterKey, tasks, lists, categories, headerTitle, headerEmoji])
+  }, [workspaceEvents, masterKey, tasks, lists, categories, headerTitle, headerEmoji])
 
   async function handleOnComplete(taskId: string, isCompleted: boolean) {
     const previousTasks = localTasks
@@ -655,6 +722,23 @@ export default function TaskWorkspace({
 
   const isListPage = listId !== null
   const usesPageHeader = isListPage || pathName === '/completed'
+  const workspaceReady =
+    decryptedSource?.tasks === tasks &&
+    decryptedSource.lists === lists &&
+    decryptedSource.categories === categories &&
+    decryptedSource.events === workspaceEvents &&
+    decryptedSource.headerTitle === headerTitle &&
+    decryptedSource.headerEmoji === headerEmoji
+
+  if (!workspaceReady) {
+    return (
+      <TaskWorkspaceSkeleton
+        usesPageHeader={usesPageHeader}
+        error={decryptFailed}
+      />
+    )
+  }
+
   const workspaceContent = (
     <div
       className={
