@@ -4,7 +4,7 @@ import { useDraggable } from '@dnd-kit/core'
 import { GripVertical } from 'lucide-react'
 import { TaskEditDialog } from '@/components/tasks/task-item/task-edit/task-edit-dialog'
 import { TaskCheckbox } from '@/components/tasks/task-item/task-checkbox'
-import { MINUTE, PIXELS_PER_MINUTE, SLOT_MINUTES, timeLabel } from '@/lib/agenda'
+import { AGENDA_SLOT_MINUTES, MINUTE, PIXELS_PER_MINUTE, timeLabel } from '@/lib/agenda'
 import { inheritedColorStyle } from '@/lib/list-colors'
 import type { AgendaBlock } from '@/types'
 import { toast } from 'sonner'
@@ -24,7 +24,7 @@ export default function AgendaTaskBlock({ item, dayStart }: { item: { block: Age
     try { await operation() } catch (cause) { toast.error(cause instanceof Error ? cause.message : 'Task was not saved.') }
   }
   const start = Date.parse(block.starts_at)
-  const end = block.ends_at ? Date.parse(block.ends_at) : start + SLOT_MINUTES * MINUTE
+  const end = block.ends_at ? Date.parse(block.ends_at) : start + AGENDA_SLOT_MINUTES * MINUTE
   const description = `${task.title} · ${task.list?.title ?? 'Unsorted'} · ${timeLabel(start, calendarPreferences.timeFormat)} – ${timeLabel(end, calendarPreferences.timeFormat)}`
   return <div ref={setMoveRef} title={description} className={`planomy-scheduled-event agenda-task-block pointer-events-auto absolute overflow-hidden ${task.completed ? 'opacity-55' : ''} ${isMoving || isResizing ? 'opacity-40' : ''}`} style={{ ...inheritedColorStyle(task.category?.color, task.list?.color), top: (item.start - dayStart) / MINUTE * PIXELS_PER_MINUTE, height, left: `${item.column / item.columns * 100}%`, width: `calc(${100 / item.columns}% - 3px)` }}>
     <div className="flex min-w-0 items-center gap-1 px-1.5 pt-1">

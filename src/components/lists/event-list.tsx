@@ -59,6 +59,8 @@ export default function EventList({ events, lists, categories, listId }: EventLi
     ? [...visibleEvents, ...hiddenEvents]
     : visibleEvents
 
+  if (events.length === 0) return null
+
   function handleOpenChange(nextOpen: boolean) {
     setOpen(nextOpen)
     try {

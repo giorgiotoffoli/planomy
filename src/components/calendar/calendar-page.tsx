@@ -79,6 +79,7 @@ import {
   applyTaskVisualMutation,
   eventMutationAppliesToScheduledTask,
 } from '@/lib/live-mutations'
+import { Skeleton } from '@/components/ui/skeleton'
 
 function sessionKey(block: Pick<AgendaBlock, 'id' | 'task_id' | 'starts_at'>) {
   return block.id ?? `${block.task_id}:${block.starts_at}`
@@ -787,6 +788,25 @@ export default function CalendarPage({
     },
     [commitScheduledTasks, lists, masterKey, setTaskBusy],
   )
+
+  if (dueTasks === null) {
+    return (
+      <div
+        role="status"
+        aria-label="Loading encrypted calendar"
+        aria-busy="true"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background"
+      >
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-border-subtle px-4 sm:px-6">
+          <Skeleton className="h-7 w-36" />
+          <Skeleton className="h-9 w-48 max-w-[45%] rounded-xl" />
+        </div>
+        <div className="min-h-0 flex-1 p-2 sm:p-3">
+          <Skeleton className="h-full min-h-64 w-full rounded-xl" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">

@@ -82,7 +82,7 @@ function formatUpcomingTime(value: string | null) {
 }
 
 function formatUpcomingDay(dateKey: string) {
-  return format(new Date(`${dateKey}T12:00:00`), 'EEE')
+  return format(new Date(`${dateKey}T12:00:00`), 'MMM d')
 }
 
 function formatOverdueLabel(dateKey: string, day: string) {

@@ -208,12 +208,14 @@ function SectionToggle({
   open,
   label,
   summary,
+  placeholder = false,
   onClick,
   disabled,
 }: {
   open: boolean
   label: string
   summary: string
+  placeholder?: boolean
   onClick: () => void
   disabled?: boolean
 }) {
@@ -226,7 +228,12 @@ function SectionToggle({
       aria-expanded={open}
       className="h-auto min-h-8 w-full min-w-0 justify-start gap-3 px-0 py-0 text-left hover:bg-transparent"
     >
-      <span className="min-w-0 truncate text-sm font-medium">{summary || `Add ${label.toLocaleLowerCase()}`}</span>
+      <span
+        data-placeholder={placeholder ? '' : undefined}
+        className="min-w-0 truncate text-sm font-medium"
+      >
+        {summary || `Add ${label.toLocaleLowerCase()}`}
+      </span>
       <ChevronDown className={cn('ml-auto size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
     </Button>
   )
@@ -264,7 +271,7 @@ function TaskOrganizationPicker({
         >
           <span className="flex min-w-0 items-center gap-2">
             {selectedList ? <ListEmoji emoji={selectedList.emoji} /> : <ListX className="size-4 text-muted-foreground" />}
-            <span className="truncate">
+            <span data-placeholder={!selectedList ? '' : undefined} className="truncate">
               {selectedList
                 ? `${selectedList.title} · ${selectedCategory?.title ?? 'Uncategorized'}`
                 : 'Unsorted'}
@@ -451,7 +458,7 @@ export function TaskForm({
   }
 
   return (
-    <form onSubmit={submit} aria-busy={disabled} className="flex min-h-0 flex-1 flex-col">
+    <form onSubmit={submit} aria-busy={disabled} className="task-form flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         <div className="space-y-4">
           <div className="space-y-3.5">
@@ -466,7 +473,7 @@ export function TaskForm({
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="What needs to be done?"
-                className="h-12 border-0 bg-transparent px-0 text-xl font-semibold shadow-none placeholder:text-muted-foreground/60 focus-visible:ring-0 sm:text-2xl"
+                className="h-12 border-0 bg-transparent px-0 text-xl font-semibold shadow-none focus-visible:ring-0 sm:text-2xl"
                 required
                 disabled={disabled}
               />
@@ -490,6 +497,87 @@ export function TaskForm({
         <div className="h-px bg-border" />
 
         <div className="overflow-hidden rounded-2xl border border-border/70 bg-background/45 divide-y divide-border/60">
+          <MetadataRow
+            icon={<CalendarDays className="size-4" />}
+            label="Finish by"
+            summary={
+              <SectionToggle
+                open={deadlineOpen}
+                disabled={disabled}
+                label="finish by"
+                summary={dueDate ? `${dateLabel(dueDate)}${dueTime ? ` · ${timeValueLabel(dueTime, calendarPreferences.timeFormat)}` : ''}` : 'No deadline'}
+                placeholder={!dueDate}
+                onClick={openDeadline}
+              />
+            }
+            expanded={deadlineOpen && (
+              <div className="rounded-xl border border-border/70 bg-background/60 p-3.5">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block min-w-0 space-y-1.5 text-xs font-medium text-muted-foreground">
+                    Date
+                    <Input
+                      type="date"
+                      value={dueDate ?? ''}
+                      onChange={(event) => {
+                        const value = event.target.value || null
+                        setDueDate(value)
+                        if (!value) setDueTime(null)
+                      }}
+                      disabled={disabled}
+                      className="h-10 rounded-lg border-border bg-background text-sm font-normal text-foreground focus-visible:border-ring focus-visible:ring-ring/30"
+                    />
+                  </label>
+                  <label className="block min-w-0 space-y-1.5 text-xs font-medium text-muted-foreground">
+                    Time <span className="font-normal">(optional)</span>
+                    <Input
+                      type="time"
+                      value={dueTime ?? ''}
+                      onChange={(event) => setDueTime(event.target.value || null)}
+                      disabled={disabled || !dueDate}
+                      className="h-10 rounded-lg border-border bg-background text-sm font-normal text-foreground focus-visible:border-ring focus-visible:ring-ring/30"
+                    />
+                  </label>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3">
+                  {[
+                    ['Today', 0],
+                    ['Tomorrow', 1],
+                    ['Next week', 7],
+                  ].map(([shortcutLabel, offset]) => (
+                    <Button
+                      key={shortcutLabel}
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 bg-background/80 px-2.5 text-xs"
+                      disabled={disabled}
+                      onClick={() => {
+                        const date = new Date()
+                        date.setDate(date.getDate() + Number(offset))
+                        setDueDate(localDateKey(date))
+                      }}
+                    >
+                      {shortcutLabel}
+                    </Button>
+                  ))}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 px-2.5 text-xs text-muted-foreground"
+                    disabled={disabled || !dueDate}
+                    onClick={() => {
+                      setDueDate(null)
+                      setDueTime(null)
+                    }}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            )}
+          />
+
           <MetadataRow
             icon={<FolderOpen className="size-4" />}
             label="List"
@@ -515,7 +603,7 @@ export function TaskForm({
             label="Repeat"
             summary={
               <Select
-                value={repeatRule?.frequency ?? 'never'}
+                value={repeatRule?.frequency ?? ''}
                 onValueChange={(value) => {
                   if (value === 'never') {
                     setRepeatRule(null)
@@ -542,7 +630,7 @@ export function TaskForm({
                 }}
                 disabled={disabled}
               >
-                <SelectTrigger className="h-8 w-full max-w-none border-0 bg-transparent px-0 text-sm shadow-none focus:ring-0">
+                <SelectTrigger className="h-8 w-full max-w-none rounded-none border-0 bg-transparent px-0 text-sm shadow-none hover:bg-transparent focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent dark:hover:bg-transparent has-[>svg]:px-3 [&>svg:last-child]:opacity-100">
                   <SelectValue placeholder="Never" />
                 </SelectTrigger>
                 <SelectContent>
@@ -649,86 +737,6 @@ export function TaskForm({
           />
 
           <MetadataRow
-            icon={<CalendarDays className="size-4" />}
-            label="Finish by"
-            summary={
-              <SectionToggle
-                open={deadlineOpen}
-                disabled={disabled}
-                label="finish by"
-                summary={dueDate ? `${dateLabel(dueDate)}${dueTime ? ` · ${timeValueLabel(dueTime, calendarPreferences.timeFormat)}` : ''}` : 'Optional'}
-                onClick={openDeadline}
-              />
-            }
-            expanded={deadlineOpen && (
-              <div className="rounded-xl border border-border/70 bg-background/60 p-3.5">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block min-w-0 space-y-1.5 text-xs font-medium text-muted-foreground">
-                    Date
-                    <Input
-                      type="date"
-                      value={dueDate ?? ''}
-                      onChange={(event) => {
-                        const value = event.target.value || null
-                        setDueDate(value)
-                        if (!value) setDueTime(null)
-                      }}
-                      disabled={disabled}
-                      className="h-10 rounded-lg border-border bg-background text-sm font-normal text-foreground focus-visible:border-ring focus-visible:ring-ring/30"
-                    />
-                  </label>
-                  <label className="block min-w-0 space-y-1.5 text-xs font-medium text-muted-foreground">
-                    Time <span className="font-normal">(optional)</span>
-                    <Input
-                      type="time"
-                      value={dueTime ?? ''}
-                      onChange={(event) => setDueTime(event.target.value || null)}
-                      disabled={disabled || !dueDate}
-                      className="h-10 rounded-lg border-border bg-background text-sm font-normal text-foreground focus-visible:border-ring focus-visible:ring-ring/30"
-                    />
-                  </label>
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3">
-                  {[
-                    ['Today', 0],
-                    ['Tomorrow', 1],
-                    ['Next week', 7],
-                  ].map(([shortcutLabel, offset]) => (
-                    <Button
-                      key={shortcutLabel}
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-8 bg-background/80 px-2.5 text-xs"
-                      disabled={disabled}
-                      onClick={() => {
-                        const date = new Date()
-                        date.setDate(date.getDate() + Number(offset))
-                        setDueDate(localDateKey(date))
-                      }}
-                    >
-                      {shortcutLabel}
-                    </Button>
-                  ))}
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 px-2.5 text-xs text-muted-foreground"
-                    disabled={disabled || !dueDate}
-                    onClick={() => {
-                      setDueDate(null)
-                      setDueTime(null)
-                    }}
-                  >
-                    Clear
-                  </Button>
-                </div>
-              </div>
-            )}
-          />
-
-          <MetadataRow
             icon={<Clock3 className="size-4" />}
             label="Schedule"
             summary={
@@ -739,6 +747,7 @@ export function TaskForm({
                 summary={planTimes.length
                   ? `${planTimes.length} session${planTimes.length === 1 ? '' : 's'} · ${planTimes.map((plan) => timeValueLabel(plan.startTime, calendarPreferences.timeFormat)).join(', ')}`
                   : 'Choose a time'}
+                placeholder={!planTimes.length}
                 onClick={openPlanTime}
               />
             }
@@ -865,20 +874,30 @@ export function TaskForm({
             icon={<Star className={cn('size-4', focused && 'fill-current')} />}
             label="Focus"
             summary={
-              <Button
-                type="button"
-                variant="ghost"
-                role="switch"
-                aria-checked={focused}
-                onClick={() => setFocused((value) => !value)}
-                disabled={disabled}
-                className="h-8 justify-start px-2 text-sm"
-              >
-                {focused
-                  ? <Check className="size-4" />
-                  : <Star className="size-4 text-muted-foreground/70" />}
-                {focused ? 'On' : 'Off'}
-              </Button>
+              <div className="flex justify-start">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-label="Focus"
+                  aria-checked={focused}
+                  onClick={() => setFocused((value) => !value)}
+                  disabled={disabled}
+                  className={cn(
+                    'inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border border-transparent p-0.5 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none',
+                    focused
+                      ? 'bg-primary'
+                      : 'bg-slate-300 dark:bg-slate-700',
+                  )}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'size-5 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.28)] transition-transform duration-200 motion-reduce:transition-none',
+                      focused ? 'translate-x-5' : 'translate-x-0',
+                    )}
+                  />
+                </button>
+              </div>
             }
           />
         </div>

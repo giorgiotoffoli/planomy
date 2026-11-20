@@ -8,7 +8,11 @@ import TaskDetail from './task-details'
 import { cn } from '@/lib/utils'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { ReactNode } from 'react'
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+  ReactNode,
+} from 'react'
 import { GripVertical } from 'lucide-react'
 import { inheritedColorStyle } from '@/lib/list-colors'
 
@@ -42,6 +46,11 @@ interface TaskItemProps {
   showDueDate?: boolean
   showAddToList?: boolean
   compact?: boolean
+  dense?: boolean
+  homeWidgetStyle?: boolean
+  wholeRowDraggable?: boolean
+  dragId?: string
+  dragDisabled?: boolean
   isExiting?: boolean
   categories?: Category[]
   showCategory?: boolean
@@ -73,6 +82,11 @@ export function TaskItem({
   showDueDate = true,
   showAddToList = false,
   compact = false,
+  dense = false,
+  homeWidgetStyle = false,
+  wholeRowDraggable = false,
+  dragId,
+  dragDisabled = false,
   isExiting = false,
   categories,
   showCategory = false,
@@ -87,8 +101,14 @@ export function TaskItem({
     transition,
     isDragging,
   } = useSortable({
-    id: task.id,
-    disabled: { draggable: task.id.startsWith('temp-'), droppable: !canReorder },
+    id: dragId ?? task.id,
+    disabled: {
+      draggable:
+        task.id.startsWith('temp-') ||
+        dragDisabled ||
+        (!canReorder && !wholeRowDraggable),
+      droppable: !canReorder,
+    },
     data: {
       kind: 'task',
       task,
@@ -113,13 +133,31 @@ export function TaskItem({
       ? `${transition}, opacity 300ms ease, background-color 200ms ease`
       : 'opacity 300ms ease, background-color 200ms ease',
   }
+  const rowListeners = wholeRowDraggable
+    ? {
+        ...listeners,
+        onPointerDown: (event: ReactPointerEvent<HTMLLIElement>) => {
+          if (!isTaskActionTarget(event.target)) listeners?.onPointerDown?.(event)
+        },
+        onKeyDown: (event: ReactKeyboardEvent<HTMLLIElement>) => {
+          if (!isTaskActionTarget(event.target)) listeners?.onKeyDown?.(event)
+        },
+      }
+    : undefined
 
   return (
     <li
       ref={setNodeRef}
       style={style}
+      {...(wholeRowDraggable ? attributes : {})}
+      {...(wholeRowDraggable ? rowListeners : {})}
+      role={wholeRowDraggable ? 'listitem' : undefined}
+      aria-label={wholeRowDraggable ? `Draggable task: ${task.title}` : undefined}
+      aria-roledescription={wholeRowDraggable ? 'draggable task' : undefined}
       className={cn(
         'group border-b border-border/80 hover:bg-surface-hover',
+        dense && 'border-b-0',
+        wholeRowDraggable && 'cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
         isDragging && 'cursor-grabbing opacity-50',
         highlighted && 'animate-pulse border-2 border-blue-400',
       )}
@@ -136,11 +174,22 @@ export function TaskItem({
           <div
             className={cn(
               'grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 px-3',
-              compact ? 'py-2.5' : 'py-3',
+              homeWidgetStyle
+                ? 'items-start gap-x-2 px-0 py-1.5'
+                : dense
+                  ? 'py-1.5'
+                  : compact
+                    ? 'py-2.5'
+                    : 'py-3',
             )}
           >
             {/* Checkbox */}
-            <div className="flex h-6 items-center gap-2">
+            <div
+              className={cn(
+                'flex items-center gap-2',
+                homeWidgetStyle ? 'h-7 pt-0.5' : 'h-6',
+              )}
+            >
               {canReorder && (
                 <button
                   ref={setActivatorNodeRef}
@@ -158,7 +207,12 @@ export function TaskItem({
               />
             </div>
             {/* Content */}
-            <div className="min-w-0">
+            <div
+              className={cn(
+                'min-w-0',
+                homeWidgetStyle && 'text-sm font-medium leading-tight [&>div]:text-xs [&>div]:font-normal',
+              )}
+            >
               {leadingBadge}
               <TaskTitle task={displayTask} handleOnRename={handleOnRename} />
 
@@ -174,7 +228,12 @@ export function TaskItem({
               />
             </div>
             {/* Right side content */}
-            <div className="flex items-center gap-3">
+            <div
+              className={cn(
+                'flex items-center',
+                homeWidgetStyle ? 'gap-1.5 pt-0.5' : 'gap-3',
+              )}
+            >
               {trailingActions}
               <TaskEditDropdown
                 task={displayTask}
@@ -203,5 +262,11 @@ export function TaskItem({
         </div>
       </div>
     </li>
+  )
+}
+
+function isTaskActionTarget(target: EventTarget | null) {
+  return target instanceof Element && Boolean(
+    target.closest('button, a, input, textarea, select, [role="button"], [role="menuitem"], [data-no-task-drag]'),
   )
 }

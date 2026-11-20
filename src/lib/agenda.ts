@@ -2,7 +2,8 @@ import { isDateKey, localDateKey } from './today.ts'
 import { formatTime, type TimeFormat } from './calendar-preferences.ts'
 
 export const MINUTE = 60_000
-export const SLOT_MINUTES = 15
+export const SLOT_MINUTES = 15 // Minimum supported scheduled duration.
+export const AGENDA_SLOT_MINUTES = 30 // Default Agenda grid interval and drop duration.
 export const PIXELS_PER_MINUTE = 1.6
 
 export function shiftDay(day: string, delta: number) {
@@ -40,9 +41,14 @@ export function timeLabel(instant: number, timeFormat: TimeFormat = '12h') {
   return formatTime(instant, timeFormat)
 }
 
-export function snapInstant(day: string, offsetMinutes: number) {
+export function snapInstant(
+  day: string,
+  offsetMinutes: number,
+  snapMinutes = SLOT_MINUTES,
+  durationMinutes = SLOT_MINUTES,
+) {
   const { start, minutes } = dayBounds(day)
-  return start + Math.max(0, Math.min(minutes - SLOT_MINUTES, Math.round(offsetMinutes / SLOT_MINUTES) * SLOT_MINUTES)) * MINUTE
+  return start + Math.max(0, Math.min(minutes - durationMinutes, Math.round(offsetMinutes / snapMinutes) * snapMinutes)) * MINUTE
 }
 
 export function validateInterval(startsAt: string, endsAt: string) {

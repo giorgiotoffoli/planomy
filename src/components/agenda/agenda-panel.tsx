@@ -1,8 +1,14 @@
 'use client'
 
-import { useMemo, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { createPortal } from 'react-dom'
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+} from 'react'
 import { toast } from 'sonner'
 import { useDroppable } from '@dnd-kit/core'
+import { usePathname } from 'next/navigation'
 import { AlertTriangle, ChevronLeft, ChevronRight, Clock3, Repeat, X } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
@@ -15,7 +21,7 @@ import {
 import type { QuickCreateInput } from '@/components/calendar/calendar-quick-create'
 import { TaskEditDialog } from '@/components/tasks/task-item/task-edit/task-edit-dialog'
 import { projectCalendarItems } from '@/lib/calendar-items'
-import { shiftDay } from '@/lib/agenda'
+import { AGENDA_SLOT_MINUTES, shiftDay } from '@/lib/agenda'
 import { formatHour } from '@/lib/calendar-preferences'
 import { localDateKey } from '@/lib/today'
 import type { CalendarRangeInput } from '@/lib/events'
@@ -23,11 +29,25 @@ import type { AgendaBlock, TaskWithList } from '@/types'
 import { updateTaskOccurrenceSkipped, updateTaskOccurrenceTimingWithScope } from '@/components/tasks/recurrence-actions'
 import { notifyTasksChanged } from '@/components/tasks/mutations'
 import { useAgenda } from './agenda-provider'
+import {
+  getHomeAgendaTarget,
+  subscribeToHomeAgendaTarget,
+} from './home-agenda-target'
 import { useCalendarPreferences } from '@/components/settings/calendar-preferences-provider'
 import type { RecurrenceScope } from '@/lib/recurrence-scope'
 import type { TaskOccurrenceContext } from '@/components/tasks/task-form/task-occurrence-context'
 
 const desktopQuery = '(min-width: 1280px)'
+const agendaWidthStorageKey = 'planomy:agenda:width'
+const agendaWidthRevisionKey = 'planomy:agenda:width-revision'
+const agendaWidthRevision = 'narrower-v1'
+const minAgendaWidth = 240
+const maxAgendaWidth = 520
+const defaultAgendaWidth = 340
+
+function responsiveDefaultAgendaWidth() {
+  return Math.max(minAgendaWidth, Math.min(maxAgendaWidth, Math.round(window.innerWidth * 0.26)))
+}
 const ignoreRange: (range: CalendarRangeInput) => void = () => undefined
 const ignoreLabel: (label: string) => void = () => undefined
 const CalendarView = dynamic(
@@ -50,12 +70,15 @@ function subscribe(listener: () => void) {
 }
 
 function restoreFocus() {
-  document.querySelector<HTMLButtonElement>('[data-agenda-toggle]')?.focus()
+  const toggle = Array.from(
+    document.querySelectorAll<HTMLButtonElement>('[data-agenda-toggle]'),
+  ).find((button) => button.getClientRects().length > 0)
+  toggle?.focus()
 }
 
 function PlannerSlotDropTarget({ instant }: { instant: number }) {
   const { preferences } = useCalendarPreferences()
-  const { setNodeRef } = useDroppable({
+  const { setNodeRef, isOver } = useDroppable({
     id: `agenda-slot:${instant}`,
     data: { kind: 'agenda-slot', instant },
   })
@@ -69,7 +92,7 @@ function PlannerSlotDropTarget({ instant }: { instant: number }) {
     <span
       ref={setNodeRef}
       aria-hidden="true"
-      className="planner-calendar-slot pointer-events-none relative block h-full min-h-[1.225rem] w-full"
+      className={`planner-calendar-slot pointer-events-none relative block h-full min-h-[0.5rem] w-full rounded-sm transition-colors ${isOver ? 'bg-primary/10 ring-1 ring-inset ring-primary/35' : ''}`}
     >
       {hourLabel ? (
         <span className="planner-calendar-hour-label">{hourLabel}</span>
@@ -92,9 +115,23 @@ export default function AgendaPanel() {
     () => window.matchMedia(desktopQuery).matches,
     () => false,
   )
+  const pathname = usePathname()
+  const homeCompact = pathname === '/home' && !desktop
+  const homeAgendaTarget = useSyncExternalStore(
+    subscribeToHomeAgendaTarget,
+    getHomeAgendaTarget,
+    () => null,
+  )
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [editingOccurrence, setEditingOccurrence] = useState<TaskOccurrenceContext | undefined>(undefined)
   const [reopenAfterEdit, setReopenAfterEdit] = useState(false)
+  const [panelWidth, setPanelWidth] = useState(defaultAgendaWidth)
+  const resizeStart = useRef<{
+    pointerId: number
+    startX: number
+    width: number
+    nextWidth: number
+  } | null>(null)
   const editingTask = useMemo(() => {
     if (!editingTaskId) return null
     return (
@@ -103,6 +140,85 @@ export default function AgendaPanel() {
       null
     )
   }, [blocks, dueTasks, editingTaskId])
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      try {
+        const storedWidth = window.localStorage.getItem(agendaWidthStorageKey)
+        const saved = Number(storedWidth)
+        const hasCurrentWidthRevision = window.localStorage.getItem(agendaWidthRevisionKey) === agendaWidthRevision
+        if (storedWidth !== null && Number.isFinite(saved) && saved > 0) {
+          const adjustedWidth = Math.max(
+            minAgendaWidth,
+            Math.min(maxAgendaWidth, saved - (hasCurrentWidthRevision ? 0 : 24)),
+          )
+          setPanelWidth(adjustedWidth)
+          if (!hasCurrentWidthRevision) {
+            window.localStorage.setItem(agendaWidthStorageKey, String(adjustedWidth))
+          }
+        } else {
+          setPanelWidth(responsiveDefaultAgendaWidth())
+        }
+        window.localStorage.setItem(agendaWidthRevisionKey, agendaWidthRevision)
+      } catch {
+        setPanelWidth(responsiveDefaultAgendaWidth())
+      }
+    }, 0)
+    return () => window.clearTimeout(timeout)
+  }, [])
+
+  function updatePanelWidth(nextWidth: number, persist = false) {
+    const clampedWidth = Math.max(minAgendaWidth, Math.min(maxAgendaWidth, nextWidth))
+    setPanelWidth(clampedWidth)
+    if (persist) {
+      try {
+        window.localStorage.setItem(agendaWidthStorageKey, String(clampedWidth))
+      } catch {
+        // The current session can still use the selected width.
+      }
+    }
+    return clampedWidth
+  }
+
+  function handleResizePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    resizeStart.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      width: panelWidth,
+      nextWidth: panelWidth,
+    }
+  }
+
+  function handleResizePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const start = resizeStart.current
+    if (!start || start.pointerId !== event.pointerId) return
+    start.nextWidth = updatePanelWidth(start.width - (event.clientX - start.startX))
+  }
+
+  function finishResize(event: ReactPointerEvent<HTMLDivElement>) {
+    const start = resizeStart.current
+    if (!start || start.pointerId !== event.pointerId) return
+    updatePanelWidth(start.nextWidth, true)
+    resizeStart.current = null
+  }
+
+  function handleResizeKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault()
+      updatePanelWidth(panelWidth + 16, true)
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault()
+      updatePanelWidth(panelWidth - 16, true)
+    } else if (event.key === 'Home') {
+      event.preventDefault()
+      updatePanelWidth(maxAgendaWidth, true)
+    } else if (event.key === 'End') {
+      event.preventDefault()
+      updatePanelWidth(minAgendaWidth, true)
+    }
+  }
 
   function openTask(taskId: string, occurrence?: TaskOccurrenceContext) {
     setEditingTaskId(taskId)
@@ -118,11 +234,43 @@ export default function AgendaPanel() {
       <aside
         id="daily-agenda"
         aria-label="Today planner"
-        className="agenda-calendar flex h-full w-[352px] shrink-0 flex-col border-l"
+        style={{ width: panelWidth }}
+        className="agenda-calendar relative flex h-full shrink-0 flex-col border-l"
       >
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize Agenda panel"
+          aria-valuemin={minAgendaWidth}
+          aria-valuemax={maxAgendaWidth}
+          aria-valuenow={panelWidth}
+          aria-valuetext={`${panelWidth} pixels`}
+          tabIndex={0}
+          className="group absolute -left-1 top-0 z-30 flex h-full w-2 cursor-col-resize touch-none items-center justify-center focus-visible:outline-none"
+          onPointerDown={handleResizePointerDown}
+          onPointerMove={handleResizePointerMove}
+          onPointerUp={finishResize}
+          onPointerCancel={finishResize}
+          onKeyDown={handleResizeKeyDown}
+        >
+          <span className="h-full w-px bg-border transition-colors group-hover:bg-primary/50 group-focus-visible:w-1 group-focus-visible:bg-primary" />
+        </div>
         <PlannerCalendar onTaskOpen={openTask} />
       </aside>
     ) : null
+  ) : homeCompact ? (
+    open && homeAgendaTarget
+      ? createPortal(
+          <aside
+            id="daily-agenda"
+            aria-label="Today planner"
+            className="agenda-calendar flex h-full min-h-0 flex-col"
+          >
+            <PlannerCalendar onTaskOpen={openTask} />
+          </aside>,
+          homeAgendaTarget,
+        )
+      : null
   ) : (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent
@@ -227,6 +375,11 @@ function PlannerCalendar({
     () => projectCalendarItems(dueTasks, displayedBlocks, events, calendarPreferences.timeFormat),
     [calendarPreferences.timeFormat, displayedBlocks, dueTasks, events],
   )
+  const initialScrollTime = useMemo(() => {
+    if (!isToday) return '08:00:00'
+    const hour = Math.max(0, new Date().getHours() - 1)
+    return `${String(hour).padStart(2, '0')}:00:00`
+  }, [isToday])
   async function schedule(task: TaskWithList, startsAt: Date, endsAt: Date | null, sessionId?: string, occurrenceId?: string | null, sessionIndex?: number | null, scope: RecurrenceScope = 'this') {
     if (scope !== 'this' && occurrenceId && sessionId) {
       try {
@@ -381,6 +534,9 @@ function PlannerCalendar({
       <div className="min-h-0 flex-1 bg-surface">
         <CalendarView
           viewMode="day"
+          initialScrollTime={initialScrollTime}
+          slotDuration={`00:${String(AGENDA_SLOT_MINUTES).padStart(2, '0')}:00`}
+          defaultSlotMinutes={AGENDA_SLOT_MINUTES}
           command={null}
           date={day}
           showDayHeader={false}

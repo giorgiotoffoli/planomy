@@ -13,7 +13,9 @@
   }
 
   body:has([data-floating-task-trigger]) {
-    --mobile-toast-bottom: calc(var(--floating-task-inset) + var(--floating-task-size) + 1rem);
+    --mobile-toast-bottom: calc(
+      var(--floating-task-inset) + var(--floating-task-size) + 1rem
+    );
   }
 
   .floating-task-trigger {
@@ -392,7 +394,11 @@ html.dark {
 }
 
 .planomy-calendar .fc-col-header-cell {
-  background: color-mix(in oklab, var(--calendar-canvas) 96%, var(--background));
+  background: color-mix(
+    in oklab,
+    var(--calendar-canvas) 96%,
+    var(--background)
+  );
 }
 
 .planomy-calendar .fc-col-header-cell-cushion {
@@ -505,7 +511,9 @@ html.dark {
   filter: saturate(0.42);
 }
 
-.planomy-calendar .fc-timegrid-slot-label.is-past .fc-timegrid-slot-label-cushion {
+.planomy-calendar
+  .fc-timegrid-slot-label.is-past
+  .fc-timegrid-slot-label-cushion {
   color: var(--text-disabled);
 }
 
@@ -547,7 +555,8 @@ html.dark {
   font-size: 0.7rem;
 }
 
-.planomy-calendar.is-compact .fc-timegrid-axis-frame.fc-scrollgrid-shrink-frame {
+.planomy-calendar.is-compact
+  .fc-timegrid-axis-frame.fc-scrollgrid-shrink-frame {
   min-width: 3.1rem;
 }
 
@@ -600,9 +609,14 @@ html.dark {
 .planomy-calendar .planomy-due-event,
 .planomy-calendar .planomy-scheduled-event {
   overflow: hidden;
-  border: 1px solid color-mix(in oklab, var(--list-color) 68%, var(--calendar-canvas));
+  border: 1px solid
+    color-mix(in oklab, var(--list-color) 68%, var(--calendar-canvas));
   border-radius: 0.28rem;
-  background: color-mix(in oklab, var(--list-color) 48%, var(--calendar-canvas));
+  background: color-mix(
+    in oklab,
+    var(--list-color) 48%,
+    var(--calendar-canvas)
+  );
   box-shadow: inset 0.4rem 0 0 var(--list-color);
   color: var(--text-primary);
   cursor: pointer;
@@ -610,9 +624,14 @@ html.dark {
 
 .planomy-calendar .planomy-native-event {
   overflow: hidden;
-  border: 1px solid color-mix(in oklab, var(--list-color) 90%, var(--calendar-canvas));
+  border: 1px solid
+    color-mix(in oklab, var(--list-color) 90%, var(--calendar-canvas));
   border-radius: 0.28rem;
-  background: color-mix(in oklab, var(--list-color) 68%, var(--calendar-canvas));
+  background: color-mix(
+    in oklab,
+    var(--list-color) 68%,
+    var(--calendar-canvas)
+  );
   box-shadow: inset 0.4rem 0 0 var(--list-color);
   color: var(--text-primary);
   cursor: grab;
@@ -786,7 +805,9 @@ html.dark {
 }
 
 .planomy-calendar .planomy-scheduled-event:hover .fc-event-resizer-end::after,
-.planomy-calendar .planomy-scheduled-event.is-selected .fc-event-resizer-end::after {
+.planomy-calendar
+  .planomy-scheduled-event.is-selected
+  .fc-event-resizer-end::after {
   opacity: 0.72;
 }
 
@@ -812,17 +833,33 @@ html.dark {
 
 .planomy-calendar .planomy-due-event:hover,
 .planomy-calendar .planomy-scheduled-event:hover {
-  background: color-mix(in oklab, var(--list-color) 58%, var(--calendar-canvas));
+  background: color-mix(
+    in oklab,
+    var(--list-color) 58%,
+    var(--calendar-canvas)
+  );
 }
 
 .planomy-calendar .planomy-native-event:hover {
-  background: color-mix(in oklab, var(--list-color) 76%, var(--calendar-canvas));
+  background: color-mix(
+    in oklab,
+    var(--list-color) 76%,
+    var(--calendar-canvas)
+  );
 }
 
 .planomy-calendar .planomy-scheduled-event.is-plan-past,
 .planomy-calendar .planomy-native-event.is-plan-past {
-  border-color: color-mix(in oklab, var(--text-secondary) 34%, var(--calendar-canvas));
-  background: color-mix(in oklab, var(--text-secondary) 22%, var(--calendar-canvas));
+  border-color: color-mix(
+    in oklab,
+    var(--text-secondary) 34%,
+    var(--calendar-canvas)
+  );
+  background: color-mix(
+    in oklab,
+    var(--text-secondary) 22%,
+    var(--calendar-canvas)
+  );
 }
 
 .planomy-calendar .planomy-scheduled-event.is-plan-past .fc-event-main,
@@ -832,19 +869,39 @@ html.dark {
 
 .planomy-calendar .planomy-scheduled-event.is-plan-past:hover,
 .planomy-calendar .planomy-native-event.is-plan-past:hover {
-  background: color-mix(in oklab, var(--text-secondary) 28%, var(--calendar-canvas));
+  background: color-mix(
+    in oklab,
+    var(--text-secondary) 28%,
+    var(--calendar-canvas)
+  );
 }
 
 .planomy-calendar .planomy-scheduled-event.is-missed {
   border-style: solid;
-  border-color: color-mix(in oklab, var(--destructive) 62%, var(--calendar-canvas));
-  background: color-mix(in oklab, var(--destructive) 12%, var(--calendar-canvas));
+  border-color: color-mix(
+    in oklab,
+    var(--destructive) 62%,
+    var(--calendar-canvas)
+  );
+  background: color-mix(
+    in oklab,
+    var(--destructive) 12%,
+    var(--calendar-canvas)
+  );
 }
 
 .planomy-calendar .planomy-scheduled-event.is-skipped {
   border-style: solid;
-  border-color: color-mix(in oklab, var(--text-secondary) 44%, var(--calendar-canvas));
-  background: color-mix(in oklab, var(--text-secondary) 12%, var(--calendar-canvas));
+  border-color: color-mix(
+    in oklab,
+    var(--text-secondary) 44%,
+    var(--calendar-canvas)
+  );
+  background: color-mix(
+    in oklab,
+    var(--text-secondary) 12%,
+    var(--calendar-canvas)
+  );
 }
 
 .planomy-calendar .planomy-scheduled-event.is-skipped .fc-event-main,
@@ -860,17 +917,24 @@ html.dark {
     0 0 12px color-mix(in oklab, var(--list-color) 20%, transparent);
 }
 
-.planomy-calendar .planomy-scheduled-event.is-in-progress .planomy-calendar-block-content {
+.planomy-calendar
+  .planomy-scheduled-event.is-in-progress
+  .planomy-calendar-block-content {
   background: linear-gradient(
     to bottom,
-    color-mix(in oklab, var(--calendar-canvas) 58%, transparent) 0 var(--plan-progress, 0%),
+    color-mix(in oklab, var(--calendar-canvas) 58%, transparent) 0
+      var(--plan-progress, 0%),
     transparent var(--plan-progress, 0%) 100%
   );
 }
 
 .planomy-calendar .planomy-scheduled-event.is-deadline-overdue {
   border-color: var(--destructive);
-  background: color-mix(in oklab, var(--list-color) 46%, var(--calendar-canvas));
+  background: color-mix(
+    in oklab,
+    var(--list-color) 46%,
+    var(--calendar-canvas)
+  );
   box-shadow:
     inset 0.28rem 0 0 var(--list-color),
     0 0 0 1px color-mix(in oklab, var(--destructive) 44%, transparent),
@@ -883,20 +947,30 @@ html.dark {
 
 .planomy-calendar .planomy-due-event.is-deadline-overdue .planomy-due-task {
   box-shadow: inset 0.2rem 0 0 var(--destructive);
-  background: color-mix(in oklab, var(--destructive) 14%, var(--calendar-canvas));
+  background: color-mix(
+    in oklab,
+    var(--destructive) 14%,
+    var(--calendar-canvas)
+  );
 }
 
-.planomy-calendar .planomy-due-event.is-deadline-overdue .planomy-due-task-title {
+.planomy-calendar
+  .planomy-due-event.is-deadline-overdue
+  .planomy-due-task-title {
   color: var(--text-primary);
   font-weight: 650;
 }
 
 .planomy-calendar .planomy-due-event.is-deadline-overdue .planomy-due-task-time,
-.planomy-calendar .planomy-due-event.is-deadline-overdue .planomy-due-task-marker {
+.planomy-calendar
+  .planomy-due-event.is-deadline-overdue
+  .planomy-due-task-marker {
   color: var(--destructive);
 }
 
-.planomy-calendar .planomy-due-event.is-deadline-overdue .planomy-due-task-marker {
+.planomy-calendar
+  .planomy-due-event.is-deadline-overdue
+  .planomy-due-task-marker {
   border-color: var(--destructive);
 }
 
@@ -926,7 +1000,9 @@ html.dark {
 
 /* Give roomier calendar blocks a couple of readable title lines. Short
    slots and month cells keep the compact one-line treatment below. */
-.planomy-calendar .fc-timegrid-event:not(.fc-timegrid-event-short) .planomy-calendar-block-title {
+.planomy-calendar
+  .fc-timegrid-event:not(.fc-timegrid-event-short)
+  .planomy-calendar-block-title {
   align-items: flex-start;
   white-space: normal;
 }
@@ -939,7 +1015,10 @@ html.dark {
   white-space: inherit;
 }
 
-.planomy-calendar .fc-timegrid-event:not(.fc-timegrid-event-short) .planomy-calendar-block-title > span:last-child {
+.planomy-calendar
+  .fc-timegrid-event:not(.fc-timegrid-event-short)
+  .planomy-calendar-block-title
+  > span:last-child {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -949,7 +1028,10 @@ html.dark {
 /* In the week all-day lane, reserve expansion for the first item only when
    the day actually has multiple items. A lone item stays compact, and later
    items remain one line so the lane does not grow unnecessarily. */
-.planomy-calendar .fc-daygrid-day-events:has(> .fc-daygrid-event-harness + .fc-daygrid-event-harness)
+.planomy-calendar
+  .fc-daygrid-day-events:has(
+    > .fc-daygrid-event-harness + .fc-daygrid-event-harness
+  )
   > .fc-daygrid-event-harness:first-child
   .fc-daygrid-event:not(.is-month)
   .planomy-calendar-block-title {
@@ -957,24 +1039,34 @@ html.dark {
   white-space: normal;
 }
 
-.planomy-calendar .fc-daygrid-day-events:has(> .fc-daygrid-event-harness + .fc-daygrid-event-harness)
+.planomy-calendar
+  .fc-daygrid-day-events:has(
+    > .fc-daygrid-event-harness + .fc-daygrid-event-harness
+  )
   > .fc-daygrid-event-harness:first-child
   .fc-daygrid-event:not(.is-month)
-  .planomy-calendar-block-title > span:last-child {
+  .planomy-calendar-block-title
+  > span:last-child {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow-wrap: anywhere;
 }
 
-.planomy-calendar .fc-daygrid-day-events:has(> .fc-daygrid-event-harness + .fc-daygrid-event-harness)
+.planomy-calendar
+  .fc-daygrid-day-events:has(
+    > .fc-daygrid-event-harness + .fc-daygrid-event-harness
+  )
   > .fc-daygrid-event-harness:first-child
   .fc-daygrid-event:not(.is-month)
   .planomy-due-task {
   align-items: flex-start;
 }
 
-.planomy-calendar .fc-daygrid-day-events:has(> .fc-daygrid-event-harness + .fc-daygrid-event-harness)
+.planomy-calendar
+  .fc-daygrid-day-events:has(
+    > .fc-daygrid-event-harness + .fc-daygrid-event-harness
+  )
   > .fc-daygrid-event-harness:first-child
   .fc-daygrid-event:not(.is-month)
   .planomy-due-task-title {
@@ -1018,7 +1110,11 @@ html.dark {
   overflow: hidden;
   border: 1px dashed color-mix(in oklab, var(--list-color) 70%, transparent);
   border-radius: 0.4rem;
-  background: color-mix(in oklab, var(--list-color) 14%, var(--calendar-canvas));
+  background: color-mix(
+    in oklab,
+    var(--list-color) 14%,
+    var(--calendar-canvas)
+  );
   box-shadow: 0 4px 14px rgb(0 0 0 / 9%);
   color: var(--text-primary);
   pointer-events: none;
@@ -1134,7 +1230,11 @@ button.planomy-scheduled-task-marker svg {
 }
 
 .planomy-calendar .fc-dayGridMonth-view .fc-day-other {
-  background: color-mix(in oklab, var(--calendar-canvas) 94%, var(--background));
+  background: color-mix(
+    in oklab,
+    var(--calendar-canvas) 94%,
+    var(--background)
+  );
 }
 
 .planomy-calendar .fc-dayGridMonth-view .fc-day-other .planomy-month-day-number,
@@ -1187,12 +1287,20 @@ button.planomy-scheduled-task-marker svg {
 }
 
 .agenda-calendar-header {
-  background: color-mix(in oklab, var(--calendar-canvas) 96%, var(--background));
+  background: color-mix(
+    in oklab,
+    var(--calendar-canvas) 96%,
+    var(--background)
+  );
 }
 
 .agenda-calendar .calendar-grid-scroll,
 .agenda-calendar .planomy-calendar {
   height: 100%;
+}
+
+.agenda-calendar .planomy-calendar .fc .fc-timegrid-slot {
+  height: 1.5em !important;
 }
 
 .agenda-calendar .fc-timegrid-axis,
@@ -1245,6 +1353,17 @@ button.planomy-scheduled-task-marker svg {
   }
 }
 
+.task-form [data-slot='input']::placeholder,
+.task-form [data-slot='textarea']::placeholder {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.task-form [data-placeholder] {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
 /* The Home workspace shares its width with the persistent Agenda rail. Keep
    its layout tied to that available width instead of the viewport. */
 .home-workspace-container {
@@ -1252,23 +1371,147 @@ button.planomy-scheduled-task-marker svg {
 }
 
 .home-task-layout {
+  --home-widget-gap: 0.75rem;
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--home-widget-gap);
+}
+
+.home-needs-attention {
+  min-width: 0;
+  order: 0;
 }
 
 .home-attention-rail {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 1rem;
-  order: 1;
+  gap: var(--home-widget-gap);
+  order: 3;
 }
 
 .home-task-main {
   min-width: 0;
   order: 2;
+}
+
+.home-compact-view-toggle {
+  display: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem;
+  order: 1;
+  padding: 0.25rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  background: var(--surface);
+}
+
+.home-compact-view-button {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border-radius: 0.55rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1rem;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.home-compact-view-button:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.home-compact-view-button[aria-pressed='true'] {
+  background: color-mix(in oklab, var(--primary) 12%, var(--surface));
+  color: var(--primary);
+}
+
+.home-compact-view-button:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--primary) 65%, transparent);
+  outline-offset: 1px;
+}
+
+.home-right-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  background: var(--surface);
+}
+
+.home-right-tabs[hidden] {
+  display: none;
+}
+
+.home-right-tab {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border-radius: 0.55rem;
+  padding: 0.5rem 0.375rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1rem;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.home-right-tab:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.home-right-tab[aria-selected='true'] {
+  background: color-mix(in oklab, var(--primary) 12%, var(--surface));
+  color: var(--primary);
+}
+
+.home-right-tab:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--primary) 65%, transparent);
+  outline-offset: 1px;
+}
+
+.home-right-panes {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--home-widget-gap);
+}
+
+.home-right-panes > [data-home-right-pane] {
+  min-width: 0;
+}
+
+.home-right-panes > [data-home-right-pane][hidden] {
+  display: none;
+}
+
+.home-agenda-tab-target {
+  height: min(70dvh, 48rem);
+  min-height: 20rem;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  background: var(--surface);
+}
+
+.home-agenda-tab-target > #daily-agenda {
+  height: 100%;
+  min-height: 0;
 }
 
 .home-toolbar {
@@ -1296,6 +1539,59 @@ button.planomy-scheduled-task-marker svg {
   height: 2.25rem;
 }
 
+@container home-workspace (min-width: 640px) {
+  .home-task-layout {
+    display: grid;
+    grid-template-columns: minmax(24rem, 1.15fr) minmax(15rem, 0.85fr);
+    align-items: start;
+    gap: var(--home-widget-gap);
+  }
+
+  .home-needs-attention {
+    grid-column: 1 / -1;
+    order: 0;
+  }
+
+  .home-task-main {
+    grid-column: 1;
+    order: 1;
+  }
+
+  .home-attention-rail {
+    grid-column: 2;
+    align-self: start;
+    order: 2;
+    position: sticky;
+    top: 1rem;
+  }
+
+  .home-attention-rail > * {
+    min-width: 0;
+  }
+}
+
+@container home-workspace (max-width: 639px) {
+  .home-compact-view-toggle {
+    display: grid;
+  }
+
+  .home-right-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-right-tabs > #home-right-tab-agenda {
+    display: none;
+  }
+
+  .home-task-layout[data-compact-view='agenda'] .home-task-main {
+    display: none;
+  }
+
+  .home-task-layout[data-compact-view='agenda'] .home-right-tabs {
+    display: none;
+  }
+}
+
 @container home-workspace (min-width: 720px) {
   .home-header-meta {
     flex-direction: row;
@@ -1317,31 +1613,6 @@ button.planomy-scheduled-task-marker svg {
     min-width: 0;
   }
 
-  .home-task-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .home-attention-rail {
-    display: flex;
-    grid-column: 1;
-    grid-row: 1;
-    flex-direction: column;
-    gap: 1rem;
-    order: initial;
-  }
-
-  .home-attention-rail > * {
-    min-width: 0;
-  }
-
-  .home-task-main {
-    grid-column: 1;
-    grid-row: 2;
-    order: initial;
-  }
-
   .home-toolbar {
     grid-template-columns: auto auto minmax(10rem, 1fr) auto;
   }
@@ -1358,25 +1629,38 @@ button.planomy-scheduled-task-marker svg {
   }
 }
 
-@container home-workspace (min-width: 960px) {
+@container home-workspace (min-width: 640px) and (max-width: 799px) {
+  .home-right-tab {
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0.375rem 0.125rem;
+    font-size: 0.6875rem;
+  }
+}
+
+@container home-workspace (min-width: 800px) {
   .home-task-layout {
-    grid-template-columns: minmax(0, 1fr) minmax(340px, 380px);
+    grid-template-columns: minmax(24rem, 1fr) minmax(340px, 380px);
+  }
+}
+
+@media (min-width: 1280px) {
+  .home-right-tabs {
+    display: none;
+  }
+
+  .home-agenda-toggle {
+    display: block;
   }
 
   .home-attention-rail {
-    display: flex;
-    grid-column: 2;
-    grid-row: 1;
-    align-self: start;
     position: sticky;
-    top: 1.5rem;
-    order: initial;
+    top: 1rem;
   }
+}
 
-  .home-task-main {
-    grid-column: 1;
-    grid-row: 1;
-    order: initial;
+@media (max-width: 1279px) {
+  .home-agenda-toggle {
+    display: none;
   }
-
 }

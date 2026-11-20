@@ -22,12 +22,12 @@ export default async function AppLayout({
       <SidebarProvider
         defaultOpen={cookieStore.get('sidebar_state')?.value !== 'false'}
       >
-        <AppSidebar />
-        <SidebarInset className="min-w-0 p-0">
-          <E2EEGate initialKeychain={onboarding.keychain}>
+        <E2EEGate initialKeychain={onboarding.keychain}>
+          <AppSidebar />
+          <SidebarInset className="min-w-0 p-0">
             <AgendaProvider>{children}</AgendaProvider>
-          </E2EEGate>
-        </SidebarInset>
+          </SidebarInset>
+        </E2EEGate>
       </SidebarProvider>
     </E2EEProvider>
   )
