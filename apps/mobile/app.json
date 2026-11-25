@@ -13,7 +13,9 @@
       "usesAppleSignIn": true,
       "icon": "./assets/AppIcon.icon",
       "usesNonExemptEncryption": false,
-      "associatedDomains": ["webcredentials:planomy.com"],
+      "associatedDomains": [
+        "webcredentials:planomy.com"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -29,7 +31,8 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true

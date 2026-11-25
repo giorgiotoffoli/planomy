@@ -23,6 +23,7 @@ export function NativeTabToolbar({
         <Stack.Toolbar.Button
           icon="magnifyingglass"
           accessibilityLabel="Search"
+          onPress={() => router.push('/search')}
         />
       </Stack.Toolbar>
       <Stack.Toolbar placement="right">
@@ -85,6 +86,7 @@ export function AndroidSearchHeaderButton() {
     <AndroidHeaderButton
       name={{ ios: 'magnifyingglass', android: 'search', web: 'search' }}
       label="Search"
+      onPress={() => router.push('/search')}
     />
   )
 }
